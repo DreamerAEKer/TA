@@ -1,53 +1,96 @@
 /**
- * Customer Database Manager
- * Handles local storage operations for Tracking Owner Data.
+ * Customer Database Manager (Batch System Refactor)
+ * Handles local storage for Tracking Owner Data in Batches.
  */
 
-const DB_KEY = 'thp_tracking_db_v1';
+// 1. Lookup DB: Maps Tracking ID -> Batch ID (For fast search)
+const LOOKUP_KEY = 'thp_tracking_lookup_v1';
+
+// 2. Batch DB: Stores Batch Details (The "Sets")
+const BATCH_KEY = 'thp_tracking_batches_v1';
 
 const CustomerDB = {
-    // Load all data
-    getAll: () => {
-        const raw = localStorage.getItem(DB_KEY);
+    // --- LOOKUP OPERATIONS ---
+    getLookup: () => {
+        const raw = localStorage.getItem(LOOKUP_KEY);
         return raw ? JSON.parse(raw) : {};
     },
-
-    // Save map
-    saveAll: (data) => {
-        localStorage.setItem(DB_KEY, JSON.stringify(data));
+    saveLookup: (data) => {
+        localStorage.setItem(LOOKUP_KEY, JSON.stringify(data));
     },
 
-    // Add entries
-    addEntries: (trackingList, customerInfo) => {
-        const db = CustomerDB.getAll();
-        let count = 0;
+    // --- BATCH OPERATIONS ---
+    getBatches: () => {
+        const raw = localStorage.getItem(BATCH_KEY);
+        return raw ? JSON.parse(raw) : {}; // { batchId: { ...info } }
+    },
+    saveBatches: (data) => {
+        localStorage.setItem(BATCH_KEY, JSON.stringify(data));
+    },
+
+    // --- MAIN ACTIONS ---
+
+    // Add a new Batch
+    addBatch: (batchInfo, trackingList) => {
+        const batchId = Date.now().toString(); // Use timestamp as ID
+        const batches = CustomerDB.getBatches();
+        const lookup = CustomerDB.getLookup();
+
+        // 1. Save Batch Info
+        batches[batchId] = {
+            id: batchId,
+            ...batchInfo,
+            count: trackingList.length,
+            // Create a short range description (e.g., "ED111... - ED222...")
+            rangeDesc: trackingList.length > 1
+                ? `${trackingList[0]} - ${trackingList[trackingList.length - 1]}`
+                : trackingList[0] || 'No Data'
+        };
+
+        // 2. Save Lookup (ID -> Batch ID)
         trackingList.forEach(id => {
-            db[id] = customerInfo;
-            count++;
+            lookup[id] = {
+                batchId: batchId,
+                name: batchInfo.name,
+                type: batchInfo.type
+            };
         });
-        CustomerDB.saveAll(db);
-        return count;
+
+        CustomerDB.saveBatches(batches);
+        CustomerDB.saveLookup(lookup);
+        return trackingList.length;
     },
 
-    // Get info for a specific ID
-    get: (id) => {
-        const db = CustomerDB.getAll();
-        return db[id] || null;
+    // Delete a Batch
+    deleteBatch: (batchId) => {
+        const batches = CustomerDB.getBatches();
+        const lookup = CustomerDB.getLookup();
+
+        if (!batches[batchId]) return;
+
+        // 1. Remove from Lookup (Expensive but necessary for consistency)
+        // Optimization: In a real DB, we'd query by batchId. Here we iterate.
+        Object.keys(lookup).forEach(key => {
+            if (lookup[key].batchId === batchId) {
+                delete lookup[key];
+            }
+        });
+
+        // 2. Remove Batch
+        delete batches[batchId];
+
+        CustomerDB.saveBatches(batches);
+        CustomerDB.saveLookup(lookup);
     },
 
-    // Clear all
-    clear: () => {
-        localStorage.removeItem(DB_KEY);
+    clearAll: () => {
+        localStorage.removeItem(BATCH_KEY);
+        localStorage.removeItem(LOOKUP_KEY);
     },
 
-    // Get count
-    count: () => {
-        return Object.keys(CustomerDB.getAll()).length;
-    },
-
-    // Find similar (Same Body+Suffix, Different Prefix)
+    // Find similar (using Lookup DB)
     findSimilarByBody: (trackingNumber) => {
-        const db = CustomerDB.getAll();
+        const lookup = CustomerDB.getLookup();
         const results = [];
 
         // Parse input
@@ -56,9 +99,9 @@ const CustomerDB = {
         if (!match) return [];
 
         const [full, prefix, digits, suffix] = match;
-        const targetSearch = digits + suffix; // e.g., 123456785TH
 
-        Object.keys(db).forEach(key => {
+        // Search in Lookup keys
+        Object.keys(lookup).forEach(key => {
             if (key === trackingNumber) return; // Exact match, skip
 
             const keyMatch = key.match(regex);
@@ -67,7 +110,7 @@ const CustomerDB = {
                 if (kDigits === digits && kSuffix === suffix && kPrefix !== prefix) {
                     results.push({
                         number: key,
-                        info: db[key]
+                        info: lookup[key]
                     });
                 }
             }
@@ -78,45 +121,95 @@ const CustomerDB = {
 };
 
 // UI State
-let currentSort = { key: 'timestamp', order: 'desc' }; // Default: Newest first
+let currentSort = { key: 'timestamp', order: 'desc' };
 
-// UI Functions for DB Tab
 function sortDB(key) {
     if (currentSort.key === key) {
-        // Toggle order
         currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
     } else {
         currentSort.key = key;
-        currentSort.order = 'asc'; // Default new sort is Ascending
+        currentSort.order = 'desc'; // Batches usually desc timestamp
     }
     renderDBTable();
 }
 
+/**
+ * Prefix & Block1 Managers (Unchanged)
+ */
+const PREFIX_KEY = 'thp_tracking_prefixes_v1';
+const PrefixManager = {
+    getAll: () => {
+        const raw = localStorage.getItem(PREFIX_KEY);
+        return raw ? JSON.parse(raw) : ['EB', 'RB', 'EMS'];
+    },
+    add: (prefix) => {
+        prefix = prefix.toUpperCase().substring(0, 2);
+        if (!prefix || prefix.length < 2) return;
+        const list = PrefixManager.getAll();
+        if (!list.includes(prefix)) {
+            list.push(prefix);
+            list.sort();
+            localStorage.setItem(PREFIX_KEY, JSON.stringify(list));
+        }
+    },
+    remove: (prefix) => {
+        let list = PrefixManager.getAll();
+        list = list.filter(p => p !== prefix);
+        localStorage.setItem(PREFIX_KEY, JSON.stringify(list));
+    }
+};
+
+const BLOCK1_KEY = 'thp_tracking_block1_v1';
+const Block1Manager = {
+    getAll: () => {
+        const raw = localStorage.getItem(BLOCK1_KEY);
+        return raw ? JSON.parse(raw) : ['1234', '5555'];
+    },
+    add: (val) => {
+        val = val.replace(/\D/g, '').substring(0, 4);
+        if (!val || val.length < 4) return;
+        const list = Block1Manager.getAll();
+        if (!list.includes(val)) {
+            list.push(val);
+            list.sort();
+            localStorage.setItem(BLOCK1_KEY, JSON.stringify(list));
+        }
+    },
+    remove: (val) => {
+        let list = Block1Manager.getAll();
+        list = list.filter(p => p !== val);
+        localStorage.setItem(BLOCK1_KEY, JSON.stringify(list));
+    }
+};
+
+// --- RENDER FUNCTIONS (Adapted for Batches) ---
+
 function renderDBTable() {
-    const db = CustomerDB.getAll();
+    const batches = CustomerDB.getBatches();
     const tbody = document.querySelector('#db-table tbody');
     const countSpan = document.getElementById('db-count');
 
-    tbody.innerHTML = '';
-    const keys = Object.keys(db);
-    countSpan.innerText = keys.length;
+    if (!tbody || !countSpan) return;
 
-    // Convert to Array for sorting
-    const rows = keys.map(key => ({
-        id: key,
-        ...db[key]
-    }));
+    tbody.innerHTML = '';
+    const keys = Object.keys(batches);
+    countSpan.innerText = keys.length; // Count of batches, not total items
+
+    // Convert to Array
+    const rows = keys.map(key => batches[key]);
 
     // Sort
     rows.sort((a, b) => {
         let valA, valB;
         if (currentSort.key === 'id') {
-            valA = a.id; valB = b.id;
+            // Sort by Range Desc String?
+            valA = a.rangeDesc; valB = b.rangeDesc;
         } else if (currentSort.key === 'name') {
             valA = a.name.toLowerCase(); valB = b.name.toLowerCase();
         } else if (currentSort.key === 'type') {
             valA = a.type; valB = b.type;
-        } else if (currentSort.key === 'timestamp') {
+        } else {
+            // Timestamp default
             valA = a.timestamp || 0; valB = b.timestamp || 0;
         }
 
@@ -125,23 +218,24 @@ function renderDBTable() {
         return 0;
     });
 
-    // Update Headers (Visual Indicator)
+    // Update Headers
     document.querySelectorAll('#db-table th').forEach(th => {
-        th.style.background = '#f8f9fa'; // Reset
+        th.style.background = '#f8f9fa';
         if (th.dataset.sort === currentSort.key) {
             th.style.background = '#e2e6ea';
         }
     });
 
-    // Show top 200 (increased limit)
-    const limit = 200;
-
-    rows.slice(0, limit).forEach(item => {
+    rows.forEach(item => {
         const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleString('th-TH') : '-';
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${item.id}</td>
+            <td>
+                <strong>${item.rangeDesc}</strong>
+                <br>
+                <small style="color:#666;">(${item.count.toLocaleString()} รายการ)</small>
+            </td>
             <td>${item.name}</td>
             <td>
                 <span class="badge ${item.type === 'Credit' ? 'badge-primary' : 'badge-neutral'}">
@@ -151,23 +245,24 @@ function renderDBTable() {
             </td>
             <td style="font-size:0.85rem; color:#666;">${dateStr}</td>
             <td>
-                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#dc3545; color:white;" onclick="deleteEntry('${item.id}')">Del</button>
+                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#dc3545; color:white;" 
+                    onclick="deleteBatchEntry('${item.id}', '${item.name}')">ลบ (Del)</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-function deleteEntry(key) {
-    const db = CustomerDB.getAll();
-    delete db[key];
-    CustomerDB.saveAll(db);
-    renderDBTable();
+function deleteBatchEntry(batchId, batchName) {
+    if (confirm(`ยืนยันการลบข้อมูลชุดนี้?\n\nลูกค้า: ${batchName}`)) {
+        CustomerDB.deleteBatch(batchId);
+        renderDBTable();
+    }
 }
 
 function clearAllData() {
-    if (confirm('ยืนยันลบข้อมูลทั้งหมด?')) {
-        CustomerDB.clear();
+    if (confirm('ยืนยันลบข้อมูลทั้งหมด? (ข้อมูลชุดทั้งหมดจะหายไป)')) {
+        CustomerDB.clearAll();
         renderDBTable();
     }
 }
@@ -183,7 +278,7 @@ function saveCustomerData() {
         return;
     }
 
-    const info = { name, type, contract, timestamp: new Date().getTime() };
+    const batchInfo = { name, type, contract, timestamp: new Date().getTime() };
     const numbersToAdd = [];
 
     // Parse list (support Ranges!)
@@ -228,8 +323,8 @@ function saveCustomerData() {
         return;
     }
 
-    const savedCount = CustomerDB.addEntries(numbersToAdd, info);
-    alert(`บันทึกเรียบร้อย! เพิ่ม ${savedCount} รายการ`);
+    const count = CustomerDB.addBatch(batchInfo, numbersToAdd);
+    alert(`บันทึกเรียบร้อย! เพิ่ม ${count} รายการ (เป็น 1 ชุด)`);
 
     // Reset inputs
     document.getElementById('db-tracking-list').value = '';

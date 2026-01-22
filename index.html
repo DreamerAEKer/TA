@@ -61,11 +61,11 @@
                     </div>
                     <div class="form-group">
                         <label>ย้อนหลัง (Previous N)</label>
-                        <input type="number" id="input-range-prev" value="0" min="0">
+                        <input type="number" id="input-range-prev" placeholder="0" min="0">
                     </div>
                     <div class="form-group">
                         <label>ถัดไป (Next N)</label>
-                        <input type="number" id="input-range-next" value="10" min="0">
+                        <input type="number" id="input-range-next" placeholder="0" min="0">
                     </div>
                 </div>
 
@@ -147,10 +147,91 @@ EB123456001TH
                 </div>
 
                 <div class="form-group mt-4">
-                    <label>ช่วงเลขพัสดุที่ต้องการบันทึก (ระบุบรรทัดละ 1 เลข หรือใช้รูปแบบช่วง Start-End)</label>
-                    <textarea id="db-tracking-list" rows="3" placeholder="ตัวอย่าง:
-EB123456785TH
-EB123456800TH-EB123456810TH"></textarea>
+                    <label>ช่วงเลขพัสดุที่ต้องการบันทึก</label>
+
+                    <!-- Smart Builder UI -->
+                    <div
+                        style="background:#e3f2fd; padding:15px; border-radius:8px; border:1px solid #90caf9; margin-bottom:10px;">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <strong style="color:#0d47a1;">✨ Smart Input (ช่วยกรอกเลข)</strong>
+                        </div>
+
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                            <!-- Prefix -->
+                            <div style="flex:1; min-width:100px;">
+                                <label style="font-size:0.8rem;">อักษร (Prefix)</label>
+                                <div class="input-group">
+                                    <input type="text" id="smart-prefix" list="prefix-list" maxlength="2"
+                                        placeholder="XX"
+                                        style="text-transform:uppercase; text-align:center; font-weight:bold;">
+                                    <datalist id="prefix-list"></datalist>
+                                    <button class="btn btn-danger" onclick="deleteCurrentPrefix()" title="ลบหมวดนี้"
+                                        style="padding:0 5px;">×</button>
+                                </div>
+                            </div>
+
+                            <!-- Block 1 (4 Digits) -->
+                            <div style="flex:1.5; min-width:100px;">
+                                <label style="font-size:0.8rem;">เลขหมวด (4 หลัก)</label>
+                                <div class="input-group">
+                                    <input type="text" id="smart-block1" list="block1-list" maxlength="4"
+                                        placeholder="1234" oninput="calculateSmartCheckDigit()"
+                                        style="letter-spacing:1px; text-align:center; font-weight:bold;">
+                                    <datalist id="block1-list"></datalist>
+                                    <button class="btn btn-danger" onclick="deleteCurrentBlock1()" title="ลบเลขชุดนี้"
+                                        style="padding:0 5px;">×</button>
+                                </div>
+                            </div>
+
+                            <!-- Block 2 (4 Digits) -->
+                            <div style="flex:1.5; min-width:100px;">
+                                <label style="font-size:0.8rem;">เลขรัน (4 หลัก)</label>
+                                <input type="text" id="smart-block2" maxlength="4" placeholder="5678"
+                                    oninput="calculateSmartCheckDigit()" style="letter-spacing:1px; text-align:center;">
+                            </div>
+
+                            <!-- Check Digit (Auto) -->
+                            <div style="flex:0.5; min-width:60px;">
+                                <label style="font-size:0.8rem;">Check</label>
+                                <input type="text" id="smart-check-digit" readonly
+                                    style="background:#eee; text-align:center; font-weight:bold; color:green;"
+                                    value="-">
+                            </div>
+
+                            <!-- Suffix -->
+                            <div style="flex:0.5; min-width:60px;">
+                                <label style="font-size:0.8rem;">Suffix</label>
+                                <input type="text" id="smart-suffix" value="TH" style="text-align:center;"
+                                    maxlength="2">
+                            </div>
+
+                            <!-- Add Button -->
+                            <div style="flex:1; min-width:140px;">
+                                <button type="button" class="btn btn-primary" onclick="addSmartEntry()"
+                                    style="width:100%; height:42px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">⬇
+                                    เพิ่มลงรายการ</button>
+                            </div>
+                        </div>
+
+                        <!-- Range Option (Quantity) -->
+                        <div style="margin-top:10px;">
+                            <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                <input type="checkbox" id="smart-range-enable" onchange="toggleSmartRange()">
+                                สร้างแบบเป็นชุด (Batch Mode)
+                            </label>
+                            <div id="smart-range-box" class="hidden"
+                                style="margin-top:5px; padding-left:10px; border-left:3px solid #ccc;">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <label style="font-size:0.8rem;">จำนวนที่ต้องการ (Quantity)</label>
+                                    <input type="number" id="smart-qty" placeholder="เช่น 50" min="1"
+                                        style="width:100px;">
+                                    <span style="font-size:0.8rem; color:#666;">รายการ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <textarea id="db-tracking-list" rows="3" placeholder="รายการจะถูกเติมลงที่นี่..."></textarea>
                 </div>
 
                 <div class="mt-4">
@@ -164,10 +245,14 @@ EB123456800TH-EB123456810TH"></textarea>
                         <table id="db-table">
                             <thead>
                                 <tr>
-                                    <th style="cursor:pointer;" onclick="sortDB('id')" data-sort="id">Tracking Number ↕</th>
-                                    <th style="cursor:pointer;" onclick="sortDB('name')" data-sort="name">Customer ↕</th>
-                                    <th style="cursor:pointer;" onclick="sortDB('type')" data-sort="type">Type ↕</th>
-                                    <th style="cursor:pointer;" onclick="sortDB('timestamp')" data-sort="timestamp">Date Saved ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('id')" data-sort="id">ช่วงเลข / จำนวน
+                                        (Range/Count) ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('name')" data-sort="name">ลูกค้า
+                                        (Customer) ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('type')" data-sort="type">ประเภท (Type)
+                                        ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('timestamp')" data-sort="timestamp">
+                                        วันที่ (Date) ↕</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -182,6 +267,7 @@ EB123456800TH-EB123456810TH"></textarea>
 
     <script src="utils.js"></script>
     <script src="db_manager.js"></script>
+    <script src="smart_input.js"></script>
     <script src="app.js"></script>
 </body>
 
