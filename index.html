@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THP Tracking Analyst</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="container">
+            <div class="brand">
+                <div class="brand-logo">POST</div>
+                <span>Tracking Analyst (Business Customer)</span>
+            </div>
+            <div class="user-info">
+                <span>Admin View</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('check')">ตรวจสอบ & แก้ไข (Check & Fix)</button>
+            <button class="tab-btn" onclick="switchTab('range')">สร้างเลขรัน (Range Gen)</button>
+            <button class="tab-btn" onclick="switchTab('gap')">เช็คของตกหล่น (Missing Items)</button>
+            <button class="tab-btn" onclick="switchTab('customer')">ฐานข้อมูลลูกค้า (Customer DB)</button>
+        </div>
+
+        <!-- SECTION 1: Check & Fix -->
+        <section id="tab-check" class="tab-content active">
+            <div class="card">
+                <h2>ตรวจสอบความถูกต้อง (Single Check)</h2>
+                <div class="form-group">
+                    <label>ระบุเลขพัสดุ (เช่น EB123456785TH)</label>
+                    <div class="input-group">
+                        <input type="text" id="input-check-single" placeholder="XX000000000TH" maxlength="13">
+                        <button class="btn btn-primary" onclick="checkSingleNumber()">ตรวจสอบ</button>
+                    </div>
+                </div>
+                <div id="result-check-single" class="result-box hidden">
+                    <!-- Dynamic Result -->
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: Range Generator -->
+        <section id="tab-range" class="tab-content">
+            <div class="card">
+                <h2>สร้างเลขรัน (Range Generator)</h2>
+                <div class="grid-form">
+                    <div class="form-group">
+                        <label>เลขตั้งต้น (Center ID)</label>
+                        <input type="text" id="input-range-center" placeholder="EB123456785TH">
+                    </div>
+                    <div class="form-group">
+                        <label>ย้อนหลัง (Previous N)</label>
+                        <input type="number" id="input-range-prev" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>ถัดไป (Next N)</label>
+                        <input type="number" id="input-range-next" value="10" min="0">
+                    </div>
+                </div>
+
+                <div class="form-group mt-4">
+                    <label>เทียบกับรายการที่มี (Reference / Scanned IDs) <small class="text-muted">(Optional:
+                            แปะรายการเพื่อเช็คสถานะ)</small></label>
+                    <textarea id="range-reference-list" rows="3"
+                        placeholder="แปะรายการเลขพัสดุที่มีที่นี่... ระบบจะแสดงสถานะ 'รับเข้าระบบ' ให้"></textarea>
+                </div>
+
+                <div class="mt-4">
+                    <button class="btn btn-primary" onclick="generateRange()">เริ่มสร้างรายการ</button>
+                </div>
+
+                <div id="result-range-box" class="result-list hidden mt-4">
+                    <!-- Table result -->
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: Gap Analysis -->
+        <section id="tab-gap" class="tab-content">
+            <div class="card">
+                <h2>เช็ครายการตกหล่น (Gap Analysis)</h2>
+                <p class="text-muted">ตรวจสอบว่าเลขไหนหายไปจาก Sequence ที่ควรจะเป็น</p>
+
+                <div class="grid-form">
+                    <div class="form-group">
+                        <label>เลขเริ่มต้น (Start)</label>
+                        <input type="text" id="gap-start" placeholder="EB123456000TH">
+                    </div>
+                    <div class="form-group">
+                        <label>เลขสิ้นสุด (End)</label>
+                        <input type="text" id="gap-end" placeholder="EB123456100TH">
+                    </div>
+                </div>
+
+                <div class="form-group mt-4">
+                    <label>รายการที่สแกนได้จริง (วางรายการที่นี่)</label>
+                    <textarea id="gap-actual-list" rows="6" placeholder="EB123456000TH
+EB123456001TH
+..."></textarea>
+                </div>
+
+                <div class="mt-4">
+                    <button class="btn btn-danger" onclick="findGaps()">ค้นหาเลขที่หายไป</button>
+                </div>
+
+                <div id="result-gap-box" class="result-alert hidden mt-4">
+                    <!-- Gap Results -->
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: Customer Database -->
+        <section id="tab-customer" class="tab-content">
+            <div class="card">
+                <h2>ฐานข้อมูลลูกค้า (Customer Database)</h2>
+                <p class="text-muted">บันทึกข้อมูลลูกค้าเพื่อแสดงผลเวลาค้นหา (บันทึกในเครื่องนี้เท่านั้น)</p>
+
+                <div class="grid-form"
+                    style="background:#f9f9f9; padding:15px; border-radius:8px; border:1px solid #eee;">
+                    <div class="form-group">
+                        <label>ชื่อลูกค้า / บริษัท</label>
+                        <input type="text" id="db-name" placeholder="เช่น บจก. เอบีซี เทรดดิ้ง">
+                    </div>
+                    <div class="form-group">
+                        <label>ประเภท (Type)</label>
+                        <select id="db-type"
+                            style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:4px;">
+                            <option value="Credit">รายเดือน (Credit)</option>
+                            <option value="Cash">เงินสด/Drop Off (Cash)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>เลขที่สัญญา (Contract No.)</label>
+                        <input type="text" id="db-contract" placeholder="เช่น 123/2569 (ถ้ามี)">
+                    </div>
+                </div>
+
+                <div class="form-group mt-4">
+                    <label>ช่วงเลขพัสดุที่ต้องการบันทึก (ระบุบรรทัดละ 1 เลข หรือใช้รูปแบบช่วง Start-End)</label>
+                    <textarea id="db-tracking-list" rows="3" placeholder="ตัวอย่าง:
+EB123456785TH
+EB123456800TH-EB123456810TH"></textarea>
+                </div>
+
+                <div class="mt-4">
+                    <button class="btn btn-primary" onclick="saveCustomerData()">บันทึกข้อมูล (Save)</button>
+                    <button class="btn btn-danger" onclick="clearAllData()">ล้างข้อมูลทั้งหมด</button>
+                </div>
+
+                <div class="mt-4">
+                    <h3>รายการที่บันทึกไว้ (<span id="db-count">0</span> รายการ)</h3>
+                    <div id="db-list-container" style="max-height: 300px; overflow-y: auto;">
+                        <table id="db-table">
+                            <thead>
+                                <tr>
+                                    <th style="cursor:pointer;" onclick="sortDB('id')" data-sort="id">Tracking Number ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('name')" data-sort="name">Customer ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('type')" data-sort="type">Type ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('timestamp')" data-sort="timestamp">Date Saved ↕</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="utils.js"></script>
+    <script src="db_manager.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
