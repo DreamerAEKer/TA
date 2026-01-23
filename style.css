@@ -293,7 +293,8 @@ table th {
     margin-top: 10px;
 }
 
-.upload-area:hover, .upload-area:active {
+.upload-area:hover,
+.upload-area:active {
     border-color: var(--primary-color);
     background: #fff5f5;
     box-shadow: 0 4px 12px rgba(218, 41, 28, 0.1);
@@ -462,5 +463,63 @@ table th {
         text-align: center;
         white-space: nowrap;
         font-size: 0.8rem;
+    }
+
+    /* Responsive Report Table */
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .report-table thead {
+        display: none;
+    }
+
+    .report-table tr {
+        display: block;
+        margin-bottom: 15px;
+        border-bottom: 2px dashed #999 !important;
+        padding-bottom: 10px;
+    }
+
+    .report-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: right !important;
+        padding: 5px 0 !important;
+        border-bottom: 1px solid #eee;
+    }
+
+    .report-table td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        text-align: left;
+        color: #666;
+    }
+
+    /* Description Row - Full Width & Special Styling */
+    .report-table td[data-label="รายการ"] {
+        display: block;
+        text-align: left !important;
+        background: #f8f9fa;
+        padding: 10px !important;
+        border-radius: 4px;
+        margin-bottom: 5px;
+    }
+
+    .report-table td[data-label="รายการ"]::before {
+        display: none;
+        /* Hide label for description */
+    }
+
+    .report-table tfoot td {
+        display: block;
+        text-align: right !important;
+    }
+
+    .report-table tfoot td::before {
+        content: "รวมทั้งสิ้น (Grand Total): ";
+        float: left;
     }
 }
