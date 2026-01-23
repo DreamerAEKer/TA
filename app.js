@@ -204,7 +204,10 @@ function generateRange() {
             }
         } else {
             // Default with link
-            statusHtml = `<a href="https://track.thailandpost.co.th/?trackNumber=${item.number}" target="_blank" class="badge badge-neutral">คลิกเพื่อเช็ค (Check)</a>`;
+            statusHtml = `
+                <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral">🔗 เช็คสถานะ</a>
+                <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer; margin-left:4px;" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('คัดลอก ${item.number} แล้ว'))">📋 Copy</button>
+            `;
         }
 
         html += `
