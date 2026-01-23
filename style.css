@@ -531,9 +531,19 @@ table th {
         text-align: center;
     }
 
+    /* Separators for Grid View */
+    .report-table td[data-label="จำนวน"],
+    .report-table td[data-label="ราคา/ชิ้น"] {
+        border-right: 1px solid #f0f0f0;
+        position: relative;
+    }
+
+    /* Highlight Total Column */
     .report-table td[data-label="รวม"] {
         color: var(--primary-color);
         font-weight: bold;
+        background-color: #fffbfc;
+        /* Very light red tint */
     }
 
     .report-table tfoot td {
