@@ -205,21 +205,24 @@ function generateRange() {
         } else {
             // Default with link
             statusHtml = `
-                <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral">🔗 เช็คสถานะ</a>
-                <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer; margin-left:4px;" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('คัดลอก ${item.number} แล้ว'))">📋 Copy</button>
+                <div class="status-actions">
+                    <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral" title="Deep Link">🔗 เช็ค</a>
+                    <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer;" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('คัดลอก ${item.number} แล้ว'))" title="Copy ID">📋 Copy</button>
+                    <a href="https://track.thailandpost.co.th" target="_blank" class="badge badge-neutral" style="border:1px solid #ccc; color:#0056b3;" title="Open Official Site (Manual)">🌐 เว็บหลัก</a>
+                </div>
             `;
         }
 
         html += `
-            <tr ${rowClass}>
+                < tr ${rowClass}>
                 <td>${index + 1}</td>
                 <td class="tracking-id">${item.number}${ownerHtml}</td>
                 <td>${statusHtml}</td>
-            </tr>
-        `;
+            </tr >
+                `;
     });
 
-    html += `</tbody></table>`;
+    html += `</tbody ></table > `;
     box.innerHTML = html;
 }
 
@@ -299,14 +302,14 @@ function findGaps() {
 
     box.classList.remove('hidden');
     if (missing.length === 0) {
-        box.innerHTML = `<div class="result-success" style="padding:10px;">✅ ครบถ้วน! ไม่พบรายการตกหล่น</div>`;
+        box.innerHTML = `< div class="result-success" style = "padding:10px;" >✅ ครบถ้วน! ไม่พบรายการตกหล่น</div > `;
     } else {
         let html = `
-            <div class="result-error" style="padding:10px; margin-bottom:10px;">
-                <strong>⚠️ พบรายการหายไป ${missing.length} รายการ</strong>
-            </div>
-            <textarea style="height:150px;">${missing.join('\n')}</textarea>
-        `;
+                < div class="result-error" style = "padding:10px; margin-bottom:10px;" >
+                    <strong>⚠️ พบรายการหายไป ${missing.length} รายการ</strong>
+            </div >
+                <textarea style="height:150px;">${missing.join('\n')}</textarea>
+            `;
         box.innerHTML = html;
     }
 }

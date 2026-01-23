@@ -423,4 +423,19 @@ table th {
         white-space: normal !important;
         /* Allow wrapping if needed */
     }
+
+    /* Fix Status Column Buttons Wrapping */
+    .status-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .status-actions>* {
+        flex: 1 1 auto;
+        /* Allow items to shrink/grow */
+        text-align: center;
+        white-space: nowrap;
+        font-size: 0.8rem;
+    }
 }
