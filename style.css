@@ -429,11 +429,14 @@ table th {
         display: flex;
         flex-wrap: wrap;
         gap: 4px;
+        max-width: 140px;
+        /* Force wrapping within the cell */
+        margin: 0 auto;
     }
 
     .status-actions>* {
-        flex: 1 1 auto;
-        /* Allow items to shrink/grow */
+        flex: 1 1 100%;
+        /* Default to full width (stacked) on mobile */
         text-align: center;
         white-space: nowrap;
         font-size: 0.8rem;
