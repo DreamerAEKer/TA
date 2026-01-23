@@ -665,42 +665,85 @@ function loadBatchToView(batchId) {
                  <div style="font-size:0.8rem; color:red; text-align:center; margin-bottom:5px;">
                     *จัดเรียงตามราคาน้อย-มาก (Virtual)
                 </div>
-                <table class="report-table">
-                    <thead>
-                        <tr style="border-bottom:2px solid #000;">
-                            <th style="text-align:left; padding:5px;">รายการ (Description)</th>
-                            <th style="text-align:right; padding:5px;">จำนวน (Qty)</th>
-                            <th style="text-align:right; padding:5px;">ราคา/ชิ้น</th>
-                            <th style="text-align:right; padding:5px;">รวม (Total)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="report-list-container">
+                    <div class="report-header-desktop">
+                        <div style="width:40%">รายการ (Description)</div>
+                        <div style="width:20%; text-align:right">จำนวน (Qty)</div>
+                        <div style="width:20%; text-align:right">ราคา/ชิ้น</div>
+                        <div style="width:20%; text-align:right">รวม (Total)</div>
+                    </div>
         `;
 
         batch.ranges.forEach((r, idx) => {
             html += `
-                <tr style="border-bottom:1px dashed #eee;">
-                    <td style="padding:10px 0;" data-label="รายการ">
+                <div class="report-card">
+                    <div class="report-card-desc">
                         <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong><br>
                         <span style="color:#0056b3; font-weight:bold;">${r.start === r.end ? r.start : `${r.start} - ${r.end}`}</span><br>
                         <small>น้ำหนัก (Weight): ${r.weight}</small>
-                    </td>
-                    <td style="text-align:right; vertical-align:top; padding-top:10px;" data-label="จำนวน">${r.count}</td>
-                    <td style="text-align:right; vertical-align:top; padding-top:10px;" data-label="ราคา/ชิ้น">@${r.price}</td>
-                    <td style="text-align:right; vertical-align:top; padding-top:10px; font-weight:bold;" data-label="รวม">${(r.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                </tr>
+                    </div>
+                    <div class="report-card-scroll">
+                        <div class="stat-item">
+                            <span class="stat-label">จำนวน (Qty)</span>
+                            <span class="stat-value">${r.count}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">ราคา/ชิ้น</span>
+                            <span class="stat-value">@${r.price}</span>
+                        </div>
+                        <div class="stat-item highlight">
+                            <span class="stat-label">รวม (Total)</span>
+                            <span class="stat-value">${(r.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <!-- Spacer for scroll feel -->
+                        <div style="min-width:10px;"></div>
+                    </div>
+                </div>
             `;
         });
 
         html += `
-                    </tbody>
-                    <tfoot>
-                        <tr style="border-top:2px solid #000; border-bottom:2px solid #000;">
-                            <td colspan="3" style="text-align:right; padding:10px; font-weight:bold;">รวมทั้งสิ้น (Grand Total)</td>
-                            <td style="text-align:right; padding:10px; font-weight:bold; font-size:1.1rem;" data-label="Grand Total">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                        </tr>
-                    </tfoot>
-                </table>
+                    <div class="report-footer">
+                        <div class="footer-label">รวมทั้งสิ้น (Grand Total)</div>
+                        <div class="footer-value">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                </div>
+        `;
+
+        batch.ranges.forEach((r, idx) => {
+            html += `
+                <div class="report-card">
+                    <div class="report-card-desc">
+                        <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong><br>
+                        <span style="color:#0056b3; font-weight:bold;">${r.start === r.end ? r.start : `${r.start} - ${r.end}`}</span><br>
+                        <small>น้ำหนัก (Weight): ${r.weight}</small>
+                    </div>
+                    <div class="report-card-scroll">
+                        <div class="stat-item">
+                            <span class="stat-label">จำนวน (Qty)</span>
+                            <span class="stat-value">${r.count}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">ราคา/ชิ้น</span>
+                            <span class="stat-value">@${r.price}</span>
+                        </div>
+                        <div class="stat-item highlight">
+                            <span class="stat-label">รวม (Total)</span>
+                            <span class="stat-value">${(r.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <!-- Spacer for scroll feel -->
+                        <div style="min-width:10px;"></div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+                    <div class="report-footer">
+                        <div class="footer-label">รวมทั้งสิ้น (Grand Total)</div>
+                        <div class="footer-value">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                </div>
             </div>
             
             <div style="text-align:center; margin-top:20px;">

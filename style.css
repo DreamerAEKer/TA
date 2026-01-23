@@ -465,99 +465,109 @@ table th {
         font-size: 0.8rem;
     }
 
-    /* Responsive Report Table */
-    .report-table {
-        width: 100%;
-        border-collapse: collapse;
+    /* Report List Container (Refactor) */
+    .report-list-container {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
     }
 
-    .report-table thead {
+    .report-header-desktop {
         display: none;
+        /* Hide standard header on mobile */
     }
 
-    .report-table tr {
-        display: block;
-        margin-bottom: 15px;
-        border-bottom: 2px dashed #999 !important;
-        padding-bottom: 10px;
-    }
-
-    .report-table td {
-        display: block;
-        width: 100%;
-        text-align: right;
-        padding: 5px 0 !important;
-    }
-
-    /* Description Row - Full Width */
-    .report-table td[data-label="รายการ"] {
-        text-align: left !important;
-        background: #f8f9fa;
-        padding: 10px !important;
-        border-radius: 4px 4px 0 0;
-        margin-bottom: 0;
-        border-bottom: 1px solid #ddd;
-    }
-
-    .report-table td[data-label="รายการ"]::before {
-        display: none;
-    }
-
-    /* Stat Rows (Qty, Price, Total) - side by side */
-    .report-table td[data-label="จำนวน"],
-    .report-table td[data-label="ราคา/ชิ้น"],
-    .report-table td[data-label="รวม"] {
-        display: inline-block;
-        width: 32%;
-        text-align: center !important;
-        border-bottom: none;
-        padding: 10px 5px !important;
+    .report-card {
         background: #fff;
-        vertical-align: top;
-        font-size: 0.9rem;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
     }
 
-    /* Labels for Stats - Above Value */
-    .report-table td[data-label="จำนวน"]::before,
-    .report-table td[data-label="ราคา/ชิ้น"]::before,
-    .report-table td[data-label="รวม"]::before {
-        content: attr(data-label);
-        display: block;
+    .report-card-desc {
+        background: #f8f9fa;
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+    }
+
+    /* Scrollable Stats Row */
+    .report-card-scroll {
+        display: flex;
+        overflow-x: auto;
+        padding: 10px 0;
+        scroll-snap-type: x mandatory;
+        /* Scroll Hint Shadow */
+        background: linear-gradient(to right, #fff 30%, #fcfcfc 100%);
+    }
+
+    .report-card-scroll::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    .report-card-scroll::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 4px;
+    }
+
+    .stat-item {
+        flex: 0 0 35%;
+        /* Show ~2.5 items to hint at more */
+        scroll-snap-align: start;
+        text-align: center;
+        border-right: 1px solid #f0f0f0;
+        padding: 0 5px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .stat-item:last-child {
+        border-right: none;
+    }
+
+    .stat-item.highlight {
+        background-color: #fff5f5;
+        color: var(--primary-color);
+        font-weight: bold;
+        border-radius: 4px;
+    }
+
+    .stat-label {
         font-size: 0.7rem;
         color: #999;
         text-transform: uppercase;
-        margin-bottom: 2px;
-        font-weight: normal;
-        text-align: center;
+        margin-bottom: 4px;
     }
 
-    /* Separators for Grid View */
-    .report-table td[data-label="จำนวน"],
-    .report-table td[data-label="ราคา/ชิ้น"] {
-        border-right: 1px solid #f0f0f0;
-        position: relative;
+    .stat-value {
+        font-size: 1rem;
+        font-weight: 500;
     }
 
-    /* Highlight Total Column */
-    .report-table td[data-label="รวม"] {
-        color: var(--primary-color);
-        font-weight: bold;
-        background-color: #fffbfc;
-        /* Very light red tint */
-    }
-
-    .report-table tfoot td {
-        display: block;
-        text-align: right !important;
-        padding: 15px 10px !important;
-        background: #f8f9fa;
+    .report-footer {
+        background: #333;
+        color: white;
+        padding: 15px;
         border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-top: 10px;
     }
 
-    .report-table tfoot td::before {
-        content: "รวมทั้งสิ้น (Grand Total): ";
+    .footer-label {
         font-weight: bold;
-        float: left;
+    }
+
+    .footer-value {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #ffeb3b;
+    }
+
+    /* Remove Old Table Styles for Mobile */
+    .report-table {
+        display: none;
     }
 }
