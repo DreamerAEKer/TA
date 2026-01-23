@@ -483,43 +483,71 @@ table th {
     }
 
     .report-table td {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        text-align: right !important;
-        padding: 5px 0 !important;
-        border-bottom: 1px solid #eee;
-    }
-
-    .report-table td::before {
-        content: attr(data-label);
-        font-weight: bold;
-        text-align: left;
-        color: #666;
-    }
-
-    /* Description Row - Full Width & Special Styling */
-    .report-table td[data-label="รายการ"] {
         display: block;
+        width: 100%;
+        text-align: right;
+        padding: 5px 0 !important;
+    }
+
+    /* Description Row - Full Width */
+    .report-table td[data-label="รายการ"] {
         text-align: left !important;
         background: #f8f9fa;
         padding: 10px !important;
-        border-radius: 4px;
-        margin-bottom: 5px;
+        border-radius: 4px 4px 0 0;
+        margin-bottom: 0;
+        border-bottom: 1px solid #ddd;
     }
 
     .report-table td[data-label="รายการ"]::before {
         display: none;
-        /* Hide label for description */
+    }
+
+    /* Stat Rows (Qty, Price, Total) - side by side */
+    .report-table td[data-label="จำนวน"],
+    .report-table td[data-label="ราคา/ชิ้น"],
+    .report-table td[data-label="รวม"] {
+        display: inline-block;
+        width: 32%;
+        text-align: center !important;
+        border-bottom: none;
+        padding: 10px 5px !important;
+        background: #fff;
+        vertical-align: top;
+        font-size: 0.9rem;
+    }
+
+    /* Labels for Stats - Above Value */
+    .report-table td[data-label="จำนวน"]::before,
+    .report-table td[data-label="ราคา/ชิ้น"]::before,
+    .report-table td[data-label="รวม"]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.7rem;
+        color: #999;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+        font-weight: normal;
+        text-align: center;
+    }
+
+    .report-table td[data-label="รวม"] {
+        color: var(--primary-color);
+        font-weight: bold;
     }
 
     .report-table tfoot td {
         display: block;
         text-align: right !important;
+        padding: 15px 10px !important;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-top: 10px;
     }
 
     .report-table tfoot td::before {
         content: "รวมทั้งสิ้น (Grand Total): ";
+        font-weight: bold;
         float: left;
     }
 }
