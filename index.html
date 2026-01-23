@@ -288,13 +288,14 @@ EB123456001TH
                 <h2>นำเข้าไฟล์ Excel (Import Tracking)</h2>
                 <p class="text-muted">อัปโหลดไฟล์ (.xlsx, .xls) เพื่อวิเคราะห์ช่วงเลขและบันทึกข้อมูล</p>
 
-                <div class="upload-area"
-                    style="border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; background: #fafafa;">
+                <div class="upload-area" onclick="document.getElementById('excel-upload').click()">
+                    <span class="upload-icon">📂</span>
                     <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;"
                         onchange="handleExcelUpload(event)">
-                    <button class="btn btn-primary" onclick="document.getElementById('excel-upload').click()">📂
-                        เลือกไฟล์ Excel</button>
-                    <p id="upload-status" style="margin-top: 10px; color: #666;">ยังไม่ได้เลือกไฟล์</p>
+                    <h3 style="margin:5px 0; color:#555;">แตะเพื่อเลือกไฟล์ Excel</h3>
+                    <p class="text-muted">หรือลากไฟล์มาวางที่นี่</p>
+                    <p id="upload-status" style="margin-top: 10px; color: var(--primary-color); font-weight:bold;">
+                        ยังไม่ได้เลือกไฟล์</p>
                 </div>
 
                 <div id="import-preview" class="hidden mt-4">

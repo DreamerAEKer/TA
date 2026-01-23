@@ -281,11 +281,33 @@ table th {
     color: #333;
 }
 
-.suggest-value {
-    background: #e8f5e9;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: bold;
+/* Upload Area */
+.upload-area {
+    border: 2px dashed #ccc;
+    padding: 40px 20px;
+    text-align: center;
+    border-radius: 12px;
+    background: #ffffff;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.upload-area:hover, .upload-area:active {
+    border-color: var(--primary-color);
+    background: #fff5f5;
+    box-shadow: 0 4px 12px rgba(218, 41, 28, 0.1);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    color: #ccc;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.upload-area:hover .upload-icon {
+    color: var(--primary-color);
 }
 
 /* Badges */

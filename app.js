@@ -773,9 +773,15 @@ function checkAuth() {
             const userHeader = document.createElement('div');
             userHeader.id = 'user-header-bar';
             userHeader.style.cssText = `
-                background: #007bff; color: white; padding: 15px; 
-                text-align: center; font-size: 1.2rem; font-weight: bold;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;
+                background: linear-gradient(135deg, #DA291C 0%, #B91D12 100%); 
+                color: white; 
+                padding: 20px; 
+                text-align: center; 
+                font-size: 1.3rem; 
+                font-weight: bold;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+                margin-bottom: 25px;
+                border-radius: 0 0 16px 16px;
             `;
             userHeader.innerHTML = `📥 ระบบนำเข้าข้อมูลพัสดุ (Import Data Entry)`;
             document.body.insertBefore(userHeader, document.querySelector('main'));
