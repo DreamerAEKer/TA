@@ -30,6 +30,12 @@ const CustomerDB = {
 
     // --- MAIN ACTIONS ---
 
+    // Compatibility for app.js
+    get: (id) => {
+        const lookup = CustomerDB.getLookup();
+        return lookup[id] || null;
+    },
+
     // Add a new Batch
     addBatch: (batchInfo, trackingList) => {
         const batchId = Date.now().toString(); // Use timestamp as ID
