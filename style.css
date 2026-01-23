@@ -281,9 +281,11 @@ table th {
     color: #333;
 }
 
-background: #e8f5e9;
-padding: 2px 8px;
-border-radius: 4px;
+.suggest-value {
+    background: #e8f5e9;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
 }
 
 /* Badges */
@@ -376,5 +378,49 @@ border-radius: 4px;
     /* Adjust grid form to single column */
     .grid-form {
         grid-template-columns: 1fr;
+    }
+
+    /* Fix Smart Input Layout on Mobile */
+    /* Fix Smart Input Layout on Mobile */
+    .smart-input-container>div:nth-child(2) {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    /* Force all flex children in Smart Input to full width */
+    .smart-input-container>div:nth-child(2)>div {
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+        margin-bottom: 8px;
+        /* Add spacing between stacked items */
+    }
+
+    /* Hide labels in stacked mode if they take up too much space? No, keep them but maybe adjust */
+
+    /* Fix Table overflow */
+    #db-list-container {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        /* Smooth scrolling on iOS */
+    }
+
+    table {
+        min-width: 600px;
+        /* Ensure table doesn't squish */
+    }
+
+    /* Improve Touch Targets */
+    input,
+    select,
+    button {
+        min-height: 44px;
+        /* iOS Human Interface Guidelines */
+    }
+
+    /* Fix "Add to List" button height/overflow */
+    #smart-add-btn {
+        height: 44px !important;
+        white-space: normal !important;
+        /* Allow wrapping if needed */
     }
 }
