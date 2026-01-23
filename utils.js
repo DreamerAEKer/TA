@@ -106,9 +106,156 @@ function generateTrackingRange(centerNumber, countBefore, countAfter) {
     return results;
 }
 
+/**
+ * Groups a list of Ranges by Price.
+ * 
+ * @param {Array} ranges - List of metadata ranges {price, count, start, end, ...}
+ * @returns {Array} - Sorted Groups [{ price, subTotal, subCount, subRanges: [...] }]
+ */
+function groupRangesByPrice(ranges) {
+    const groups = {}; // priceKey -> { price, subTotal, subCount, subRanges }
+
+    ranges.forEach(r => {
+        const price = r.price || 0;
+        const key = price.toFixed(2); // Use string-fixed price as key
+
+        if (!groups[key]) {
+            groups[key] = {
+                price: price,
+                subTotal: 0,
+                subCount: 0,
+                subRanges: []
+            };
+        }
+
+        groups[key].subTotal += (r.count * price);
+        groups[key].subCount += r.count;
+        groups[key].subRanges.push(r);
+    });
+
+    // Convert to Array
+    const groupList = Object.values(groups);
+
+    // Sort by Price (Ascending to match user req "น้อยไปมาก")
+    groupList.sort((a, b) => a.price - b.price);
+
+    return groupList;
+}
+
+/**
+ * Groups a list of Ranges by Price.
+ * 
+ * @param {Array} ranges - List of metadata ranges {price, count, start, end, ...}
+ * @returns {Array} - Sorted Groups [{ price, subTotal, subCount, subRanges: [...] }]
+ */
+function groupRangesByPrice(ranges) {
+    const groups = {}; // priceKey -> { price, subTotal, subCount, subRanges }
+
+    ranges.forEach(r => {
+        const price = r.price || 0;
+        const key = price.toFixed(2); // Use string-fixed price as key
+
+        if (!groups[key]) {
+            groups[key] = {
+                price: price,
+                subTotal: 0,
+                subCount: 0,
+                subRanges: []
+            };
+        }
+
+        groups[key].subTotal += (r.count * price);
+        groups[key].subCount += r.count;
+        groups[key].subRanges.push(r);
+    });
+
+    // Convert to Array
+    const groupList = Object.values(groups);
+
+    // Sort by Price (Ascending to match user req "น้อยไปมาก")
+    groupList.sort((a, b) => a.price - b.price);
+
+    return groupList;
+}
+
+/**
+ * OPTIMIZED (VIRTUAL) GROUPING
+ * Redistributes IDs to match the sorted Price Groups sequentially.
+ * 
+ * @param {Array} ranges - Original ranges from analysis
+ * @returns {Array} - Virtual Groups [{ price, count, weight, virtualRanges: [{start, end, count}] }]
+ */
+function virtualOptimizeRanges(ranges) {
+    // 1. Pool All Items (Sorted)
+    let allItems = [];
+    ranges.forEach(r => {
+        // We assume r.items contains full tracking numbers (or we generate them if missing)
+        // In current app.js, r.items IS populated.
+        if (r.items) {
+            allItems.push(...r.items);
+        }
+    });
+
+    // Sort All IDs Ascending
+    allItems.sort();
+
+    // 2. Pool Price/Weight Counts
+    // We group by "Price-Weight" signature to ensure weight consistency check
+    const priceGroups = {};
+    ranges.forEach(r => {
+        const key = `${r.price.toFixed(2)}-${r.weight}`; // Composite key
+        if (!priceGroups[key]) {
+            priceGroups[key] = {
+                price: r.price,
+                weight: r.weight,
+                totalCount: 0,
+                originalRanges: []
+            };
+        }
+        priceGroups[key].totalCount += r.count;
+        priceGroups[key].originalRanges.push(r);
+    });
+
+    // Convert to Array & Sort by Price Asc
+    const sortedGroups = Object.values(priceGroups);
+    sortedGroups.sort((a, b) => a.price - b.price);
+
+    // 3. Sequential Assignment (Remap)
+    let currentIdx = 0;
+
+    const virtualResults = sortedGroups.map(group => {
+        // Must take 'totalCount' items from the sorted pooled list
+        const myItems = allItems.slice(currentIdx, currentIdx + group.totalCount);
+        currentIdx += group.totalCount;
+
+        // Create Virtual Range(s) for these items
+        // Even in virtual mode, if there are massive gaps in the pool, we technically should show them?
+        // But user asked for "1ชุดเลขที่" (One set).
+        // Let's try to condense to Min-Max.
+        if (myItems.length === 0) return null;
+
+        return {
+            price: group.price,
+            weight: group.weight,
+            count: group.totalCount,
+            total: group.totalCount * group.price,
+            start: myItems[0],
+            end: myItems[myItems.length - 1],
+            isVirtual: true,
+            // Consistency Check: Did we just assign items that shouldn't be here?
+            // (Strictly speaking we are fabricating the link, so 'correctness' relies on the pool being complete)
+            check: "Optimized"
+        };
+    }).filter(g => g !== null);
+
+    return virtualResults;
+}
+
 // Export for usage in app.js (if using modules) or window global
 window.TrackingUtils = {
     calculateS10CheckDigit,
     validateTrackingNumber,
-    generateTrackingRange
+    generateTrackingRange,
+    groupRangesByPrice,
+    virtualOptimizeRanges
 };

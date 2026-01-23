@@ -21,10 +21,13 @@ function switchTab(tabId) {
 
 // Global Event Listeners (Run on load)
 document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+
     // 1. Check Single Input -> Enter Key
-    document.getElementById('input-check-single').addEventListener('keypress', function (e) {
+    document.getElementById('input-check-single')?.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') checkSingleNumber();
     });
+
 
     // 2. Range Gen Inputs -> Enter Key
     const rangeInputs = ['input-range-center', 'input-range-prev', 'input-range-next'];
@@ -215,15 +218,15 @@ function generateRange() {
         }
 
         html += `
-                < tr ${rowClass}>
+                <tr ${rowClass}>
                 <td>${index + 1}</td>
                 <td class="tracking-id">${item.number}${ownerHtml}</td>
                 <td>${statusHtml}</td>
-            </tr >
+            </tr>
                 `;
     });
 
-    html += `</tbody ></table > `;
+    html += `</tbody></table>`;
     box.innerHTML = html;
 }
 
@@ -303,14 +306,492 @@ function findGaps() {
 
     box.classList.remove('hidden');
     if (missing.length === 0) {
-        box.innerHTML = `< div class="result-success" style = "padding:10px;" >✅ ครบถ้วน! ไม่พบรายการตกหล่น</div > `;
+        box.innerHTML = `<div class="result-success" style="padding:10px;">✅ ครบถ้วน! ไม่พบรายการตกหล่น</div>`;
     } else {
         let html = `
-                < div class="result-error" style = "padding:10px; margin-bottom:10px;" >
+                <div class="result-error" style="padding:10px; margin-bottom:10px;">
                     <strong>⚠️ พบรายการหายไป ${missing.length} รายการ</strong>
-            </div >
+            </div>
                 <textarea style="height:150px;">${missing.join('\n')}</textarea>
             `;
         box.innerHTML = html;
+    }
+}
+
+// --- Excel Import Logic ---
+
+let currentImportedBatches = []; // To store analyzed data before saving
+
+function handleExcelUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    document.getElementById('upload-status').innerText = `กำลังอ่านไฟล์: ${file.name}...`;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // Get first sheet
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+
+        // Convert to JSON
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // Array of Arrays
+
+        // Extract Tracking Numbers with Price & Weight
+        // Assuming:
+        // Col C (Index 2): Barcode
+        // Col D (Index 3): Price
+        // Col E (Index 4): Weight
+        const trackingList = [];
+        const regex = /([A-Z]{2})(\d{9})([A-Z]{2})/i;
+
+        jsonData.forEach(row => {
+            if (row.length >= 3) {
+                // Try to identify column by content or fixed index
+                if (row[2] && typeof row[2] === 'string') {
+                    const match = row[2].match(regex);
+                    if (match) {
+                        const price = parseFloat(row[3]) || 0;
+                        const weight = row[4] || '-'; // Keep as string or whatever format
+                        trackingList.push({
+                            number: match[0].toUpperCase(),
+                            price: price,
+                            weight: weight
+                        });
+                    }
+                }
+            }
+        });
+
+        if (trackingList.length === 0) {
+            alert('ไม่พบเลขพัสดุในไฟล์ที่เลือก (ตรวจสอบคอลัมน์ C)');
+            document.getElementById('upload-status').innerText = 'ไม่พบเลขพัสดุ';
+            return;
+        }
+
+        document.getElementById('upload-status').innerText = `อ่านเสร็จสิ้น! พบ ${trackingList.length} รายการ`;
+        analyzeImportedRanges(trackingList);
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function analyzeImportedRanges(trackingList) {
+    // 1. Sort by Price (Asc) then Number (Asc)
+    trackingList.sort((a, b) => {
+        if (a.price !== b.price) {
+            return a.price - b.price;
+        }
+        return a.number.localeCompare(b.number);
+    });
+
+    // 2. Identify Continuous Sequences (Group by Price/Weight as well)
+    // BREAK Ranges if: NON-Sequential Number OR Price Changes OR Weight Changes
+    const rawRanges = [];
+    if (trackingList.length === 0) return;
+
+    // Helper to parse
+    const parse = (item) => {
+        const str = item.number;
+        const m = str.match(/([A-Z]{2})(\d{8})(\d)([A-Z]{2})/);
+        return m ? {
+            full: str,
+            prefix: m[1],
+            body: parseInt(m[2]),
+            check: m[3],
+            suffix: m[4],
+            price: item.price,
+            weight: item.weight
+        } : null;
+    };
+
+    let start = parse(trackingList[0]);
+    let prev = start;
+    let currentList = [trackingList[0]]; // Store full objects
+
+    for (let i = 1; i < trackingList.length; i++) {
+        const curr = parse(trackingList[i]);
+        if (!curr) continue;
+
+        // Check continuity logic:
+        const isContinuous = (
+            curr.prefix === prev.prefix &&
+            curr.suffix === prev.suffix &&
+            curr.body === prev.body + 1 &&
+            curr.price === prev.price &&
+            curr.weight === prev.weight
+        );
+
+        if (isContinuous) {
+            currentList.push(trackingList[i]);
+            prev = curr;
+        } else {
+            rawRanges.push({
+                start: start.full,
+                end: prev.full,
+                count: currentList.length,
+                price: start.price,
+                weight: start.weight,
+                items: currentList.map(x => x.number)
+            });
+            start = curr;
+            prev = curr;
+            currentList = [trackingList[i]];
+        }
+    }
+    rawRanges.push({
+        start: start.full,
+        end: prev.full,
+        count: currentList.length,
+        price: start.price,
+        weight: start.weight,
+        items: currentList.map(x => x.number)
+    });
+
+    // --- APPLY OPTIMIZED VIRTUAL GROUPING (User Request) ---
+    // "Map Sorted Price Counts to Sorted ID Sequence"
+    const optimizedRanges = TrackingUtils.virtualOptimizeRanges(rawRanges);
+
+    currentImportedBatches = optimizedRanges; // Store Optimized Version Globally
+    renderImportResult(optimizedRanges);
+}
+
+function renderImportResult(ranges) {
+    const preview = document.getElementById('import-preview');
+    const summary = document.getElementById('import-summary');
+    const details = document.getElementById('import-details');
+
+    preview.classList.remove('hidden');
+
+    const totalItems = ranges.reduce((acc, r) => acc + r.count, 0);
+    // grand total price
+    const grandTotal = ranges.reduce((acc, r) => acc + (r.total || (r.count * r.price)), 0);
+
+    summary.innerHTML = `
+        <strong>📊 สรุปผลการวิเคราะห์ (Virtual Optimization)</strong><br>
+        จำนวนทั้งหมด: ${totalItems.toLocaleString()} ชิ้น<br>
+        ยอดเงินรวม: <span style="font-size:1.2rem; color:#d63384; font-weight:bold;">${grandTotal.toLocaleString()} บาท</span>
+    `;
+
+    // Generate Receipt-style Table (Simplified List)
+    let html = `
+        <div style="background:white; padding:20px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.05); font-family:'Courier New', monospace;">
+            <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">ใบสรุปรายการ (Optimized Report)</h4>
+             <div style="font-size:0.8rem; color:red; text-align:center; margin-bottom:5px;">
+                *รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)
+            </div>
+            <table style="width:100%; font-size:0.9rem; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom:2px solid #000;">
+                        <th style="text-align:left; padding:5px;">รายการ (Description)</th>
+                        <th style="text-align:right; padding:5px;">จำนวน (Qty)</th>
+                        <th style="text-align:right; padding:5px;">ราคา/ชิ้น</th>
+                        <th style="text-align:right; padding:5px;">รวม (Total)</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    ranges.forEach((r, idx) => {
+        const rowTotal = r.total || (r.count * r.price);
+        html += `
+            <tr style="border-bottom:1px dashed #eee;">
+                <td style="padding:10px 0;">
+                    <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong><br>
+                    <span style="color:#0056b3; font-weight:bold;">${r.start === r.end ? r.start : `${r.start} - ${r.end}`}</span><br>
+                    <small>น้ำหนัก (Weight): ${r.weight}</small>
+                </td>
+                <td style="text-align:right; vertical-align:top; padding-top:10px;">${r.count}</td>
+                <td style="text-align:right; vertical-align:top; padding-top:10px;">@${r.price}</td>
+                <td style="text-align:right; vertical-align:top; padding-top:10px; font-weight:bold;">${rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+                <tfoot>
+                    <tr style="border-top:2px solid #000; border-bottom:2px solid #000;">
+                        <td colspan="3" style="text-align:right; padding:10px; font-weight:bold;">รวมทั้งสิ้น (Grand Total)</td>
+                        <td style="text-align:right; padding:10px; font-weight:bold; font-size:1.1rem;">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `;
+    details.innerHTML = html;
+
+    // Auto-fill batch name suggestion
+    const today = new Date().toLocaleDateString('th-TH');
+    document.getElementById('import-batch-name').value = `Import ${today} (${totalItems} items)`;
+
+    // AUTO SAVE (Triggers immediately)
+    setTimeout(() => {
+        saveImportedBatch(true);
+    }, 500);
+}
+
+function saveImportedBatch(isAuto = false) {
+    if (currentImportedBatches.length === 0) return;
+
+    const name = document.getElementById('import-batch-name').value.trim();
+    const type = document.getElementById('import-batch-type').value;
+
+    if (!name) {
+        alert('กรุณาระบุชื่อกลุ่มข้อมูล (Batch Name)');
+        return;
+    }
+
+    if (!isAuto) {
+        if (!confirm(`ยืนยันบันทึกข้อมูล ${currentImportedBatches.length} ช่วงรวมกันเป็น 1 ชุดข้อมูล?`)) return;
+    }
+
+    // Save Logic (Optimized)
+    const allItemsToSave = [];
+    currentImportedBatches.forEach(r => {
+        // Since we optimized, we generate from start-end.
+        // Assuming contiguous S10. 
+        const list = TrackingUtils.generateTrackingRange(r.start, 0, r.count - 1);
+        list.forEach(i => allItemsToSave.push(i.number));
+    });
+
+    // Metadata
+    const rangesMeta = currentImportedBatches.map(r => ({
+        start: r.start,
+        end: r.end,
+        count: r.count,
+        price: r.price,
+        weight: r.weight,
+        total: r.total || (r.count * r.price)
+    }));
+
+    const batchInfo = {
+        name: name,
+        type: type,
+        contract: 'Imported',
+        timestamp: new Date().getTime(),
+        ranges: rangesMeta
+    };
+
+    // Save
+    const result = CustomerDB.addBatch(batchInfo, allItemsToSave);
+    const addedCount = typeof result === 'object' ? result.count : result;
+    const newBatchId = typeof result === 'object' ? result.id : null;
+
+    if (isAuto) {
+        // alert(`✅ ระบบบันทึกข้อมูลอัตโนมัติเรียบร้อย!\n(Optimized ${rangesMeta.length} Groups)`);
+        // Silent or small notification? User wants to SEE it.
+    } else {
+        alert(`บันทึกเรียบร้อย!`);
+    }
+
+    // Reset inputs
+    document.getElementById('excel-upload').value = '';
+    document.getElementById('import-preview').classList.add('hidden');
+    currentImportedBatches = [];
+
+    // DIRECTLY VIEW THE REPORT
+    if (newBatchId && typeof loadBatchToView === 'function') {
+        loadBatchToView(newBatchId);
+    } else {
+        // Fallback
+        switchTab('customer');
+        if (typeof renderDBTable === 'function') renderDBTable();
+    }
+}
+
+// --- Backup & Restore Glue Code ---
+function backupData() {
+    CustomerDB.exportBackup();
+}
+
+function restoreData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!confirm('คำเตือน: การกู้คืนข้อมูลจะทับข้อมูลปัจจุบันทั้งหมด\nคุณต้องการดำเนินการต่อหรือไม่?')) {
+        event.target.value = ''; // Reset
+        return;
+    }
+
+    CustomerDB.importBackup(file)
+        .then(() => {
+            alert('✅ กู้คืนข้อมูลสำเร็จ (Restore Complete)');
+            renderDBTable(); // Refresh UI
+        })
+        .catch(err => {
+            alert('❌ เกิดข้อผิดพลาด: ' + err.message);
+        })
+        .finally(() => {
+            event.target.value = ''; // Reset
+        });
+}
+
+function loadBatchToView(batchId) {
+    const batches = CustomerDB.getBatches();
+    const batch = batches[batchId];
+
+    if (!batch) {
+        alert('ไม่พบข้อมูลชุดนี้');
+        return;
+    }
+
+    // Reuse Range Tab to display
+    switchTab('range');
+    const box = document.getElementById('result-range-box');
+    box.classList.remove('hidden');
+
+    // CHECK IF WE HAVE RECEIPT METADATA (ranges)
+    if (batch.ranges && Array.isArray(batch.ranges)) {
+        // Render Receipt Style (Directly use saved metadata which is already optimized)
+        const grandTotal = batch.ranges.reduce((acc, r) => acc + (r.total || 0), 0);
+
+        let html = `
+            <div class="result-success" style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                <strong>📂 ข้อมูล: ${batch.name}</strong>
+                <button class="btn btn-neutral" onclick="switchTab('import')" style="padding:5px 10px; font-size:0.9rem;">⬅ กลับหน้าหลัก (New Import)</button>
+            </div>
+            
+            <!-- Receipt View -->
+            <div style="background:white; padding:20px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.05); font-family:'Courier New', monospace; max-width:800px; margin:0 auto;">
+                <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">ใบสรุปรายการ (Optimized Report)</h4>
+                 <div style="margin-bottom:10px; font-size:0.9rem;">
+                    <strong>Customer:</strong> ${batch.name}<br>
+                    <strong>Type:</strong> ${batch.type}<br>
+                    <strong>Date:</strong> ${new Date(batch.timestamp).toLocaleString('th-TH')}
+                </div>
+                 <div style="font-size:0.8rem; color:red; text-align:center; margin-bottom:5px;">
+                    *จัดเรียงตามราคาน้อย-มาก (Virtual)
+                </div>
+                <table style="width:100%; font-size:0.9rem; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom:2px solid #000;">
+                            <th style="text-align:left; padding:5px;">รายการ (Description)</th>
+                            <th style="text-align:right; padding:5px;">จำนวน (Qty)</th>
+                            <th style="text-align:right; padding:5px;">ราคา/ชิ้น</th>
+                            <th style="text-align:right; padding:5px;">รวม (Total)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        batch.ranges.forEach((r, idx) => {
+            html += `
+                <tr style="border-bottom:1px dashed #eee;">
+                    <td style="padding:10px 0;">
+                        <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong><br>
+                        <span style="color:#0056b3; font-weight:bold;">${r.start === r.end ? r.start : `${r.start} - ${r.end}`}</span><br>
+                        <small>น้ำหนัก (Weight): ${r.weight}</small>
+                    </td>
+                    <td style="text-align:right; vertical-align:top; padding-top:10px;">${r.count}</td>
+                    <td style="text-align:right; vertical-align:top; padding-top:10px;">@${r.price}</td>
+                    <td style="text-align:right; vertical-align:top; padding-top:10px; font-weight:bold;">${(r.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                    <tfoot>
+                        <tr style="border-top:2px solid #000; border-bottom:2px solid #000;">
+                            <td colspan="3" style="text-align:right; padding:10px; font-weight:bold;">รวมทั้งสิ้น (Grand Total)</td>
+                            <td style="text-align:right; padding:10px; font-weight:bold; font-size:1.1rem;">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            
+            <div style="text-align:center; margin-top:20px;">
+                <button class="btn" onclick="window.print()">🖨️ Print / PDF</button>
+                <button class="btn btn-neutral" onclick="switchTab('import')" style="margin-left:10px;">⬅ กลับหน้าหลัก (New Import)</button>
+            </div>
+        `;
+        box.innerHTML = html;
+        return;
+    }
+
+    // FALLBACK
+    // Inline Fallback for safety (Legacy View)
+    const lookup = CustomerDB.getLookup();
+    const items = [];
+    Object.keys(lookup).forEach(key => {
+        if (lookup[key].batchId === batchId) items.push(key);
+    });
+    items.sort();
+
+    let fallbackHtml = `
+        <div class="result-success">Viewing Legacy Batch: ${batch.name} (${items.length} items)</div>
+        <ul>${items.map(x => `<li>${x}</li>`).slice(0, 50).join('')}</ul>
+    `;
+    box.innerHTML = fallbackHtml;
+}
+
+// --- Authentication & Isolation System ---
+
+function checkAuth() {
+    // URL Check: ?admin
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.has('admin');
+
+    // UI Elements
+    const body = document.body;
+    const header = document.querySelector('header');
+    const tabNav = document.querySelector('.tabs');
+    const loginModal = document.getElementById('login-modal');
+
+    // Disable Login Modal (Not used in this version)
+    if (loginModal) loginModal.style.display = 'none';
+
+    if (isAdmin) {
+        // ADMIN MODE
+        console.log('Mode: Admin');
+        if (header) header.style.display = 'block';
+        if (tabNav) tabNav.style.display = 'flex';
+
+        // Default View
+        if (!document.querySelector('.tab-btn.active')) switchTab('check');
+
+    } else {
+        // USER MODE (Strict Isolation)
+        console.log('Mode: User (Restricted)');
+
+        // 1. Hide Admin Header
+        if (header) header.style.display = 'none';
+
+        // 2. Hide Navigation
+        if (tabNav) tabNav.style.display = 'none';
+
+        // 3. Force "Import" View
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-import').classList.add('active');
+
+        // 4. Inject "User Header" for context
+        // Check if already injected
+        if (!document.getElementById('user-header-bar')) {
+            const userHeader = document.createElement('div');
+            userHeader.id = 'user-header-bar';
+            userHeader.style.cssText = `
+                background: #007bff; color: white; padding: 15px; 
+                text-align: center; font-size: 1.2rem; font-weight: bold;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;
+            `;
+            userHeader.innerHTML = `📥 ระบบนำเข้าข้อมูลพัสดุ (Import Data Entry)`;
+            document.body.insertBefore(userHeader, document.querySelector('main'));
+        }
+
+        // 5. Update "Save" button text to be more subordinate-friendly
+        const saveBtn = document.querySelector('button[onclick="saveImportedBatch()"]');
+        if (saveBtn) {
+            saveBtn.innerHTML = `📤 สรุปและส่งข้อมูล (Submit Report)`;
+            saveBtn.classList.remove('btn-primary');
+            saveBtn.style.backgroundColor = '#28a745'; // Green
+            saveBtn.style.color = 'white';
+        }
+
+        // 6. Hide Range Generator UI (Inputs) BUT keep the section for Results
+        const rangeGenUI = document.getElementById('range-generator-ui');
+        if (rangeGenUI) rangeGenUI.style.display = 'none';
     }
 }

@@ -7,6 +7,7 @@
     <title>THP Tracking Analyst</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -18,10 +19,15 @@
                 <span>Tracking Analyst (Business Customer)</span>
             </div>
             <div class="user-info">
-                <span>Admin View</span>
+                <span id="user-role-display">Guest</span> | <a href="#" onclick="logout()"
+                    style="color:white; text-decoration:underline;">Logout</a>
             </div>
         </div>
     </header>
+
+    <!-- Login Modal -->
+    <!-- Login Modal Removed (Replaced by URL Auth) -->
+    <!-- Login Modal Removed (Replaced by URL Auth) -->
 
     <main class="container">
 
@@ -31,6 +37,7 @@
             <button class="tab-btn" onclick="switchTab('range')">สร้างเลขรัน (Range Gen)</button>
             <button class="tab-btn" onclick="switchTab('gap')">เช็คของตกหล่น (Missing Items)</button>
             <button class="tab-btn" onclick="switchTab('customer')">ฐานข้อมูลลูกค้า (Customer DB)</button>
+            <button class="tab-btn" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
         </div>
 
         <!-- SECTION 1: Check & Fix -->
@@ -53,31 +60,33 @@
         <!-- SECTION 2: Range Generator -->
         <section id="tab-range" class="tab-content">
             <div class="card">
-                <h2>สร้างเลขรัน (Range Generator)</h2>
-                <div class="grid-form">
-                    <div class="form-group">
-                        <label>เลขตั้งต้น (Center ID)</label>
-                        <input type="text" id="input-range-center" placeholder="EB123456785TH">
+                <div id="range-generator-ui">
+                    <h2>สร้างเลขรัน (Range Generator)</h2>
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label>เลขตั้งต้น (Center ID)</label>
+                            <input type="text" id="input-range-center" placeholder="XX000000000XX">
+                        </div>
+                        <div class="form-group">
+                            <label>ย้อนหลัง (Previous N)</label>
+                            <input type="number" id="input-range-prev" placeholder="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>ถัดไป (Next N)</label>
+                            <input type="number" id="input-range-next" placeholder="0" min="0">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>ย้อนหลัง (Previous N)</label>
-                        <input type="number" id="input-range-prev" placeholder="0" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label>ถัดไป (Next N)</label>
-                        <input type="number" id="input-range-next" placeholder="0" min="0">
-                    </div>
-                </div>
 
-                <div class="form-group mt-4">
-                    <label>เทียบกับรายการที่มี (Reference / Scanned IDs) <small class="text-muted">(Optional:
-                            แปะรายการเพื่อเช็คสถานะ)</small></label>
-                    <textarea id="range-reference-list" rows="3"
-                        placeholder="แปะรายการเลขพัสดุที่มีที่นี่... ระบบจะแสดงสถานะ 'รับเข้าระบบ' ให้"></textarea>
-                </div>
+                    <div class="form-group mt-4">
+                        <label>เทียบกับรายการที่มี (Reference / Scanned IDs) <small class="text-muted">(Optional:
+                                แปะรายการเพื่อเช็คสถานะ)</small></label>
+                        <textarea id="range-reference-list" rows="3"
+                            placeholder="แปะรายการเลขพัสดุที่มีที่นี่... ระบบจะแสดงสถานะ 'รับเข้าระบบ' ให้"></textarea>
+                    </div>
 
-                <div class="mt-4">
-                    <button class="btn btn-primary" onclick="generateRange()">เริ่มสร้างรายการ</button>
+                    <div class="mt-4">
+                        <button class="btn btn-primary" onclick="generateRange()">เริ่มสร้างรายการ</button>
+                    </div>
                 </div>
 
                 <div id="result-range-box" class="result-list hidden mt-4">
@@ -95,11 +104,11 @@
                 <div class="grid-form">
                     <div class="form-group">
                         <label>เลขเริ่มต้น (Start)</label>
-                        <input type="text" id="gap-start" placeholder="EB123456000TH">
+                        <input type="text" id="gap-start" placeholder="XX000000000XX">
                     </div>
                     <div class="form-group">
                         <label>เลขสิ้นสุด (End)</label>
-                        <input type="text" id="gap-end" placeholder="EB123456100TH">
+                        <input type="text" id="gap-end" placeholder="XX000000000XX">
                     </div>
                 </div>
 
@@ -234,9 +243,17 @@ EB123456001TH
                     <textarea id="db-tracking-list" rows="3" placeholder="รายการจะถูกเติมลงที่นี่..."></textarea>
                 </div>
 
-                <div class="mt-4">
+                <div class="mt-4" style="display:flex; gap:10px; align-items:center;">
                     <button class="btn btn-primary" onclick="saveCustomerData()">บันทึกข้อมูล (Save)</button>
                     <button class="btn btn-danger" onclick="clearAllData()">ล้างข้อมูลทั้งหมด</button>
+                    <div style="flex-grow:1;"></div>
+                    <!-- Backup Controls -->
+                    <button class="btn btn-neutral" onclick="backupData()" style="border:1px solid #ccc;">⬇
+                        Backup</button>
+                    <button class="btn btn-neutral" onclick="document.getElementById('restore-upload').click()"
+                        style="border:1px solid #ccc;">⬆ Restore</button>
+                    <input type="file" id="restore-upload" accept=".json" style="display:none;"
+                        onchange="restoreData(event)">
                 </div>
 
                 <div class="mt-4">
@@ -258,6 +275,51 @@ EB123456001TH
                             </thead>
                             <tbody></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        </section>
+
+        <!-- SECTION 5: Import Excel -->
+        <section id="tab-import" class="tab-content">
+            <div class="card">
+                <h2>นำเข้าไฟล์ Excel (Import Tracking)</h2>
+                <p class="text-muted">อัปโหลดไฟล์ (.xlsx, .xls) เพื่อวิเคราะห์ช่วงเลขและบันทึกข้อมูล</p>
+
+                <div class="upload-area"
+                    style="border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; background: #fafafa;">
+                    <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;"
+                        onchange="handleExcelUpload(event)">
+                    <button class="btn btn-primary" onclick="document.getElementById('excel-upload').click()">📂
+                        เลือกไฟล์ Excel</button>
+                    <p id="upload-status" style="margin-top: 10px; color: #666;">ยังไม่ได้เลือกไฟล์</p>
+                </div>
+
+                <div id="import-preview" class="hidden mt-4">
+                    <h3>ผลการวิเคราะห์ (Analysis Result)</h3>
+                    <div id="import-summary" class="result-box result-success"></div>
+
+                    <div class="mt-4">
+                        <div class="form-group">
+                            <label>ชื่อลูกค้า / กลุ่มข้อมูล (Batch Name)</label>
+                            <input type="text" id="import-batch-name" placeholder="เช่น รายการส่งวันที่ 23/01/2026">
+                        </div>
+                        <div class="form-group">
+                            <label>ประเภท (Type)</label>
+                            <select id="import-batch-type"
+                                style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:4px;">
+                                <option value="Cash" selected>เงินสด (Cash)</option>
+                                <option value="Credit">รายเดือน (Credit)</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary mt-4" onclick="saveImportedBatch()">💾
+                            บันทึกข้อมูลลงฐานข้อมูล</button>
+                    </div>
+
+                    <div id="import-details" class="mt-4">
+                        <!-- Table of ranges -->
                     </div>
                 </div>
             </div>

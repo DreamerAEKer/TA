@@ -64,7 +64,7 @@ const CustomerDB = {
 
         CustomerDB.saveBatches(batches);
         CustomerDB.saveLookup(lookup);
-        return trackingList.length;
+        return { count: trackingList.length, id: batchId };
     },
 
     // Delete a Batch
@@ -87,6 +87,48 @@ const CustomerDB = {
 
         CustomerDB.saveBatches(batches);
         CustomerDB.saveLookup(lookup);
+    },
+
+    // --- BACKUP & RESTORE SYSTEM ---
+    exportBackup: () => {
+        const data = {
+            batches: CustomerDB.getBatches(),
+            lookup: CustomerDB.getLookup(),
+            timestamp: new Date().toISOString(),
+            version: "1.0"
+        };
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tracking_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    importBackup: (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.batches || !data.lookup) {
+                        throw new Error("Invalid Backup File Format");
+                    }
+                    // Restore
+                    CustomerDB.saveBatches(data.batches);
+                    CustomerDB.saveLookup(data.lookup);
+                    resolve(true);
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.readAsText(file);
+        });
     },
 
     clearAll: () => {
@@ -251,6 +293,8 @@ function renderDBTable() {
             </td>
             <td style="font-size:0.85rem; color:#666;">${dateStr}</td>
             <td>
+                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#007bff; color:white; margin-right:5px;" 
+                    onclick="loadBatchToView('${item.id}')">🔎 ดู (View)</button>
                 <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#dc3545; color:white;" 
                     onclick="deleteBatchEntry('${item.id}', '${item.name}')">ลบ (Del)</button>
             </td>
