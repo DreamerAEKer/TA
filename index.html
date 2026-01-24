@@ -299,9 +299,17 @@ EB123456001TH
                 <h2>นำเข้าไฟล์ Excel (Import Tracking)</h2>
                 <p class="text-muted">อัปโหลดไฟล์ (.xlsx, .xls) เพื่อวิเคราะห์ช่วงเลขและบันทึกข้อมูล</p>
 
-                <div style="text-align:right; margin-bottom:10px;">
-                    <button class="btn btn-neutral" onclick="toggleImportHistory()">📜 ประวัติการนำเข้า
-                        (History)</button>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-bottom:10px; overflow-x:auto;">
+                    <!-- History Button (Main) -->
+                    <button class="btn btn-neutral" onclick="toggleImportHistory()" style="flex-shrink:0;">
+                        📜 ประวัติการนำเข้า (History)
+                    </button>
+
+                    <!-- Export Button (Smaller, Subtle) -->
+                    <button class="btn btn-neutral" onclick="confirmAndBackup()"
+                        style="flex-shrink:0; font-size:0.9rem; padding:8px 12px; border:1px solid #ccc; color:#666;">
+                        ⬇ Export
+                    </button>
                 </div>
 
                 <div id="import-history-section" class="hidden"
