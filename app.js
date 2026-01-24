@@ -616,6 +616,10 @@ function renderImportHistory() {
     const tbody = document.querySelector('#import-history-table tbody');
     if (!tbody) return;
 
+    // Check Admin Mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.has('admin');
+
     tbody.innerHTML = '';
     const batches = CustomerDB.getBatches();
     const list = Object.values(batches).sort((a, b) => b.timestamp - a.timestamp);
@@ -628,6 +632,15 @@ function renderImportHistory() {
     list.forEach(item => {
         const dateStr = new Date(item.timestamp).toLocaleString('th-TH');
         const tr = document.createElement('tr');
+
+        let deleteBtn = '';
+        if (isAdmin) {
+            deleteBtn = `
+                <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem; margin-left:5px;" 
+                    onclick="deleteHistoryItem('${item.id}', '${item.name}')">🗑️ ลบ</button>
+            `;
+        }
+
         tr.innerHTML = `
             <td>${dateStr}</td>
             <td>
@@ -638,10 +651,21 @@ function renderImportHistory() {
             <td>
                 <button class="btn btn-primary" style="padding:4px 8px; font-size:0.8rem;" 
                     onclick="loadBatchToView('${item.id}')">🔎 ดู</button>
+                ${deleteBtn}
             </td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+function deleteHistoryItem(batchId, batchName) {
+    if (confirm(`ยืนยันการลบข้อมูล (จากประวัติ Import)?\n\nชุดข้อมูล: ${batchName}`)) {
+        CustomerDB.deleteBatch(batchId);
+        // Refresh this table
+        renderImportHistory();
+        // Also refresh main DB table if it exists (keep in sync)
+        if (typeof renderDBTable === 'function') renderDBTable();
+    }
 }
 
 // --- Backup & Restore Glue Code ---
