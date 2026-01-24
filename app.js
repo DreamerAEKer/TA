@@ -862,11 +862,8 @@ function checkAuth() {
                 z-index: 1000;
             `;
             userHeader.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:1rem; text-align:left;">📥 ระบบนำเข้าข้อมูลพัสดุ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
-                    <button class="btn" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.4); padding:5px 10px; font-size:0.9rem;" onclick="toggleImportHistory()">
-                        📜 ประวัติ
-                    </button>
+                <div style="display:flex; justify-content:center; align-items:center;">
+                    <span style="font-size:1rem;">📥 ระบบนำเข้าข้อมูลพัสดุ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
                 </div>
             `;
             document.body.insertBefore(userHeader, document.querySelector('main'));
