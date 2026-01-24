@@ -850,23 +850,53 @@ function checkAuth() {
             userHeader.style.cssText = `
                 background: linear-gradient(135deg, #DA291C 0%, #B91D12 100%); 
                 color: white; 
-                padding: 20px; 
+                padding: 15px 20px; 
                 text-align: center; 
-                font-size: 1.3rem; 
+                font-size: 1.2rem; 
                 font-weight: bold;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
                 margin-bottom: 25px;
                 border-radius: 0 0 16px 16px;
+                position: sticky;
+                top: 0;
+                z-index: 1000;
             `;
             userHeader.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span>📥 ระบบนำเข้าข้อมูลพัสดุ</span>
+                    <span style="font-size:1rem; text-align:left;">📥 ระบบนำเข้าข้อมูลพัสดุ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
                     <button class="btn" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.4); padding:5px 10px; font-size:0.9rem;" onclick="toggleImportHistory()">
                         📜 ประวัติ
                     </button>
                 </div>
             `;
             document.body.insertBefore(userHeader, document.querySelector('main'));
+
+            // Floating Action Button (FAB) for Mobile fallback
+            if (!document.getElementById('mobile-history-fab')) {
+                const fab = document.createElement('button');
+                fab.id = 'mobile-history-fab';
+                fab.innerHTML = '📜';
+                fab.onclick = toggleImportHistory;
+                fab.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 50%;
+                    background: #DA291C;
+                    color: white;
+                    border: none;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                    font-size: 1.5rem;
+                    z-index: 2000;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    cursor: pointer;
+                `;
+                document.body.appendChild(fab);
+            }
         }
 
         // 5. Update "Save" button text to be more subordinate-friendly
