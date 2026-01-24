@@ -590,22 +590,40 @@ table th {
         /* Allow border-radius */
     }
 
-    /* Sticky First Column */
+    /* Sticky First Column - DISABLED for Mobile */
     .table-responsive th:first-child,
     .table-responsive td:first-child {
-        position: sticky;
-        left: 0;
-        background: #fff;
-        z-index: 2;
-        border-right: 1px solid #f0f0f0;
+        position: static;
+        border-right: none;
     }
 
     .table-responsive th:first-child {
         background: #f8f9fa;
-        z-index: 3;
+        z-index: auto;
     }
 
-    .mobile-card-table .btn {
+    /* Flatten Status Buttons to single line */
+    .status-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        white-space: nowrap;
+        max-width: none;
+    }
+
+    .status-actions>* {
+        flex: 0 0 auto;
+    }
+
+    .status-actions .badge {
+        padding: 4px 8px;
+        /* Compact */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .table-responsive .btn {
         width: auto;
         margin: 0;
         font-size: 0.85rem;
