@@ -171,7 +171,7 @@ function generateRange() {
             <strong>รายการทั้งหมด: ${list.length} รายการ</strong>
             <button class="btn" style="padding:4px 8px; font-size:0.8rem; margin-left:10px;" onclick="copyRangeResults()">Copy All</button>
         </div>
-        <table>
+        <table class="mobile-card-table">
             <thead>
                 <tr>
                     <th>#</th>

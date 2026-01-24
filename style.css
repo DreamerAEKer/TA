@@ -570,4 +570,67 @@ table th {
     .report-table {
         display: none;
     }
+
+    /* Range Generator Mobile Optimized Table */
+    .mobile-card-table thead {
+        display: none;
+    }
+
+    .mobile-card-table tr {
+        display: block;
+        margin-bottom: 16px;
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .mobile-card-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+        text-align: right;
+    }
+
+    .mobile-card-table td:last-child {
+        border-bottom: none;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    /* Pseudo-labels for Mobile */
+    .mobile-card-table td:nth-of-type(1)::before {
+        content: "#";
+        font-weight: bold;
+        color: #666;
+    }
+
+    .mobile-card-table td:nth-of-type(2)::before {
+        content: "Tracking Number";
+        font-weight: bold;
+        color: #666;
+    }
+
+    .mobile-card-table td:nth-of-type(3)::before {
+        content: "Status";
+        font-weight: bold;
+        color: #666;
+    }
+
+    /* Fix status actions in grid */
+    .mobile-card-table .status-actions {
+        display: contents;
+        /* Let buttons be direct grid children of td */
+    }
+
+    .mobile-card-table .btn {
+        width: 100%;
+        margin: 0;
+        font-size: 0.85rem;
+    }
 }
