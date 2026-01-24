@@ -165,7 +165,65 @@ const CustomerDB = {
         });
 
         return results;
+    },
+    // --- SNAPSHOT SYSTEM (Auto Backup) ---
+    getSnapshots: () => {
+        const raw = localStorage.getItem('thp_snapshots_v1');
+        return raw ? JSON.parse(raw) : [];
+    },
+
+    createSnapshot: (reason = 'Auto-Backup') => {
+        const snapshots = CustomerDB.getSnapshots();
+
+        // 1. Capture Current State
+        const currentState = {
+            timestamp: Date.now(),
+            reason: reason,
+            data: {
+                batches: CustomerDB.getBatches(),
+                lookup: CustomerDB.getLookup()
+            }
+        };
+
+        // 2. Add to list (Limit to 5 recent snapshots)
+        snapshots.unshift(currentState);
+        if (snapshots.length > 5) snapshots.pop();
+
+        // 3. Save
+        localStorage.setItem('thp_snapshots_v1', JSON.stringify(snapshots));
+        console.log(`Snapshot created: ${reason}`);
+    },
+
+    restoreSnapshot: (timestamp) => {
+        const snapshots = CustomerDB.getSnapshots();
+        const target = snapshots.find(s => s.timestamp === timestamp);
+
+        if (target) {
+            CustomerDB.saveBatches(target.data.batches);
+            CustomerDB.saveLookup(target.data.lookup);
+            return true;
+        }
+        return false;
     }
+};
+
+// --- UPDATE: Wrap critical actions with Snapshot ---
+
+// Monkey Patch importBackup to auto-snapshot
+const originalImport = CustomerDB.importBackup;
+CustomerDB.importBackup = async (file) => {
+    // Auto Snapshot before Restore
+    CustomerDB.createSnapshot('Pre-Restore Backup');
+    return originalImport(file);
+};
+
+// Monkey Patch clearAll
+const originalClear = CustomerDB.clearAll;
+CustomerDB.clearAll = () => {
+    if (Object.keys(CustomerDB.getBatches()).length > 0) {
+        CustomerDB.createSnapshot('Pre-ClearAll Backup');
+    }
+    originalClear();
 };
 
 // UI State

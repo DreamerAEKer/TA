@@ -668,6 +668,52 @@ function deleteHistoryItem(batchId, batchName) {
     }
 }
 
+// --- Snapshot Logic ---
+function toggleSnapshotList() {
+    const list = document.getElementById('snapshot-list');
+    if (list.classList.contains('hidden')) {
+        list.classList.remove('hidden');
+        renderSnapshotList();
+    } else {
+        list.classList.add('hidden');
+    }
+}
+
+function renderSnapshotList() {
+    const list = document.getElementById('snapshot-list');
+    const snapshots = CustomerDB.getSnapshots();
+
+    if (snapshots.length === 0) {
+        list.innerHTML = '<li>ไม่มีจุดย้อนกลับ (No Snapshots)</li>';
+        return;
+    }
+
+    let html = '';
+    snapshots.forEach(s => {
+        const time = new Date(s.timestamp).toLocaleString('th-TH');
+        html += `
+            <li style="margin-bottom:5px;">
+                <strong>${time}</strong> - ${s.reason} 
+                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#ffc107; color:#000; margin-left:10px;"
+                    onclick="restoreFromSnapshot(${s.timestamp})">Restore</button>
+            </li>
+        `;
+    });
+    list.innerHTML = html;
+}
+
+function restoreFromSnapshot(ts) {
+    if (confirm('ยืนยันย้อนเวลากลับไปจุดนี้? (ข้อมูลปัจจุบันจะหายไป)')) {
+        if (CustomerDB.restoreSnapshot(ts)) {
+            alert('✅ ย้อนเวลาสำเร็จ (Restored)');
+            renderDBTable();
+            renderImportHistory(); // if visible
+        } else {
+            alert('❌ ไม่พบข้อมูล Snapshot นี้');
+        }
+    }
+}
+
 // --- Backup & Restore Glue Code ---
 function backupData() {
     CustomerDB.exportBackup();
@@ -828,6 +874,10 @@ function checkAuth() {
         // Default View
         if (!document.querySelector('.tab-btn.active')) switchTab('check');
 
+        // Show Snapshot Section
+        const snapSec = document.getElementById('snapshot-section');
+        if (snapSec) snapSec.classList.remove('hidden');
+
     } else {
         // USER MODE (Strict Isolation)
         console.log('Mode: User (Restricted)');
@@ -862,43 +912,14 @@ function checkAuth() {
                 z-index: 1000;
             `;
             userHeader.innerHTML = `
-                <div style="display:flex; justify-content:center; align-items:center;">
-                    <span style="font-size:1rem;">📥 ระบบนำเข้าข้อมูลพัสดุ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:1rem; text-align:left;">📥 ระบบนำเข้าข้อมูลพัสดุ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
+                    <button class="btn" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.4); padding:5px 10px; font-size:0.8rem;" onclick="backupData()">
+                        ⬇ Export
+                    </button>
                 </div>
             `;
             document.body.insertBefore(userHeader, document.querySelector('main'));
-
-            // Floating Action Button (FAB) for Mobile fallback
-            if (!document.getElementById('mobile-history-fab')) {
-                const fab = document.createElement('button');
-                fab.id = 'mobile-history-fab';
-                fab.innerHTML = '📜';
-                fab.onclick = toggleImportHistory;
-                fab.style.cssText = `
-                    position: fixed;
-                    bottom: 40px; 
-                    right: 20px;
-                    width: 60px;
-                    height: 60px;
-                    border-radius: 50%;
-                    background: #28a745; /* Green */
-                    color: white;
-                    border: 3px solid white;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-                    font-size: 1.8rem;
-                    z-index: 9999;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    cursor: pointer;
-                    transition: transform 0.2s;
-                `;
-                fab.active = false; // Toggle state
-                fab.addEventListener('touchstart', () => { fab.style.transform = 'scale(0.9)'; });
-                fab.addEventListener('touchend', () => { fab.style.transform = 'scale(1)'; });
-
-                document.body.appendChild(fab);
-            }
         }
 
         // 5. Update "Save" button text to be more subordinate-friendly

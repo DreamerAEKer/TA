@@ -256,6 +256,17 @@ EB123456001TH
                         onchange="restoreData(event)">
                 </div>
 
+                <!-- Snapshot UI -->
+                <div id="snapshot-section" class="mt-4 hidden"
+                    style="background:#fff3cd; padding:10px; border-radius:4px; border:1px solid #ffeeba;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;"
+                        onclick="toggleSnapshotList()">
+                        <strong style="color:#856404;">↩️ จุดย้อนกลับข้อมูล (Auto-Backup / Restore Points)</strong>
+                        <span>▼</span>
+                    </div>
+                    <ul id="snapshot-list" class="hidden" style="margin:10px 0 0 20px; color:#856404;"></ul>
+                </div>
+
                 <div class="mt-4">
                     <h3>รายการที่บันทึกไว้ (<span id="db-count">0</span> รายการ)</h3>
                     <div id="db-list-container" style="max-height: 300px; overflow-y: auto;">
