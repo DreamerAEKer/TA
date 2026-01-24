@@ -171,7 +171,8 @@ function generateRange() {
             <strong>รายการทั้งหมด: ${list.length} รายการ</strong>
             <button class="btn" style="padding:4px 8px; font-size:0.8rem; margin-left:10px;" onclick="copyRangeResults()">Copy All</button>
         </div>
-        <table class="mobile-card-table">
+        <div class="table-responsive">
+        <table>
             <thead>
                 <tr>
                     <th>#</th>
@@ -226,7 +227,7 @@ function generateRange() {
                 `;
     });
 
-    html += `</tbody></table>`;
+    html += `</tbody></table></div>`;
     box.innerHTML = html;
 }
 

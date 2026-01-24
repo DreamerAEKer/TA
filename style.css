@@ -571,65 +571,42 @@ table th {
         display: none;
     }
 
-    /* Range Generator Mobile Optimized Table */
-    .mobile-card-table thead {
-        display: none;
-    }
-
-    .mobile-card-table tr {
-        display: block;
-        margin-bottom: 16px;
-        background: #fff;
+    /* Range Generator: Horizontal Scroll Table for Mobile */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        /* Smooth scroll on iOS */
+        margin-bottom: 20px;
         border: 1px solid #e0e0e0;
         border-radius: 8px;
-        padding: 12px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
-    .mobile-card-table td {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 0;
-        border-bottom: 1px solid #f0f0f0;
-        text-align: right;
+    .table-responsive table {
+        min-width: 600px;
+        /* Force table to be wide enough to not squish content */
+        margin-top: 0;
+        border-collapse: separate;
+        /* Allow border-radius */
     }
 
-    .mobile-card-table td:last-child {
-        border-bottom: none;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        margin-top: 8px;
+    /* Sticky First Column */
+    .table-responsive th:first-child,
+    .table-responsive td:first-child {
+        position: sticky;
+        left: 0;
+        background: #fff;
+        z-index: 2;
+        border-right: 1px solid #f0f0f0;
     }
 
-    /* Pseudo-labels for Mobile */
-    .mobile-card-table td:nth-of-type(1)::before {
-        content: "#";
-        font-weight: bold;
-        color: #666;
-    }
-
-    .mobile-card-table td:nth-of-type(2)::before {
-        content: "Tracking Number";
-        font-weight: bold;
-        color: #666;
-    }
-
-    .mobile-card-table td:nth-of-type(3)::before {
-        content: "Status";
-        font-weight: bold;
-        color: #666;
-    }
-
-    /* Fix status actions in grid */
-    .mobile-card-table .status-actions {
-        display: contents;
-        /* Let buttons be direct grid children of td */
+    .table-responsive th:first-child {
+        background: #f8f9fa;
+        z-index: 3;
     }
 
     .mobile-card-table .btn {
-        width: 100%;
+        width: auto;
         margin: 0;
         font-size: 0.85rem;
     }
