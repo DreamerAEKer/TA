@@ -674,41 +674,7 @@ function loadBatchToView(batchId) {
                     </div>
         `;
 
-        batch.ranges.forEach((r, idx) => {
-            html += `
-                <div class="report-card">
-                    <div class="report-card-desc">
-                        <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong><br>
-                        <span style="color:#0056b3; font-weight:bold;">${r.start === r.end ? r.start : `${r.start} - ${r.end}`}</span><br>
-                        <small>น้ำหนัก (Weight): ${r.weight}</small>
-                    </div>
-                    <div class="report-card-scroll">
-                        <div class="stat-item">
-                            <span class="stat-label">จำนวน (Qty)</span>
-                            <span class="stat-value">${r.count}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">ราคา/ชิ้น</span>
-                            <span class="stat-value">@${r.price}</span>
-                        </div>
-                        <div class="stat-item highlight">
-                            <span class="stat-label">รวม (Total)</span>
-                            <span class="stat-value">${(r.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <!-- Spacer for scroll feel -->
-                        <div style="min-width:10px;"></div>
-                    </div>
-                </div>
-            `;
-        });
 
-        html += `
-                    <div class="report-footer">
-                        <div class="footer-label">รวมทั้งสิ้น (Grand Total)</div>
-                        <div class="footer-value">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                    </div>
-                </div>
-        `;
 
         batch.ranges.forEach((r, idx) => {
             html += `
