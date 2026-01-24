@@ -319,44 +319,44 @@ function findGaps() {
     }
 }
 
-// --- Excel Import Logic ---
+// --- Universal Import Logic (Excel & Image/OCR) ---
 
 let currentImportedBatches = []; // To store analyzed data before saving
 
-function handleExcelUpload(event) {
+function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    document.getElementById('upload-status').innerText = `กำลังอ่านไฟล์: ${file.name}...`;
+    document.getElementById('upload-status').innerText = `กำลังตรวจสอบไฟล์: ${file.name}...`;
 
+    // Detect File Type
+    if (file.type.includes('image')) {
+        handleImageImport(file);
+    } else {
+        handleExcelImport(file);
+    }
+}
+
+function handleExcelImport(file) {
+    document.getElementById('upload-status').innerText = `กำลังอ่านไฟล์ Excel...`;
     const reader = new FileReader();
     reader.onload = function (e) {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-
-        // Get first sheet
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        // Convert to JSON
-        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // Array of Arrays
-
-        // Extract Tracking Numbers with Price & Weight
-        // Assuming:
-        // Col C (Index 2): Barcode
-        // Col D (Index 3): Price
-        // Col E (Index 4): Weight
         const trackingList = [];
         const regex = /([A-Z]{2})(\d{9})([A-Z]{2})/i;
 
         jsonData.forEach(row => {
             if (row.length >= 3) {
-                // Try to identify column by content or fixed index
                 if (row[2] && typeof row[2] === 'string') {
                     const match = row[2].match(regex);
                     if (match) {
                         const price = parseFloat(row[3]) || 0;
-                        const weight = row[4] || '-'; // Keep as string or whatever format
+                        const weight = row[4] || '-';
                         trackingList.push({
                             number: match[0].toUpperCase(),
                             price: price,
@@ -368,15 +368,94 @@ function handleExcelUpload(event) {
         });
 
         if (trackingList.length === 0) {
-            alert('ไม่พบเลขพัสดุในไฟล์ที่เลือก (ตรวจสอบคอลัมน์ C)');
+            alert('ไม่พบเลขพัสดุในไฟล์ Excel (ตรวจสอบคอลัมน์ C)');
             document.getElementById('upload-status').innerText = 'ไม่พบเลขพัสดุ';
             return;
         }
 
-        document.getElementById('upload-status').innerText = `อ่านเสร็จสิ้น! พบ ${trackingList.length} รายการ`;
+        document.getElementById('upload-status').innerText = `อ่าน Excel เสร็จสิ้น! พบ ${trackingList.length} รายการ`;
         analyzeImportedRanges(trackingList);
     };
     reader.readAsArrayBuffer(file);
+}
+
+function handleImageImport(file) {
+    // Check if Admin
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.has('admin')) {
+        alert('ฟีเจอร์นี้สำหรับ Admin เท่านั้น (Access Denied)');
+        document.getElementById('upload-status').innerText = 'Access Denied';
+        return;
+    }
+
+    document.getElementById('upload-status').innerText = `กำลังประมวลผลภาพ (OCR)... กรุณารอสักครู่`;
+
+    Tesseract.recognize(
+        file,
+        'eng',
+        {
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    document.getElementById('upload-status').innerText = `OCR: ${(m.progress * 100).toFixed(0)}%`;
+                }
+            }
+        }
+    ).then(({ data: { text } }) => {
+        console.log('OCR Output:', text);
+
+        // --- Smart Regex Logic ---
+        const trackingList = [];
+        const rawLines = text.split('\n').map(l => l.trim().toUpperCase()).filter(l => l);
+
+        // 1. Standard Pattern: XX000000000TH
+        const stdRegex = /([A-Z]{2})(\d{9})([A-Z]{2})/;
+
+        // 2. Vertical Pattern: 
+        // Line A: ... XX1234
+        // Line B: 56789 ...
+        // Merge -> XX123456789TH
+
+        for (let i = 0; i < rawLines.length; i++) {
+            const line = rawLines[i];
+
+            // Check Standard
+            const stdMatch = line.match(stdRegex);
+            if (stdMatch) {
+                trackingList.push({ number: stdMatch[0], price: 0, weight: 'OCR' });
+                continue;
+            }
+
+            // Check Vertical Pattern part 1 (End with 2 letters + 4 digits)
+            // ex: "EMS th: EC1234"
+            const headMatch = line.match(/([A-Z]{2})(\d{4})$/);
+            if (headMatch) {
+                // Peek next line for 5 digits
+                if (i + 1 < rawLines.length) {
+                    const nextLine = rawLines[i + 1];
+                    const tailMatch = nextLine.match(/^(\d{5})/);
+                    if (tailMatch) {
+                        const fullId = headMatch[1] + headMatch[2] + tailMatch[1] + 'TH';
+                        trackingList.push({ number: fullId, price: 0, weight: 'OCR-Vertical' });
+                        // Skip next line as we consumed it
+                        i++;
+                    }
+                }
+            }
+        }
+
+        if (trackingList.length === 0) {
+            alert('ไม่พบเลขพัสดุในรูปภาพนี้');
+            document.getElementById('upload-status').innerText = 'ไม่พบข้อมูล';
+            return;
+        }
+
+        document.getElementById('upload-status').innerText = `OCR เสร็จสิ้น! พบ ${trackingList.length} รายการ`;
+        analyzeImportedRanges(trackingList);
+    })
+        .catch(err => {
+            console.error(err);
+            alert('เกิดข้อผิดพลาดในการอ่านรูปภาพ');
+        });
 }
 
 function analyzeImportedRanges(trackingList) {
@@ -884,6 +963,17 @@ function checkAuth() {
         // Show Snapshot Section
         const snapSec = document.getElementById('snapshot-section');
         if (snapSec) snapSec.classList.remove('hidden');
+
+        // Enable Image Import (OCR) for Admin
+        const uploadIcon = document.getElementById('upload-icon-display');
+        const uploadTitle = document.getElementById('upload-title-display');
+        const uploadDesc = document.getElementById('upload-desc-display');
+        const uploadInput = document.getElementById('import-upload');
+
+        if (uploadIcon) uploadIcon.innerText = "📂 / 📷";
+        if (uploadTitle) uploadTitle.innerText = "แตะเพื่อเลือกไฟล์ Excel หรือ รูปภาพ";
+        if (uploadDesc) uploadDesc.innerText = "รองรับ .xlsx, .xls และ รูปภาพ (OCR)";
+        if (uploadInput) uploadInput.accept = ".xlsx, .xls, image/*";
 
     } else {
         // USER MODE (Strict Isolation)
