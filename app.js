@@ -937,101 +937,97 @@ function loadBatchToView(batchId) {
 
 // --- Authentication & Isolation System ---
 
+// Initial Run with improved reliability
+window.addEventListener('load', function () {
+    console.log('Window loaded. Running checkAuth...');
+    setTimeout(checkAuth, 100);
+});
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    checkAuth();
+}
+
 function checkAuth() {
-    // URL Check: ?admin
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdmin = urlParams.has('admin');
+    try {
+        console.log('Running checkAuth...');
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdmin = urlParams.has('admin');
 
-    // UI Elements
-    const body = document.body;
-    const header = document.querySelector('header');
-    const tabNav = document.querySelector('.tabs');
-    const loginModal = document.getElementById('login-modal');
+        const header = document.querySelector('header');
+        const tabNav = document.querySelector('.tabs');
+        const loginModal = document.getElementById('login-modal');
 
-    // Disable Login Modal (Not used in this version)
-    if (loginModal) loginModal.style.display = 'none';
+        if (loginModal) loginModal.style.display = 'none';
 
-    if (isAdmin) {
-        // ADMIN MODE
-        console.log('Mode: Admin');
-        if (header) header.style.display = 'block';
-        if (tabNav) tabNav.style.display = 'flex';
+        if (isAdmin) {
+            // ADMIN MODE
+            if (header) header.style.display = 'block';
+            if (tabNav) tabNav.style.display = 'flex';
 
-        // Default View
-        if (!document.querySelector('.tab-btn.active')) switchTab('check');
+            if (!document.querySelector('.tab-btn.active')) switchTab('check');
 
-        // Show Snapshot Section
-        const snapSec = document.getElementById('snapshot-section');
-        if (snapSec) snapSec.classList.remove('hidden');
+            const snapSec = document.getElementById('snapshot-section');
+            if (snapSec) snapSec.classList.remove('hidden');
 
-        // Enable Image Import (OCR) for Admin
-        const uploadIcon = document.getElementById('upload-icon-display');
-        const uploadTitle = document.getElementById('upload-title-display');
-        const uploadDesc = document.getElementById('upload-desc-display');
-        const uploadInput = document.getElementById('import-upload');
+            const uploadIcon = document.getElementById('upload-icon-display');
+            const uploadTitle = document.getElementById('upload-title-display');
+            const uploadDesc = document.getElementById('upload-desc-display');
+            const uploadInput = document.getElementById('import-upload');
 
-        if (uploadIcon) uploadIcon.innerText = "📂 / 📷";
-        if (uploadTitle) uploadTitle.innerText = "แตะเพื่อเลือกไฟล์ Excel หรือ รูปภาพ";
-        if (uploadDesc) uploadDesc.innerText = "รองรับ .xlsx, .xls และ รูปภาพ (OCR)";
-        if (uploadInput) uploadInput.accept = ".xlsx, .xls, image/*";
+            if (uploadIcon) uploadIcon.innerText = "📂 / 📷";
+            if (uploadTitle) uploadTitle.innerText = "แตะเพื่อเลือกไฟล์ Excel หรือ รูปภาพ";
+            if (uploadDesc) uploadDesc.innerText = "รองรับ .xlsx, .xls และ รูปภาพ (OCR)";
+            if (uploadInput) uploadInput.accept = ".xlsx, .xls, image/*";
 
-    } else {
-        // USER MODE (Strict Isolation)
-        console.log('Mode: User (Restricted)');
+        } else {
+            // USER MODE
+            if (header) header.style.display = 'none';
+            if (tabNav) tabNav.style.display = 'none';
 
-        // 1. Hide Admin Header
-        if (header) header.style.display = 'none';
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            const tabImport = document.getElementById('tab-import');
+            if (tabImport) tabImport.classList.add('active');
 
-        // 2. Hide Navigation
-        if (tabNav) tabNav.style.display = 'none';
+            let userHeader = document.getElementById('user-mode-header');
+            if (!userHeader) {
+                userHeader = document.createElement('div');
+                userHeader.id = 'user-mode-header';
+                userHeader.style.cssText = `
+                    background: var(--primary-color); 
+                    color: white; 
+                    padding: 15px 20px; 
+                    text-align: center; 
+                    font-size: 1.2rem; 
+                    font-weight: bold;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+                    margin-bottom: 25px;
+                    border-radius: 0 0 16px 16px;
+                    position: sticky;
+                    top: 0;
+                    z-index: 1000;
+                `;
+                userHeader.innerHTML = `
+                    <div style="display:flex; justify-content:center; align-items:center;">
+                        <span style="font-size:1rem;">📥 ระบบนำเข้าข้อมูลพัสดุ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
+                    </div>
+                `;
+                const main = document.querySelector('main');
+                if (main && document.body) document.body.insertBefore(userHeader, main);
+            }
 
-        // 3. Force "Import" View
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.getElementById('tab-import').classList.add('active');
+            const saveBtn = document.querySelector('button[onclick="saveImportedBatch()"]');
+            if (saveBtn) {
+                saveBtn.innerHTML = `📤 สรุปและส่งข้อมูล (Submit Report)`;
+                saveBtn.classList.remove('btn-primary');
+                saveBtn.style.backgroundColor = '#28a745';
+                saveBtn.style.color = 'white';
+            }
 
-        // 4. Inject "User Header" for context
-        // Check if already injected
-        if (!document.getElementById('user-header-bar')) {
-            const userHeader = document.createElement('div');
-            userHeader.id = 'user-header-bar';
-            userHeader.style.cssText = `
-                background: linear-gradient(135deg, #DA291C 0%, #B91D12 100%); 
-                color: white; 
-                padding: 15px 20px; 
-                text-align: center; 
-                font-size: 1.2rem; 
-                font-weight: bold;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-                margin-bottom: 25px;
-                border-radius: 0 0 16px 16px;
-                position: sticky;
-                top: 0;
-                z-index: 1000;
-            `;
-            userHeader.innerHTML = `
-                <div style="display:flex; justify-content:center; align-items:center;">
-                    <span style="font-size:1rem;">📥 ระบบนำเข้าข้อมูลพัสดุ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
-                </div>
-            `;
-            document.body.insertBefore(userHeader, document.querySelector('main'));
+            const rangeGenUI = document.getElementById('range-generator-ui');
+            if (rangeGenUI) rangeGenUI.style.display = 'none';
         }
-
-        // 5. Update "Save" button text to be more subordinate-friendly
-        const saveBtn = document.querySelector('button[onclick="saveImportedBatch()"]');
-        if (saveBtn) {
-            saveBtn.innerHTML = `📤 สรุปและส่งข้อมูล (Submit Report)`;
-            saveBtn.classList.remove('btn-primary');
-            saveBtn.style.backgroundColor = '#28a745'; // Green
-            saveBtn.style.color = 'white';
-        }
-
-        // 6. Hide Range Generator UI (Inputs) BUT keep the section for Results
-        const rangeGenUI = document.getElementById('range-generator-ui');
-        if (rangeGenUI) rangeGenUI.style.display = 'none';
+    } catch (e) {
+        console.error('Error in checkAuth:', e);
     }
 }
 
-// Initial Run
-window.onload = function () {
-    checkAuth();
-};
