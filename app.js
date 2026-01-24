@@ -879,22 +879,27 @@ function checkAuth() {
                 fab.onclick = toggleImportHistory;
                 fab.style.cssText = `
                     position: fixed;
-                    bottom: 20px;
+                    bottom: 40px; 
                     right: 20px;
-                    width: 50px;
-                    height: 50px;
+                    width: 60px;
+                    height: 60px;
                     border-radius: 50%;
-                    background: #DA291C;
+                    background: #28a745; /* Green */
                     color: white;
-                    border: none;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-                    font-size: 1.5rem;
-                    z-index: 2000;
+                    border: 3px solid white;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                    font-size: 1.8rem;
+                    z-index: 9999;
                     display: flex;
                     justify-content: center;
                     align-items: center;
                     cursor: pointer;
+                    transition: transform 0.2s;
                 `;
+                fab.active = false; // Toggle state
+                fab.addEventListener('touchstart', () => { fab.style.transform = 'scale(0.9)'; });
+                fab.addEventListener('touchend', () => { fab.style.transform = 'scale(1)'; });
+
                 document.body.appendChild(fab);
             }
         }
