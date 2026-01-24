@@ -858,7 +858,14 @@ function checkAuth() {
                 margin-bottom: 25px;
                 border-radius: 0 0 16px 16px;
             `;
-            userHeader.innerHTML = `📥 ระบบนำเข้าข้อมูลพัสดุ (Import Data Entry)`;
+            userHeader.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>📥 ระบบนำเข้าข้อมูลพัสดุ</span>
+                    <button class="btn" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.4); padding:5px 10px; font-size:0.9rem;" onclick="toggleImportHistory()">
+                        📜 ประวัติ
+                    </button>
+                </div>
+            `;
             document.body.insertBefore(userHeader, document.querySelector('main'));
         }
 
