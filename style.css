@@ -602,6 +602,15 @@ table th {
         z-index: auto;
     }
 
+    /* Compact Frame (Padding Reduction) */
+    .table-responsive th,
+    .table-responsive td {
+        padding: 8px 6px;
+        /* Reduced from default 12px */
+        font-size: 0.9rem;
+        /* Slightly smaller text */
+    }
+
     /* Flatten Status Buttons to single line */
     .status-actions {
         display: flex;
