@@ -392,7 +392,7 @@ function handleImageImport(file) {
 
     Tesseract.recognize(
         file,
-        'eng',
+        'eng', // English is usually enough for IDs
         {
             logger: m => {
                 if (m.status === 'recognizing text') {
@@ -401,56 +401,83 @@ function handleImageImport(file) {
             }
         }
     ).then(({ data: { text } }) => {
-        console.log('OCR Output:', text);
+        console.log('OCR Raw:', text);
 
-        // --- Smart Regex Logic ---
         const trackingList = [];
-        const rawLines = text.split('\n').map(l => l.trim().toUpperCase()).filter(l => l);
+        const rawLines = text.split('\n').map(l => l.trim()).filter(l => l);
 
-        // 1. Standard Pattern: XX000000000TH
-        const stdRegex = /([A-Z]{2})(\d{9})([A-Z]{2})/;
-
-        // 2. Vertical Pattern: 
-        // Line A: ... XX1234
-        // Line B: 56789 ...
-        // Merge -> XX123456789TH
+        // State for "Master Prefix" logic
+        // If we find a line with just "ET 4436", we remember it for subsequent "2521 7" lines
+        let currentPrefixBody = null; // e.g., "ET4436"
 
         for (let i = 0; i < rawLines.length; i++) {
-            const line = rawLines[i];
+            let line = rawLines[i].toUpperCase();
 
-            // Check Standard
-            const stdMatch = line.match(stdRegex);
+            // Strategy 1: Remove all spaces and check for Standard ID
+            // Handles: "ET 4436 2521 7 TH" -> "ET443625217TH"
+            const cleanLine = line.replace(/\s+/g, '');
+            const stdMatch = cleanLine.match(/([A-Z]{2})(\d{9})([A-Z]{2})/);
             if (stdMatch) {
-                trackingList.push({ number: stdMatch[0], price: 0, weight: 'OCR' });
+                trackingList.push({ number: stdMatch[0], price: 0, weight: 'OCR-Std' });
+                // If this line contained a full ID, it might also establish a prefix for others? 
+                // Usually safer to NOT assume mixed modes unless detecting a clear pattern.
+                // But let's capture the prefix just in case:
+                currentPrefixBody = stdMatch[1] + stdMatch[2].substring(0, 4);
                 continue;
             }
 
-            // Check Vertical Pattern part 1 (End with 2 letters + 4 digits)
-            // ex: "EMS th: EC1234"
-            const headMatch = line.match(/([A-Z]{2})(\d{4})$/);
-            if (headMatch) {
-                // Peek next line for 5 digits
-                if (i + 1 < rawLines.length) {
-                    const nextLine = rawLines[i + 1];
-                    const tailMatch = nextLine.match(/^(\d{5})/);
-                    if (tailMatch) {
-                        const fullId = headMatch[1] + headMatch[2] + tailMatch[1] + 'TH';
-                        trackingList.push({ number: fullId, price: 0, weight: 'OCR-Vertical' });
-                        // Skip next line as we consumed it
-                        i++;
-                    }
+            // Strategy 2: Detect "Master Prefix" Header
+            // Look for isolated "XX 0000" or "XX0000" that is NOT a full ID
+            // e.g. "ET 4436"
+            const headerMatch = line.match(/^([A-Z]{2})\s*(\d{4})$/);
+            if (headerMatch) {
+                currentPrefixBody = headerMatch[1] + headerMatch[2];
+                console.log('Found Master Prefix:', currentPrefixBody);
+                continue;
+            }
+
+            // Strategy 3: Stateful Vertical Merge
+            // If we have a currentPrefixBody (e.g. "ET4436"), look for the remaining 5 digits
+            // The remaining 5 digits might be "2521 7" or "25217"
+            if (currentPrefixBody) {
+                // Look for 5 digits (possibly space separated as 4 1)
+                const suffixMatch = line.match(/(\d{4})\s*(\d{1})/);
+                if (suffixMatch) {
+                    // Ensure there isn't too much junk around it
+                    // We accept if the line *contains* this pattern clearly
+                    const fullId = currentPrefixBody + suffixMatch[1] + suffixMatch[2] + 'TH';
+                    trackingList.push({ number: fullId, price: 0, weight: 'OCR-Vert' });
+                    continue;
+                }
+
+                // Backup: Just 5 contiguous digits
+                const simpleSuffix = line.match(/\b(\d{5})\b/);
+                if (simpleSuffix) {
+                    const fullId = currentPrefixBody + simpleSuffix[1] + 'TH';
+                    trackingList.push({ number: fullId, price: 0, weight: 'OCR-Vert' });
+                    continue;
                 }
             }
         }
 
         if (trackingList.length === 0) {
-            alert('ไม่พบเลขพัสดุในรูปภาพนี้');
+            alert('ไม่พบเลขพัสดุในรูปภาพนี้\n\nTips: ถ่ายภาพให้ชัดเจน เห็นตัวเลขครบถ้วน\nรองรับรูปแบบ: XX123456789TH หรือ แบบตาราง\n');
             document.getElementById('upload-status').innerText = 'ไม่พบข้อมูล';
             return;
         }
 
-        document.getElementById('upload-status').innerText = `OCR เสร็จสิ้น! พบ ${trackingList.length} รายการ`;
-        analyzeImportedRanges(trackingList);
+        // De-duplicate
+        const uniqueList = [];
+        const seen = new Set();
+        trackingList.forEach(item => {
+            if (!seen.has(item.number)) {
+                seen.add(item.number);
+                uniqueList.push(item);
+            }
+        });
+
+        document.getElementById('upload-status').innerText = `OCR เสร็จสิ้น! พบ ${uniqueList.length} รายการ`;
+        analyzeImportedRanges(uniqueList);
     })
         .catch(err => {
             console.error(err);
