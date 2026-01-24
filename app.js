@@ -1030,3 +1030,8 @@ function checkAuth() {
         if (rangeGenUI) rangeGenUI.style.display = 'none';
     }
 }
+
+// Initial Run
+window.onload = function () {
+    checkAuth();
+};
