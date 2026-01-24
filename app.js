@@ -602,6 +602,48 @@ function saveImportedBatch(isAuto = false) {
     }
 }
 
+function toggleImportHistory() {
+    const sec = document.getElementById('import-history-section');
+    if (sec.classList.contains('hidden')) {
+        sec.classList.remove('hidden');
+        renderImportHistory();
+    } else {
+        sec.classList.add('hidden');
+    }
+}
+
+function renderImportHistory() {
+    const tbody = document.querySelector('#import-history-table tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    const batches = CustomerDB.getBatches();
+    const list = Object.values(batches).sort((a, b) => b.timestamp - a.timestamp);
+
+    if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">ไม่พบประวัติการนำเข้า</td></tr>';
+        return;
+    }
+
+    list.forEach(item => {
+        const dateStr = new Date(item.timestamp).toLocaleString('th-TH');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${dateStr}</td>
+            <td>
+                <strong>${item.name}</strong><br>
+                <small class="text-muted">${item.type || '-'}</small>
+            </td>
+            <td>${item.count.toLocaleString()}</td>
+            <td>
+                <button class="btn btn-primary" style="padding:4px 8px; font-size:0.8rem;" 
+                    onclick="loadBatchToView('${item.id}')">🔎 ดู</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
 // --- Backup & Restore Glue Code ---
 function backupData() {
     CustomerDB.exportBackup();

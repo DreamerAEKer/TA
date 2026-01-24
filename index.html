@@ -288,6 +288,29 @@ EB123456001TH
                 <h2>นำเข้าไฟล์ Excel (Import Tracking)</h2>
                 <p class="text-muted">อัปโหลดไฟล์ (.xlsx, .xls) เพื่อวิเคราะห์ช่วงเลขและบันทึกข้อมูล</p>
 
+                <div style="text-align:right; margin-bottom:10px;">
+                    <button class="btn btn-neutral" onclick="toggleImportHistory()">📜 ประวัติการนำเข้า
+                        (History)</button>
+                </div>
+
+                <div id="import-history-section" class="hidden"
+                    style="margin-bottom:20px; background:#f9f9f9; padding:15px; border-radius:8px; border:1px solid #ddd;">
+                    <h3 style="margin-top:0;">ประวัติการนำเข้า (Import History)</h3>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table id="import-history-table">
+                            <thead>
+                                <tr>
+                                    <th>วันที่ (Date)</th>
+                                    <th>ชื่อชุดข้อมูล (Batch Name)</th>
+                                    <th>จำนวน (Items)</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody><!-- Populated by JS --></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="upload-area" onclick="document.getElementById('excel-upload').click()">
                     <span class="upload-icon">📂</span>
                     <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;"
