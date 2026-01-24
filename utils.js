@@ -142,41 +142,7 @@ function groupRangesByPrice(ranges) {
     return groupList;
 }
 
-/**
- * Groups a list of Ranges by Price.
- * 
- * @param {Array} ranges - List of metadata ranges {price, count, start, end, ...}
- * @returns {Array} - Sorted Groups [{ price, subTotal, subCount, subRanges: [...] }]
- */
-function groupRangesByPrice(ranges) {
-    const groups = {}; // priceKey -> { price, subTotal, subCount, subRanges }
 
-    ranges.forEach(r => {
-        const price = r.price || 0;
-        const key = price.toFixed(2); // Use string-fixed price as key
-
-        if (!groups[key]) {
-            groups[key] = {
-                price: price,
-                subTotal: 0,
-                subCount: 0,
-                subRanges: []
-            };
-        }
-
-        groups[key].subTotal += (r.count * price);
-        groups[key].subCount += r.count;
-        groups[key].subRanges.push(r);
-    });
-
-    // Convert to Array
-    const groupList = Object.values(groups);
-
-    // Sort by Price (Ascending to match user req "น้อยไปมาก")
-    groupList.sort((a, b) => a.price - b.price);
-
-    return groupList;
-}
 
 /**
  * OPTIMIZED (VIRTUAL) GROUPING
