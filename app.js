@@ -645,20 +645,47 @@ function renderImportResult(ranges, missingItems = []) {
 
     // --- GAP ALERT SECTION ---
     let gapHtml = '';
+    let gapTableRows = ''; // To show in table as well
+
     if (missingItems.length > 0) {
         const totalMissing = missingItems.reduce((acc, m) => acc + m.count, 0);
-        let listHtml = missingItems.map(m =>
-            `<li>${m.prefix}...${m.suffix} : หายไป <strong>${m.count}</strong> รายการ (ช่วง ${m.startBody} - ${m.endBody})</li>`
-        ).join('');
+
+        // Generate Alert List
+        let listHtml = missingItems.map(m => {
+            const rangeText = (m.count === 1)
+                ? `${m.prefix}${m.startBody}${m.suffix}` // Single ID
+                : `${m.prefix}${m.startBody}${m.suffix} - ${m.prefix}${m.endBody}${m.suffix}`; // Range
+
+            return `<li>${rangeText} (${m.count} รายการ)</li>`;
+        }).join('');
 
         gapHtml = `
             <div class="result-error" style="margin-top:15px; padding:15px; border:2px solid #ff4444; background:#ffebeb;">
                 <h3 style="margin-top:0; color:#cc0000;">⚠️ ตรวจพบเลขพัสดุข้ามไป (GAP DETECTED)</h3>
-                <p>ระบบพบว่าข้อมูลที่นำเข้า <strong>ไม่ต่อเนื่อง 100%</strong> มีรายการหายไปจำนวน <strong>${totalMissing}</strong> เลขหมาย:</p>
-                <ul>${listHtml}</ul>
-                <div style="font-size:0.9rem; color:#666;">กรุณาตรวจสอบต้นฉบับว่าตกหล่นหรือไม่? หากตั้งใจข้ามสามารถดำเนินการต่อได้</div>
+                <p>ระบบพบว่าข้อมูลไม่ต่อเนื่อง <strong>หายไป ${totalMissing} รายการ</strong> ดังนี้:</p>
+                <ul style="margin-bottom:0;">${listHtml}</ul>
+                <div style="font-size:0.9rem; color:#666; margin-top:10px;">รายการที่หายไปถูกเพิ่มลงในตารางด้านล่างเพื่ออ้างอิงแล้ว (สีแดง)</div>
             </div>
         `;
+
+        // Generate Table Rows for Gaps
+        gapTableRows = missingItems.map((m, index) => {
+            const rangeText = (m.count === 1)
+                ? `${m.prefix}${m.startBody}${m.suffix}`
+                : `${m.prefix}${m.startBody}${m.suffix} - ${m.prefix}${m.endBody}${m.suffix}`;
+
+            return `
+                <tr style="background-color:#ffebeb; color:#d32f2f; border-bottom:1px solid #ffcdd2;">
+                    <td style="padding:10px; font-weight:bold;">
+                        ❌ รายการที่หายไป (Missing)<br>
+                        <span style="font-size:0.9em; font-family:monospace;">${rangeText}</span>
+                    </td>
+                    <td style="text-align:right; padding:10px;">${m.count}</td>
+                    <td style="text-align:right; padding:10px;">-</td>
+                    <td style="text-align:right; padding:10px;">-</td>
+                </tr>
+            `;
+        }).join('');
     } else {
         gapHtml = `
             <div class="result-success" style="margin-top:15px; padding:10px; border:1px solid #4caf50; background:#e8f5e9;">
@@ -691,6 +718,7 @@ function renderImportResult(ranges, missingItems = []) {
                     </tr>
                 </thead>
                 <tbody>
+                    ${gapTableRows} <!-- Insert Missing Items at Top -->
     `;
 
     ranges.forEach((r, idx) => {
