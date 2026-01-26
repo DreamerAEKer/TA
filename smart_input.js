@@ -9,6 +9,43 @@ document.addEventListener('DOMContentLoaded', () => {
 function initSmartInput() {
     renderPrefixOptions();
     renderBlock1Options();
+    setupSmartPaste();
+}
+
+function setupSmartPaste() {
+    const textArea = document.getElementById('db-tracking-list');
+    if (!textArea) return;
+
+    textArea.addEventListener('paste', (e) => {
+        // Prevent default paste first to analyze content
+        const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+
+        // Try to extract tracking numbers
+        const extracted = TrackingUtils.extractTrackingNumbers(pasteData);
+
+        if (extracted && extracted.length > 0) {
+            e.preventDefault();
+
+            // Insert extracted numbers
+            const newContent = extracted.join('\n');
+
+            // Insert at cursor position or append?
+            // Standard paste inserts at cursor.
+            const startPos = textArea.selectionStart;
+            const endPos = textArea.selectionEnd;
+            const textBefore = textArea.value.substring(0, startPos);
+            const textAfter = textArea.value.substring(endPos, textArea.value.length);
+
+            textArea.value = textBefore + newContent + textAfter;
+
+            // Move cursor to end of inserted text
+            textArea.selectionStart = textArea.selectionEnd = startPos + newContent.length;
+
+            // Optional: Notify user
+            console.log(`Smart Paste: Extracted ${extracted.length} valid tracking numbers.`);
+        }
+        // If no tracking numbers found, let default paste happen (maybe they are pasting notes?)
+    });
 }
 
 function renderPrefixOptions() {
