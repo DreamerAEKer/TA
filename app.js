@@ -46,7 +46,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // Check Admin rights for UI adjustments
+    checkAdminUI();
 });
+
+function checkAdminUI() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.has('admin');
+
+    const uploadIcon = document.getElementById('upload-icon-display');
+    const uploadTitle = document.getElementById('upload-title-display');
+    const uploadDesc = document.getElementById('upload-desc-display');
+    const importInput = document.getElementById('import-upload');
+
+    if (uploadIcon && uploadTitle && uploadDesc && importInput) {
+        if (isAdmin) {
+            // Admin: Excel + Images
+            uploadIcon.textContent = "📂 / 📸";
+            uploadTitle.textContent = "แตะเพื่อเลือกไฟล์ Excel หรือ รูปภาพ";
+            uploadDesc.textContent = "รองรับ .xlsx, .xls และ รูปภาพ (เลือกได้หลายรูป)";
+            importInput.setAttribute('accept', '.xlsx, .xls, .jpg, .jpeg, .png, .heic');
+        } else {
+            // User: Excel Only
+            uploadIcon.textContent = "📂";
+            uploadTitle.textContent = "แตะเพื่อเลือกไฟล์ Excel";
+            uploadDesc.textContent = "รองรับ .xlsx, .xls (สำหรับพนักงาน)";
+            importInput.setAttribute('accept', '.xlsx, .xls'); // Restrict native file picker
+        }
+    }
+}
 
 // 1. Single Check Logic
 function checkSingleNumber() {
