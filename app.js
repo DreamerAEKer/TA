@@ -488,7 +488,52 @@ async function handleImageImport(files) {
 }
 
 function analyzeImportedRanges(trackingList) {
-    // 1. Sort by Price (Asc) then Number (Asc)
+    if (trackingList.length === 0) return;
+
+    // --- STEP 1: GAP ANALYSIS (100% Integrity Check) ---
+    // Sort by Number only (Independent of price) to find true gaps
+    const sortedForGaps = [...trackingList].sort((a, b) => a.number.localeCompare(b.number));
+    const missingItems = []; // { start, end, count, example }
+
+    const parse = (str) => {
+        const m = str.match(/([A-Z]{2})(\d{8})(\d)([A-Z]{2})/);
+        return m ? { full: str, prefix: m[1], body: parseInt(m[2]), check: m[3], suffix: m[4] } : null;
+    };
+
+    let prevGap = parse(sortedForGaps[0].number);
+
+    for (let i = 1; i < sortedForGaps.length; i++) {
+        const currGap = parse(sortedForGaps[i].number);
+        if (!currGap || !prevGap) continue;
+
+        // Check if same series (Prefix + Suffix)
+        if (currGap.prefix === prevGap.prefix && currGap.suffix === prevGap.suffix) {
+            const diff = currGap.body - prevGap.body;
+            if (diff > 1) {
+                // FOUND GAP: diff=2 means 1 missing (e.g. 1, 3 -> missing 2)
+                // Missing range: (prev+1) to (curr-1)
+                const startMissing = prevGap.body + 1;
+                const endMissing = currGap.body - 1;
+                const countMissing = endMissing - startMissing + 1;
+                
+                // Reconstruct ID for display
+                const exampleID = `${currGap.prefix}${startMissing.toString().padStart(8,'0')}X${currGap.suffix}`;
+                
+                missingItems.push({
+                    prefix: currGap.prefix,
+                    suffix: currGap.suffix,
+                    startBody: startMissing,
+                    endBody: endMissing,
+                    count: countMissing,
+                    example: exampleID
+                });
+            }
+        }
+        prevGap = currGap;
+    }
+
+    // --- STEP 2: GROUPING FOR REPORT (User Preference: Price) ---
+    // Sort by Price (Asc) then Number (Asc)
     trackingList.sort((a, b) => {
         if (a.price !== b.price) {
             return a.price - b.price;
@@ -496,35 +541,23 @@ function analyzeImportedRanges(trackingList) {
         return a.number.localeCompare(b.number);
     });
 
-    // 2. Identify Continuous Sequences (Group by Price/Weight as well)
-    // BREAK Ranges if: NON-Sequential Number OR Price Changes OR Weight Changes
     const rawRanges = [];
-    if (trackingList.length === 0) return;
-
-    // Helper to parse
-    const parse = (item) => {
-        const str = item.number;
-        const m = str.match(/([A-Z]{2})(\d{8})(\d)([A-Z]{2})/);
-        return m ? {
-            full: str,
-            prefix: m[1],
-            body: parseInt(m[2]),
-            check: m[3],
-            suffix: m[4],
-            price: item.price,
-            weight: item.weight
-        } : null;
+    
+    // Helper to parse with price (reusing structure)
+    const parseFull = (item) => {
+        const p = parse(item.number);
+        if(p) { p.price = item.price; p.weight = item.weight; }
+        return p;
     };
 
-    let start = parse(trackingList[0]);
+    let start = parseFull(trackingList[0]);
     let prev = start;
-    let currentList = [trackingList[0]]; // Store full objects
+    let currentList = [trackingList[0]]; 
 
     for (let i = 1; i < trackingList.length; i++) {
-        const curr = parse(trackingList[i]);
+        const curr = parseFull(trackingList[i]);
         if (!curr) continue;
 
-        // Check continuity logic:
         const isContinuous = (
             curr.prefix === prev.prefix &&
             curr.suffix === prev.suffix &&
@@ -559,15 +592,14 @@ function analyzeImportedRanges(trackingList) {
         items: currentList.map(x => x.number)
     });
 
-    // --- APPLY OPTIMIZED VIRTUAL GROUPING (User Request) ---
-    // "Map Sorted Price Counts to Sorted ID Sequence"
+    // Virtual Optimization
     const optimizedRanges = TrackingUtils.virtualOptimizeRanges(rawRanges);
 
-    currentImportedBatches = optimizedRanges; // Store Optimized Version Globally
-    renderImportResult(optimizedRanges);
+    currentImportedBatches = optimizedRanges;
+    renderImportResult(optimizedRanges, missingItems);
 }
 
-function renderImportResult(ranges) {
+function renderImportResult(ranges, missingItems = []) {
     const preview = document.getElementById('import-preview');
     const summary = document.getElementById('import-summary');
     const details = document.getElementById('import-details');
@@ -575,16 +607,40 @@ function renderImportResult(ranges) {
     preview.classList.remove('hidden');
 
     const totalItems = ranges.reduce((acc, r) => acc + r.count, 0);
-    // grand total price
     const grandTotal = ranges.reduce((acc, r) => acc + (r.total || (r.count * r.price)), 0);
+
+    // --- GAP ALERT SECTION ---
+    let gapHtml = '';
+    if (missingItems.length > 0) {
+        const totalMissing = missingItems.reduce((acc, m) => acc + m.count, 0);
+        let listHtml = missingItems.map(m => 
+            `<li>${m.prefix}...${m.suffix} : หายไป <strong>${m.count}</strong> รายการ (ช่วง ${m.startBody} - ${m.endBody})</li>`
+        ).join('');
+
+        gapHtml = `
+            <div class="result-error" style="margin-top:15px; padding:15px; border:2px solid #ff4444; background:#ffebeb;">
+                <h3 style="margin-top:0; color:#cc0000;">⚠️ ตรวจพบเลขพัสดุข้ามไป (GAP DETECTED)</h3>
+                <p>ระบบพบว่าข้อมูลที่นำเข้า <strong>ไม่ต่อเนื่อง 100%</strong> มีรายการหายไปจำนวน <strong>${totalMissing}</strong> เลขหมาย:</p>
+                <ul>${listHtml}</ul>
+                <div style="font-size:0.9rem; color:#666;">กรุณาตรวจสอบต้นฉบับว่าตกหล่นหรือไม่? หากตั้งใจข้ามสามารถดำเนินการต่อได้</div>
+            </div>
+        `;
+    } else {
+        gapHtml = `
+            <div class="result-success" style="margin-top:15px; padding:10px; border:1px solid #4caf50; background:#e8f5e9;">
+                <strong>✅ ครบถ้วน 100% (No Gaps)</strong> - เลขพัสดุเรียงต่อเนื่องกันสมบูรณ์
+            </div>
+        `;
+    }
 
     summary.innerHTML = `
         <strong>📊 สรุปผลการวิเคราะห์ (Virtual Optimization)</strong><br>
         จำนวนทั้งหมด: ${totalItems.toLocaleString()} ชิ้น<br>
         ยอดเงินรวม: <span style="font-size:1.2rem; color:#d63384; font-weight:bold;">${grandTotal.toLocaleString()} บาท</span>
+        ${gapHtml}
     `;
 
-    // Generate Receipt-style Table (Simplified List)
+    // Generate Receipt-style Table
     let html = `
         <div style="background:white; padding:20px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.05); font-family:'Courier New', monospace;">
             <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">ใบสรุปรายการ (Optimized Report)</h4>
