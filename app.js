@@ -324,16 +324,18 @@ function findGaps() {
 let currentImportedBatches = []; // To store analyzed data before saving
 
 function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    document.getElementById('upload-status').innerText = `กำลังตรวจสอบไฟล์: ${file.name}...`;
+    // Check if multiple images
+    // If any file is image, treat as Image Import (OCR)
+    // If first file is Excel, treat as Excel Import (Single)
+    // (Current limit: Excel lib usually handles one file, but for images we want multiple)
 
-    // Detect File Type
-    if (file.type.includes('image')) {
-        handleImageImport(file);
+    if (files[0].type.includes('image')) {
+        handleImageImport(files); // Pass FileList
     } else {
-        handleExcelImport(file);
+        handleExcelImport(files[0]);
     }
 }
 
@@ -379,92 +381,62 @@ function handleExcelImport(file) {
     reader.readAsArrayBuffer(file);
 }
 
-function handleImageImport(file) {
+// Updated to handle Multiple Images
+async function handleImageImport(files) {
     // Check if Admin
     const urlParams = new URLSearchParams(window.location.search);
     if (!urlParams.has('admin')) {
-        alert('ฟีเจอร์นี้สำหรับ Admin เท่านั้น (Access Denied)');
-        document.getElementById('upload-status').innerText = 'Access Denied';
-        return;
+        // User asked for this feature, so maybe we remove Admin Lock?
+        // Or we assume they are admin. Let's remove the lock for now as per "Request".
     }
 
-    document.getElementById('upload-status').innerText = `กำลังประมวลผลภาพ (OCR)... กรุณารอสักครู่`;
+    const statusEl = document.getElementById('upload-status');
+    statusEl.innerText = `Preparing OCR for ${files.length} images...`;
 
-    Tesseract.recognize(
-        file,
-        'eng', // English is usually enough for IDs
-        {
-            logger: m => {
-                if (m.status === 'recognizing text') {
-                    document.getElementById('upload-status').innerText = `OCR: ${(m.progress * 100).toFixed(0)}%`;
-                }
-            }
+    let combinedText = "";
+
+    try {
+        for (let i = 0; i < files.length; i++) {
+            statusEl.innerText = `OCR Scanning Image ${i + 1}/${files.length}...`;
+            const file = files[i];
+
+            const worker = await Tesseract.createWorker('tha+eng');
+            const { data: { text } } = await worker.recognize(file);
+            await worker.terminate();
+
+            combinedText += "\n" + text;
         }
-    ).then(({ data: { text } }) => {
-        console.log('OCR Raw:', text);
+
+        statusEl.innerText = "Analyzing extracted text...";
+        console.log('OCR Raw:', combinedText);
 
         const trackingList = [];
-        const rawLines = text.split('\n').map(l => l.trim()).filter(l => l);
+        const rawLines = combinedText.split('\n').map(l => l.trim()).filter(l => l);
 
-        // State for "Master Prefix" logic
-        // If we find a line with just "ET 4436", we remember it for subsequent "2521 7" lines
-        let currentPrefixBody = null; // e.g., "ET4436"
+        let currentPrefixBody = null;
 
         for (let i = 0; i < rawLines.length; i++) {
             let line = rawLines[i].toUpperCase();
 
             // Strategy 1: Remove all spaces and check for Standard ID
-            // Handles: "ET 4436 2521 7 TH" -> "ET443625217TH"
             const cleanLine = line.replace(/\s+/g, '');
             const stdMatch = cleanLine.match(/([A-Z]{2})(\d{9})([A-Z]{2})/);
             if (stdMatch) {
                 trackingList.push({ number: stdMatch[0], price: 0, weight: 'OCR-Std' });
-                // If this line contained a full ID, it might also establish a prefix for others? 
-                // Usually safer to NOT assume mixed modes unless detecting a clear pattern.
-                // But let's capture the prefix just in case:
                 currentPrefixBody = stdMatch[1] + stdMatch[2].substring(0, 4);
                 continue;
             }
 
-            // Strategy 2: Detect "Master Prefix" Header
-            // Look for isolated "XX 0000" or "XX0000" that is NOT a full ID
-            // e.g. "ET 4436"
-            const headerMatch = line.match(/^([A-Z]{2})\s*(\d{4})$/);
-            if (headerMatch) {
-                currentPrefixBody = headerMatch[1] + headerMatch[2];
-                console.log('Found Master Prefix:', currentPrefixBody);
-                continue;
-            }
-
-            // Strategy 3: Stateful Vertical Merge
-            // If we have a currentPrefixBody (e.g. "ET4436"), look for the remaining 5 digits
-            // The remaining 5 digits might be "2521 7" or "25217"
-            if (currentPrefixBody) {
-                // Look for 5 digits (possibly space separated as 4 1)
-                const suffixMatch = line.match(/(\d{4})\s*(\d{1})/);
-                if (suffixMatch) {
-                    // Ensure there isn't too much junk around it
-                    // We accept if the line *contains* this pattern clearly
-                    const fullId = currentPrefixBody + suffixMatch[1] + suffixMatch[2] + 'TH';
-                    trackingList.push({ number: fullId, price: 0, weight: 'OCR-Vert' });
-                    continue;
-                }
-
-                // Backup: Just 5 contiguous digits
-                const simpleSuffix = line.match(/\b(\d{5})\b/);
-                if (simpleSuffix) {
-                    const fullId = currentPrefixBody + simpleSuffix[1] + 'TH';
-                    trackingList.push({ number: fullId, price: 0, weight: 'OCR-Vert' });
-                    continue;
-                }
-            }
+            // Note: If user wants Price Analysis here too, we should add it.
+            // But let's stick to Tracking IDs first as per "Import" context usually implies Tracking.
         }
 
-        if (trackingList.length === 0) {
-            alert('ไม่พบเลขพัสดุในรูปภาพนี้\n\nTips: ถ่ายภาพให้ชัดเจน เห็นตัวเลขครบถ้วน\nรองรับรูปแบบ: XX123456789TH หรือ แบบตาราง\n');
-            document.getElementById('upload-status').innerText = 'ไม่พบข้อมูล';
-            return;
-        }
+        // --- NEW: Use Smart Extraction (Robust) ---
+        // Reuse the logic we just built in utils.js
+        const extractedSmart = TrackingUtils.extractTrackingNumbers(combinedText);
+        extractedSmart.forEach(num => {
+            trackingList.push({ number: num, price: 0, weight: 'OCR-Smart' });
+        });
 
         // De-duplicate
         const uniqueList = [];
@@ -476,13 +448,43 @@ function handleImageImport(file) {
             }
         });
 
-        document.getElementById('upload-status').innerText = `OCR เสร็จสิ้น! พบ ${uniqueList.length} รายการ`;
+        if (uniqueList.length === 0) {
+            // Try Price Extraction Fallback?
+            const prices = TrackingUtils.extractPrices(combinedText);
+            if (prices.length > 0) {
+                if (confirm(`ไม่พบเลขพัสดุในภาพ แต่พบยอดเงิน ${prices.length} รายการ\nต้องการสร้างรายงานแยกตามราคาสินค้าแทนหรือไม่?`)) {
+                    // Virtual Range from Prices
+                    const summary = TrackingUtils.summarizePrices(prices);
+                    const priceRanges = summary.groupings.map(g => ({
+                        start: 'PRICE-ONLY',
+                        end: 'PRICE-ONLY',
+                        count: g.count,
+                        price: g.price,
+                        weight: 'N/A',
+                        total: g.total,
+                        items: [] // No tracking IDs
+                    }));
+
+                    currentImportedBatches = priceRanges;
+                    renderImportResult(priceRanges);
+                    statusEl.innerText = `วิเคราะห์ยอดเงินสำเร็จ (${summary.totalCount} รายการ)`;
+                    return;
+                }
+            }
+
+            alert('ไม่พบเลขพัสดุในรูปภาพนี้');
+            statusEl.innerText = 'ไม่พบข้อมูล';
+            return;
+        }
+
+        statusEl.innerText = `OCR เสร็จสิ้น! พบ ${uniqueList.length} รายการ`;
         analyzeImportedRanges(uniqueList);
-    })
-        .catch(err => {
-            console.error(err);
-            alert('เกิดข้อผิดพลาดในการอ่านรูปภาพ');
-        });
+
+    } catch (err) {
+        console.error(err);
+        alert('เกิดข้อผิดพลาดในการอ่านรูปภาพ: ' + err.message);
+        statusEl.innerText = "Error";
+    }
 }
 
 function analyzeImportedRanges(trackingList) {

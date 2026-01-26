@@ -340,14 +340,14 @@ EB123456001TH
                 </div>
 
                 <div class="upload-area" onclick="document.getElementById('import-upload').click()">
-                    <span class="upload-icon" id="upload-icon-display">📂</span>
-                    <h3 id="upload-title-display">แตะเพื่อเลือกไฟล์ Excel</h3>
-                    <p class="text-muted" id="upload-desc-display">รองรับ .xlsx, .xls</p>
+                    <span class="upload-icon" id="upload-icon-display">📂 / 📸</span>
+                    <h3 id="upload-title-display">แตะเพื่อเลือกไฟล์ Excel หรือ รูปภาพ</h3>
+                    <p class="text-muted" id="upload-desc-display">รองรับ .xlsx, .xls และ รูปภาพ (เลือกได้หลายรูป)</p>
                     <p id="upload-status" style="margin-top:10px; color:var(--primary-color); height:20px;"></p>
                 </div>
-                <!-- Hidden Input: Accept Excel by default, updated by JS for Admin -->
-                <input type="file" id="import-upload" accept=".xlsx, .xls" style="display:none;"
-                    onchange="handleFileUpload(event)">
+                <!-- Hidden Input: Accept Excel AND Images, Multiple -->
+                <input type="file" id="import-upload" accept=".xlsx, .xls, .jpg, .jpeg, .png, .heic" multiple
+                    onchange="handleFileUpload(event)" style="display:none;">
 
                 <div id="import-preview" class="hidden mt-4">
                     <h3>ผลการวิเคราะห์ (Analysis Result)</h3>

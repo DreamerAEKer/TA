@@ -157,39 +157,120 @@ function addSmartEntry() {
     const currentText = textArea.value.trim();
     let newText = '';
 
-    if (isRange && qtyStr && parseInt(qtyStr) > 0) {
-        // Quantity Generation
-        const qty = parseInt(qtyStr);
-        const startNum = parseInt(b2);
+    // --- Smart Input Logic ---
 
-        // Safety Limit
-        if (qty > 1000) {
-            if (!confirm('จำนวนมากกว่า 1,000 รายการ อาจทำให้เครื่องช้า ยืนยันทำต่อ?')) return;
-        }
+    async function handleImageSelection(files) {
+        if (!files || files.length === 0) return;
 
-        const lines = [];
-        for (let i = 0; i < qty; i++) {
-            const currentNum = startNum + i;
-            let currentB2 = currentNum.toString().padStart(4, '0');
+        const statusEl = document.getElementById('smart-ocr-status');
+        const textArea = document.getElementById('db-tracking-list');
 
-            // Handle overflow if 9999 -> 10000. 
-            // Standard tracking number logic usually implies overflow affects upper digits, 
-            // but for this manual tool, we'll just stop if it breaks 4-digit structure to keep it safe.
-            if (currentB2.length > 4) {
-                break;
+        // UI Feedback (Generic attempt)
+        if (statusEl) statusEl.textContent = `Processing ${files.length} images...`;
+
+        let combinedText = "";
+
+        try {
+            for (let i = 0; i < files.length; i++) {
+                if (statusEl) statusEl.textContent = `Scanning image ${i + 1}/${files.length}...`;
+                const file = files[i];
+
+                // Tesseract OCR
+                const worker = await Tesseract.createWorker('tha+eng');
+                const { data: { text } } = await worker.recognize(file);
+                await worker.terminate();
+
+                combinedText += "\n" + text;
             }
 
-            const body = b1 + currentB2;
-            const cd = TrackingUtils.calculateS10CheckDigit(body);
-            lines.push(`${prefix}${body}${cd}${suffix}`);
-        }
-        newText = lines.join('\n');
+            if (statusEl) statusEl.textContent = "Analyzing...";
 
-    } else {
-        // Single Entry
-        const body = b1 + b2;
-        const cd = TrackingUtils.calculateS10CheckDigit(body);
-        newText = `${prefix}${body}${cd}${suffix}`;
+            // Output Logic
+            if (textArea) {
+                const resultMsg = processSmartInput(combinedText, textArea);
+                if (statusEl) {
+                    statusEl.textContent = resultMsg || "Done";
+                    setTimeout(() => statusEl.textContent = "", 3000);
+                }
+            }
+
+        } catch (err) {
+            console.error(err);
+            if (statusEl) statusEl.textContent = "Error: " + err.message;
+            alert("OCR Error: " + err.message);
+        }
+
+        // Reset specific input if exists
+        const uploadInput = document.getElementById('smart-image-upload');
+        if (uploadInput) uploadInput.value = '';
+    }
+
+    function processSmartInput(text, textArea) {
+        // 1. Try Tracking Numbers
+        const extracted = TrackingUtils.extractTrackingNumbers(text);
+
+        if (extracted && extracted.length > 0) {
+            insertToTextArea(textArea, extracted.join('\n'));
+            return `Found ${extracted.length} Tracking Numbers`;
+        }
+
+        // 2. Fallback: Prices
+        const prices = TrackingUtils.extractPrices(text);
+        if (prices && prices.length > 0) {
+            const summary = TrackingUtils.summarizePrices(prices);
+
+            if (confirm(`ไม่พบเลขพัสดุ แต่พบยอดเงิน ${summary.totalCount} รายการ\nยอดรวม: ${summary.totalValue.toFixed(2)}\n\nต้องการดูสรุปยอดหรือไม่?`)) {
+                let report = `--- Price Summary ---\n`;
+                summary.groupings.forEach(g => {
+                    report += `${g.price.toFixed(2)} x ${g.count} = ${g.total.toFixed(2)}\n`;
+                });
+                report += `---------------------\n`;
+                report += `Total Items: ${summary.totalCount}\n`;
+                report += `Total Value: ${summary.totalValue.toFixed(2)}`;
+
+                insertToTextArea(textArea, report);
+                return `Extracted Price Summary`;
+            }
+        }
+
+        return "No tracking numbers found";
+    }
+
+    function insertToTextArea(textArea, content) {
+        const startPos = textArea.selectionStart;
+        const endPos = textArea.selectionEnd;
+        const textBefore = textArea.value.substring(0, startPos);
+        const textAfter = textArea.value.substring(endPos, textArea.value.length);
+
+        textArea.value = textBefore + (textBefore && textBefore.slice(-1) !== '\n' ? '\n' : '') + content + (textAfter && textAfter[0] !== '\n' ? '\n' : '') + textAfter;
+
+        textArea.selectionStart = textArea.selectionEnd = startPos + content.length + 1;
+    }
+
+    function setupSmartPaste() {
+        const textArea = document.getElementById('db-tracking-list');
+        if (!textArea) return;
+
+        textArea.addEventListener('paste', (e) => {
+            const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+
+            const extracted = TrackingUtils.extractTrackingNumbers(pasteData);
+
+            if (extracted && extracted.length > 0) {
+                e.preventDefault();
+                insertToTextArea(textArea, extracted.join('\n'));
+                console.log(`Smart Paste: Extracted ${extracted.length} valid tracking numbers.`);
+            } else {
+                // Price Check Fallback
+                const prices = TrackingUtils.extractPrices(pasteData);
+                if (prices.length > 3) {
+                    if (confirm(`พบยอดเงิน ${prices.length} รายการ ต้องการสรุปยอดแทนการวางข้อความปกติหรือไม่?`)) {
+                        e.preventDefault();
+                        processSmartInput(pasteData, textArea);
+                    }
+                }
+            }
+        });
     }
 
     // Append
