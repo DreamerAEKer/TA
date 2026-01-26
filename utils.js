@@ -242,7 +242,7 @@ function cleanTrackingText(text) {
  */
 function extractTrackingNumbers(text) {
     const validNumbers = new Set();
-    
+
     // Regex explanation:
     // ([A-Z]{2})       : Group 1 - Prefix (2 letters)
     // \s*              : Optional spaces
@@ -250,20 +250,20 @@ function extractTrackingNumbers(text) {
     //                    Let's use a more structured regex to catch the specific user format "4436 2813 9"
     // ([0-9]{8})       : Body of 8 digits? No, user saw "4436 2813 9". That's 4+4+1 = 9 digits. Good.
     // Let's try to capture the pattern loosely then validate.
-    
+
     // Strategy: Look for Sequence: 2 letters + many digits + optional 2 letters
     // We expect 9 digits total.
-    
+
     // Pattern: 
     // Prefix (2 letters)
     // Optional Spaces
     // Digits (Sequence of 9 digits, potentially separated by spaces)
     // Optional Spaces
     // Suffix (2 letters, Optional)
-    
+
     // We will find all candidates that look like tracking numbers.
     const regex = /([A-Za-z]{2})\s*([0-9\s]{9,})\s*([A-Za-z]{0,2})/g;
-    
+
     let match;
     while ((match = regex.exec(text)) !== null) {
         const fullMatch = match[0];
@@ -273,11 +273,11 @@ function extractTrackingNumbers(text) {
 
         // We only care if we have exactly 9 digits for S10
         if (rawDigits.length !== 9) {
-            continue; 
+            continue;
         }
 
         let candidateSuffix = suffix;
-        
+
         // Logic: If suffix is missing (empty), assume 'TH' (Thailand) as per user requirements for 11-char codes
         if (candidateSuffix.length === 0) {
             candidateSuffix = "TH";
@@ -290,7 +290,7 @@ function extractTrackingNumbers(text) {
 
         // Construct candidate
         const candidateDateCheck = `${prefix}${rawDigits}${candidateSuffix}`;
-        
+
         // Validate Check Digit
         const validation = validateTrackingNumber(candidateDateCheck);
         if (validation.isValid) {
@@ -301,6 +301,50 @@ function extractTrackingNumbers(text) {
     return Array.from(validNumbers);
 }
 
+/**
+ * Extracts price-like values (e.g. 32.00, 474.00) from text.
+ * @param {string} text 
+ * @returns {Array} Array of numbers (floats)
+ */
+function extractPrices(text) {
+    if (!text) return [];
+    // Regex for money: 1-5 digits, dot, 2 digits. e.g. 32.00, 1500.50
+    const regex = /\b(\d{1,5}\.\d{2})\b/g;
+    const matches = text.match(regex);
+    if (!matches) return [];
+
+    // Convert to numbers
+    return matches.map(m => parseFloat(m));
+}
+
+/**
+ * Summarizes a list of prices into groups.
+ * @param {Array} prices 
+ * @returns {object} { groupings: [], totalCount, totalValue }
+ */
+function summarizePrices(prices) {
+    const groups = {};
+    let totalValue = 0;
+
+    prices.forEach(p => {
+        const key = p.toFixed(2);
+        if (!groups[key]) {
+            groups[key] = { price: p, count: 0, total: 0 };
+        }
+        groups[key].count++;
+        groups[key].total += p;
+        totalValue += p;
+    });
+
+    const groupings = Object.values(groups).sort((a, b) => a.price - b.price);
+
+    return {
+        groupings,
+        totalCount: prices.length,
+        totalValue
+    };
+}
+
 window.TrackingUtils = {
     calculateS10CheckDigit,
     validateTrackingNumber,
@@ -308,5 +352,7 @@ window.TrackingUtils = {
     groupRangesByPrice,
     virtualOptimizeRanges,
     cleanTrackingText,
-    extractTrackingNumbers
+    extractTrackingNumbers,
+    extractPrices,
+    summarizePrices
 };

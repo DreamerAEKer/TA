@@ -162,6 +162,17 @@ EB123456001TH
                         <div
                             style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                             <strong style="color:#0d47a1;">✨ Smart Input (ช่วยกรอกเลข)</strong>
+                            <div>
+                                <button class="btn btn-neutral"
+                                    onclick="document.getElementById('smart-image-upload').click()"
+                                    style="padding: 5px 10px; font-size: 0.8rem; border:1px solid #ccc; display:flex; align-items:center; gap:5px;">
+                                    📸 Scan Images
+                                </button>
+                                <input type="file" id="smart-image-upload" multiple accept="image/*"
+                                    style="display:none" onchange="handleImageSelection(this.files)">
+                                <span id="smart-ocr-status"
+                                    style="font-size:0.8rem; color:var(--primary-color); margin-left:10px;"></span>
+                            </div>
                         </div>
 
                         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
