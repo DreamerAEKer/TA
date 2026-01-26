@@ -382,12 +382,17 @@ function handleExcelImport(file) {
 }
 
 // Updated to handle Multiple Images
+// Updated to handle Multiple Images
 async function handleImageImport(files) {
     // Check if Admin
     const urlParams = new URLSearchParams(window.location.search);
     if (!urlParams.has('admin')) {
-        // User asked for this feature, so maybe we remove Admin Lock?
-        // Or we assume they are admin. Let's remove the lock for now as per "Request".
+        alert('ฟีเจอร์ "นำเข้ารูปภาพ" สงวนสิทธิ์สำหรับ Admin เท่านั้น\n(พนักงานทั่วไปกรุณาใช้ไฟล์ Excel)');
+        // Clear input safely
+        const input = document.getElementById('import-upload');
+        if (input) input.value = '';
+        document.getElementById('upload-status').innerText = 'Access Denied (Admin Only)';
+        return;
     }
 
     const statusEl = document.getElementById('upload-status');
@@ -515,10 +520,10 @@ function analyzeImportedRanges(trackingList) {
                 const startMissing = prevGap.body + 1;
                 const endMissing = currGap.body - 1;
                 const countMissing = endMissing - startMissing + 1;
-                
+
                 // Reconstruct ID for display
-                const exampleID = `${currGap.prefix}${startMissing.toString().padStart(8,'0')}X${currGap.suffix}`;
-                
+                const exampleID = `${currGap.prefix}${startMissing.toString().padStart(8, '0')}X${currGap.suffix}`;
+
                 missingItems.push({
                     prefix: currGap.prefix,
                     suffix: currGap.suffix,
@@ -542,17 +547,17 @@ function analyzeImportedRanges(trackingList) {
     });
 
     const rawRanges = [];
-    
+
     // Helper to parse with price (reusing structure)
     const parseFull = (item) => {
         const p = parse(item.number);
-        if(p) { p.price = item.price; p.weight = item.weight; }
+        if (p) { p.price = item.price; p.weight = item.weight; }
         return p;
     };
 
     let start = parseFull(trackingList[0]);
     let prev = start;
-    let currentList = [trackingList[0]]; 
+    let currentList = [trackingList[0]];
 
     for (let i = 1; i < trackingList.length; i++) {
         const curr = parseFull(trackingList[i]);
@@ -613,7 +618,7 @@ function renderImportResult(ranges, missingItems = []) {
     let gapHtml = '';
     if (missingItems.length > 0) {
         const totalMissing = missingItems.reduce((acc, m) => acc + m.count, 0);
-        let listHtml = missingItems.map(m => 
+        let listHtml = missingItems.map(m =>
             `<li>${m.prefix}...${m.suffix} : หายไป <strong>${m.count}</strong> รายการ (ช่วง ${m.startBody} - ${m.endBody})</li>`
         ).join('');
 
