@@ -650,11 +650,21 @@ function renderImportResult(ranges, missingItems = []) {
     if (missingItems.length > 0) {
         const totalMissing = missingItems.reduce((acc, m) => acc + m.count, 0);
 
+        // Helper to format with Check Digit
+        const formatID = (prefix, body, suffix) => {
+            const bodyStr = body.toString().padStart(8, '0');
+            const cd = TrackingUtils.calculateS10CheckDigit(bodyStr);
+            return `${prefix}${bodyStr}${cd}${suffix}`;
+        };
+
         // Generate Alert List
         let listHtml = missingItems.map(m => {
+            const startID = formatID(m.prefix, m.startBody, m.suffix);
+            const endID = formatID(m.prefix, m.endBody, m.suffix);
+
             const rangeText = (m.count === 1)
-                ? `${m.prefix}${m.startBody}${m.suffix}` // Single ID
-                : `${m.prefix}${m.startBody}${m.suffix} - ${m.prefix}${m.endBody}${m.suffix}`; // Range
+                ? startID // Single ID
+                : `${startID} - ${endID}`; // Range
 
             return `<li>${rangeText} (${m.count} รายการ)</li>`;
         }).join('');
@@ -670,9 +680,12 @@ function renderImportResult(ranges, missingItems = []) {
 
         // Generate Table Rows for Gaps
         gapTableRows = missingItems.map((m, index) => {
+            const startID = formatID(m.prefix, m.startBody, m.suffix);
+            const endID = formatID(m.prefix, m.endBody, m.suffix);
+
             const rangeText = (m.count === 1)
-                ? `${m.prefix}${m.startBody}${m.suffix}`
-                : `${m.prefix}${m.startBody}${m.suffix} - ${m.prefix}${m.endBody}${m.suffix}`;
+                ? startID
+                : `${startID} - ${endID}`;
 
             return `
                 <tr style="background-color:#ffebeb; color:#d32f2f; border-bottom:1px solid #ffcdd2;">
