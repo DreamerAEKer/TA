@@ -366,8 +366,12 @@ EB123456001TH
                                 <option value="Credit">รายเดือน (Credit)</option>
                             </select>
                         </div>
-                        <button class="btn btn-primary mt-4" onclick="saveImportedBatch()">💾
-                            บันทึกข้อมูลลงฐานข้อมูล</button>
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button class="btn btn-primary" onclick="saveImportedBatch()">💾 บันทึกข้อมูล
+                                (Save)</button>
+                            <button class="btn btn-danger" onclick="clearImportData()" style="background:#ff4444;">🗑️
+                                ล้างรายการ (Clear)</button>
+                        </div>
                     </div>
 
                     <div id="import-details" class="mt-4">

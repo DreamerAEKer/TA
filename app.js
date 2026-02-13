@@ -351,20 +351,51 @@ function findGaps() {
 // --- Universal Import Logic (Excel & Image/OCR) ---
 
 let currentImportedBatches = []; // To store analyzed data before saving
+let rawTrackingData = []; // Store ALL raw items (Cumulative)
+let importedFileCount = 0; // Track number of files uploaded (for limit)
+
+function clearImportData() {
+    if (rawTrackingData.length === 0) return;
+    if (!confirm('ต้องการล้างข้อมูลนำเข้าทั้งหมดหรือไม่?')) return;
+
+    rawTrackingData = [];
+    currentImportedBatches = [];
+    importedFileCount = 0; // Reset Limit
+    document.getElementById('import-preview').classList.add('hidden');
+    document.getElementById('upload-status').innerText = 'ล้างข้อมูลเรียบร้อย (Ready)';
+    // Reset file input
+    document.getElementById('import-upload').value = '';
+}
+
 
 function handleFileUpload(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    // Check if multiple images
-    // If any file is image, treat as Image Import (OCR)
-    // If first file is Excel, treat as Excel Import (Single)
-    // (Current limit: Excel lib usually handles one file, but for images we want multiple)
+    // --- Role-Based Limit Check ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.has('admin');
 
+    if (!isAdmin) {
+        // Normal User Limit: 2 Files Max (Cumulative)
+        if ((importedFileCount + files.length) > 2) {
+            alert(`⚠️ จำกัดการอัปโหลดสูงสุด 2 ไฟล์สำหรับบัญชีทั่วไป\n(คุณอัปโหลดไปแล้ว ${importedFileCount} ไฟล์, พยายามเพิ่มอีก ${files.length} ไฟล์)\n\nกรุณาล้างข้อมูลเก่าก่อนหากต้องการเริ่มใหม่`);
+            document.getElementById('import-upload').value = ''; // Reset input to allow re-selection
+            return;
+        }
+    }
+
+    // Increment Count
+    importedFileCount += files.length;
+
+    // Check type
     if (files[0].type.includes('image')) {
-        handleImageImport(files); // Pass FileList
+        handleImageImport(files); // Pass FileList (Admin Only check is inside)
     } else {
-        handleExcelImport(files[0]);
+        // Excel - Support Multiple
+        Array.from(files).forEach(file => {
+            handleExcelImport(file);
+        });
     }
 }
 
@@ -378,7 +409,7 @@ function handleExcelImport(file) {
         const sheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        const trackingList = [];
+        const newItems = [];
         const regex = /([A-Z]{2})(\d{9})([A-Z]{2})/i;
 
         jsonData.forEach(row => {
@@ -388,7 +419,7 @@ function handleExcelImport(file) {
                     if (match) {
                         const price = parseFloat(row[3]) || 0;
                         const weight = row[4] || '-';
-                        trackingList.push({
+                        newItems.push({
                             number: match[0].toUpperCase(),
                             price: price,
                             weight: weight
@@ -398,19 +429,21 @@ function handleExcelImport(file) {
             }
         });
 
-        if (trackingList.length === 0) {
+        if (newItems.length === 0) {
             alert('ไม่พบเลขพัสดุในไฟล์ Excel (ตรวจสอบคอลัมน์ C)');
             document.getElementById('upload-status').innerText = 'ไม่พบเลขพัสดุ';
             return;
         }
 
-        document.getElementById('upload-status').innerText = `อ่าน Excel เสร็จสิ้น! พบ ${trackingList.length} รายการ`;
-        analyzeImportedRanges(trackingList);
+        // Cumulative Append
+        rawTrackingData.push(...newItems);
+
+        document.getElementById('upload-status').innerText = `อ่าน Excel สำเร็จ! เพิ่ม ${newItems.length} รายการ (รวม ${rawTrackingData.length})`;
+        analyzeImportedRanges(rawTrackingData);
     };
     reader.readAsArrayBuffer(file);
 }
 
-// Updated to handle Multiple Images
 // Updated to handle Multiple Images
 async function handleImageImport(files) {
     // Check if Admin
@@ -444,7 +477,7 @@ async function handleImageImport(files) {
         statusEl.innerText = "Analyzing extracted text...";
         console.log('OCR Raw:', combinedText);
 
-        const trackingList = [];
+        const newItems = [];
         const rawLines = combinedText.split('\n').map(l => l.trim()).filter(l => l);
 
         let currentPrefixBody = null;
@@ -456,38 +489,27 @@ async function handleImageImport(files) {
             const cleanLine = line.replace(/\s+/g, '');
             const stdMatch = cleanLine.match(/([A-Z]{2})(\d{9})([A-Z]{2})/);
             if (stdMatch) {
-                trackingList.push({ number: stdMatch[0], price: 0, weight: 'OCR-Std' });
+                newItems.push({ number: stdMatch[0], price: 0, weight: 'OCR-Std' });
                 currentPrefixBody = stdMatch[1] + stdMatch[2].substring(0, 4);
                 continue;
             }
-
-            // Note: If user wants Price Analysis here too, we should add it.
-            // But let's stick to Tracking IDs first as per "Import" context usually implies Tracking.
         }
 
         // --- NEW: Use Smart Extraction (Robust) ---
         // Reuse the logic we just built in utils.js
         const extractedSmart = TrackingUtils.extractTrackingNumbers(combinedText);
         extractedSmart.forEach(num => {
-            trackingList.push({ number: num, price: 0, weight: 'OCR-Smart' });
+            newItems.push({ number: num, price: 0, weight: 'OCR-Smart' });
         });
 
-        // De-duplicate
-        const uniqueList = [];
-        const seen = new Set();
-        trackingList.forEach(item => {
-            if (!seen.has(item.number)) {
-                seen.add(item.number);
-                uniqueList.push(item);
-            }
-        });
+        // De-duplicate locally (within this batch) logic if needed, 
+        // but analyzeImportedRanges handles grouping.
 
-        if (uniqueList.length === 0) {
-            // Try Price Extraction Fallback?
+        if (newItems.length === 0) {
+            // Price Fallback...
             const prices = TrackingUtils.extractPrices(combinedText);
             if (prices.length > 0) {
                 if (confirm(`ไม่พบเลขพัสดุในภาพ แต่พบยอดเงิน ${prices.length} รายการ\nต้องการสร้างรายงานแยกตามราคาสินค้าแทนหรือไม่?`)) {
-                    // Virtual Range from Prices
                     const summary = TrackingUtils.summarizePrices(prices);
                     const priceRanges = summary.groupings.map(g => ({
                         start: 'PRICE-ONLY',
@@ -499,6 +521,8 @@ async function handleImageImport(files) {
                         items: [] // No tracking IDs
                     }));
 
+                    // Note: Price-only mode replaces everything as it's a different mode
+                    rawTrackingData = [];
                     currentImportedBatches = priceRanges;
                     renderImportResult(priceRanges);
                     statusEl.innerText = `วิเคราะห์ยอดเงินสำเร็จ (${summary.totalCount} รายการ)`;
@@ -507,12 +531,15 @@ async function handleImageImport(files) {
             }
 
             alert('ไม่พบเลขพัสดุในรูปภาพนี้');
-            statusEl.innerText = 'ไม่พบข้อมูล';
+            statusEl.innerText = 'ไม่พบข้อมูลในภาพล่าสุด';
             return;
         }
 
-        statusEl.innerText = `OCR เสร็จสิ้น! พบ ${uniqueList.length} รายการ`;
-        analyzeImportedRanges(uniqueList);
+        // Cumulative Append
+        rawTrackingData.push(...newItems);
+
+        statusEl.innerText = `OCR เสร็จสิ้น! เพิ่ม ${newItems.length} รายการ (รวม ${rawTrackingData.length})`;
+        analyzeImportedRanges(rawTrackingData);
 
     } catch (err) {
         console.error(err);
@@ -524,9 +551,15 @@ async function handleImageImport(files) {
 function analyzeImportedRanges(trackingList) {
     if (trackingList.length === 0) return;
 
+    // Remove duplicates from total list
+    const uniqueMap = new Map();
+    trackingList.forEach(item => uniqueMap.set(item.number, item));
+    const uniqueList = Array.from(uniqueMap.values());
+
+    // Sort logic...
     // --- STEP 1: GAP ANALYSIS (100% Integrity Check) ---
     // Sort by Number only (Independent of price) to find true gaps
-    const sortedForGaps = [...trackingList].sort((a, b) => a.number.localeCompare(b.number));
+    const sortedForGaps = [...uniqueList].sort((a, b) => a.number.localeCompare(b.number));
     const missingItems = []; // { start, end, count, example }
 
     const parse = (str) => {
@@ -568,7 +601,7 @@ function analyzeImportedRanges(trackingList) {
 
     // --- STEP 2: GROUPING FOR REPORT (User Preference: Price) ---
     // Sort by Price (Asc) then Number (Asc)
-    trackingList.sort((a, b) => {
+    uniqueList.sort((a, b) => {
         if (a.price !== b.price) {
             return a.price - b.price;
         }
@@ -584,12 +617,12 @@ function analyzeImportedRanges(trackingList) {
         return p;
     };
 
-    let start = parseFull(trackingList[0]);
+    let start = parseFull(uniqueList[0]);
     let prev = start;
-    let currentList = [trackingList[0]];
+    let currentList = [uniqueList[0]];
 
-    for (let i = 1; i < trackingList.length; i++) {
-        const curr = parseFull(trackingList[i]);
+    for (let i = 1; i < uniqueList.length; i++) {
+        const curr = parseFull(uniqueList[i]);
         if (!curr) continue;
 
         const isContinuous = (
@@ -601,7 +634,7 @@ function analyzeImportedRanges(trackingList) {
         );
 
         if (isContinuous) {
-            currentList.push(trackingList[i]);
+            currentList.push(uniqueList[i]);
             prev = curr;
         } else {
             rawRanges.push({
@@ -614,7 +647,7 @@ function analyzeImportedRanges(trackingList) {
             });
             start = curr;
             prev = curr;
-            currentList = [trackingList[i]];
+            currentList = [uniqueList[i]];
         }
     }
     rawRanges.push({
