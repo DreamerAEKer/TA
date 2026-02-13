@@ -752,20 +752,24 @@ function renderImportResult(ranges, missingItems = []) {
         <style>
             .mobile-stats { display: none; }
             .col-qty, .col-price, .col-total { display: table-cell; }
+            .row-flex { display: block; }
             
             @media (max-width: 600px) {
                 .col-qty, .col-price, .col-total { display: none !important; }
-                .mobile-stats { 
-                    display: inline-block; 
-                    float: right; 
-                    color: #d63384; 
-                    font-weight: bold; 
-                    font-size: 0.9rem;
-                    background: #f8f9fa;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    border: 1px solid #e9ecef;
+                .row-flex { 
+                    display: flex !important; 
+                    justify-content: space-between; 
+                    align-items: flex-start; 
                 }
+                .mobile-stats { 
+                    display: block; 
+                    text-align: right;
+                    min-width: 100px;
+                    padding-left: 10px;
+                }
+                .mobile-qty { font-weight: bold; color: #d63384; margin-bottom: 2px; }
+                .mobile-total { font-weight: bold; color: #333; }
+                
                 .mobile-grand-total {
                     display: flex;
                     justify-content: space-between;
@@ -779,7 +783,7 @@ function renderImportResult(ranges, missingItems = []) {
                 *รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)
             </div>
             
-            <table style="width:100%; font-size:0.9rem; border-collapse: collapse;">
+            <table style="width:100%; border-collapse: collapse;">
                 <thead>
                     <tr style="border-bottom:2px solid #000;">
                         <th style="text-align:left; padding:5px;">รายการ (Description)</th>
@@ -799,17 +803,22 @@ function renderImportResult(ranges, missingItems = []) {
         html += `
             <tr style="border-bottom:1px dashed #eee;">
                 <td style="padding:10px 0; vertical-align:top;">
-                    <div style="margin-bottom:2px;">
-                        <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong>
-                        <!-- Mobile Stats (Right Aligned) -->
-                        <span class="mobile-stats">
-                            ${r.count} ชิ้น | ${rowTotalStr}
-                        </span>
+                    <div class="row-flex">
+                        <!-- Left: Info -->
+                        <div style="flex:1;">
+                            <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong><br>
+                            <span style="color:#0056b3; font-weight:bold; display:inline-block; overflow-wrap:break-word;">
+                                ${r.start === r.end ? r.start : `${r.start} - ${r.end}`}
+                            </span><br>
+                            <small style="color:#666;">น้ำหนัก (Weight): ${r.weight}</small>
+                        </div>
+
+                        <!-- Right: Stats (Mobile) -->
+                        <div class="mobile-stats">
+                            <div class="mobile-qty">${r.count} ชิ้น</div>
+                            <div class="mobile-total">${rowTotalStr}</div>
+                        </div>
                     </div>
-                    <span style="color:#0056b3; font-weight:bold; display:inline-block; overflow-wrap:break-word;">
-                        ${r.start === r.end ? r.start : `${r.start} - ${r.end}`}
-                    </span><br>
-                    <small style="color:#666;">น้ำหนัก (Weight): ${r.weight}</small>
                 </td>
                 <td class="col-qty" style="text-align:right; vertical-align:top; padding-top:10px;">${r.count}</td>
                 <td class="col-price" style="text-align:right; vertical-align:top; padding-top:10px;">@${r.price}</td>
