@@ -723,12 +723,15 @@ function renderImportResult(ranges, missingItems = []) {
             return `
                 <tr style="background-color:#ffebeb; color:#d32f2f; border-bottom:1px solid #ffcdd2;">
                     <td style="padding:10px; font-weight:bold;">
-                        ❌ รายการที่หายไป (Missing)<br>
+                        <div class="line-flex">
+                            <span>❌ รายการที่หายไป (Missing)</span>
+                            <span class="mobile-stats" style="color:#d32f2f;">${m.count} รายการ</span>
+                        </div>
                         <span style="font-size:0.9em; font-family:monospace;">${rangeText}</span>
                     </td>
-                    <td style="text-align:right; padding:10px;">${m.count}</td>
-                    <td style="text-align:right; padding:10px;">-</td>
-                    <td style="text-align:right; padding:10px;">-</td>
+                    <td class="col-qty" style="text-align:right; padding:10px;">${m.count}</td>
+                    <td class="col-price" style="text-align:right; padding:10px;">-</td>
+                    <td class="col-total" style="text-align:right; padding:10px;">-</td>
                 </tr>
             `;
         }).join('');

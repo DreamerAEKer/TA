@@ -643,21 +643,38 @@ table th {
 }
 
 /* --- Mobile Report Layout (Optimized) --- */
-.mobile-stats { display: none; }
-.col-qty, .col-price, .col-total { display: table-cell; }
+.mobile-stats {
+    display: none;
+}
+
+.col-qty,
+.col-price,
+.col-total {
+    display: table-cell;
+}
 
 @media (max-width: 600px) {
-    .col-qty, .col-price, .col-total { display: none !important; }
-    
-    .mobile-stats { display: inline-block !important; }
-    
+
+    .col-qty,
+    .col-price,
+    .col-total {
+        display: none !important;
+    }
+
+    .mobile-stats {
+        display: inline-block !important;
+    }
+
     .line-flex {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-start;
+        /* Changed from space-between to align closer */
+        gap: 15px;
+        /* Add gap between Description and Stats */
         align-items: baseline;
         width: 100%;
     }
-    
+
     .mobile-grand-total {
         display: flex;
         justify-content: space-between;
