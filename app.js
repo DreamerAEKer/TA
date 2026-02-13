@@ -749,41 +749,71 @@ function renderImportResult(ranges, missingItems = []) {
 
     // Generate Receipt-style Table
     let html = `
+        <style>
+            .mobile-stats { display: none; }
+            .col-qty, .col-price, .col-total { display: table-cell; }
+            
+            @media (max-width: 600px) {
+                .col-qty, .col-price, .col-total { display: none !important; }
+                .mobile-stats { 
+                    display: inline-block; 
+                    float: right; 
+                    color: #d63384; 
+                    font-weight: bold; 
+                    font-size: 0.9rem;
+                    background: #f8f9fa;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    border: 1px solid #e9ecef;
+                }
+                .mobile-grand-total {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+            }
+        </style>
         <div style="background:white; padding:20px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.05); font-family:'Courier New', monospace;">
             <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">ใบสรุปรายการ (Optimized Report)</h4>
              <div style="font-size:0.8rem; color:red; text-align:center; margin-bottom:5px;">
                 *รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)
             </div>
             
-            <!-- Responsive Container -->
-            <div style="overflow-x:auto; -webkit-overflow-scrolling: touch;">
-                <table style="width:100%; min-width:600px; font-size:0.9rem; border-collapse: collapse;">
-                    <thead>
-                        <tr style="border-bottom:2px solid #000;">
-                            <th style="text-align:left; padding:5px;">รายการ (Description)</th>
-                            <th style="text-align:right; padding:5px; white-space:nowrap;">จำนวน (Qty)</th>
-                            <th style="text-align:right; padding:5px; white-space:nowrap;">ราคา/ชิ้น</th>
-                            <th style="text-align:right; padding:5px; white-space:nowrap;">รวม (Total)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${gapTableRows} <!-- Insert Missing Items at Top -->
+            <table style="width:100%; font-size:0.9rem; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom:2px solid #000;">
+                        <th style="text-align:left; padding:5px;">รายการ (Description)</th>
+                        <th class="col-qty" style="text-align:right; padding:5px; white-space:nowrap;">จำนวน (Qty)</th>
+                        <th class="col-price" style="text-align:right; padding:5px; white-space:nowrap;">ราคา/ชิ้น</th>
+                        <th class="col-total" style="text-align:right; padding:5px; white-space:nowrap;">รวม (Total)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${gapTableRows} <!-- Insert Missing Items at Top -->
     `;
 
     ranges.forEach((r, idx) => {
         const rowTotal = r.total || (r.count * r.price);
+        const rowTotalStr = rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 });
+
         html += `
             <tr style="border-bottom:1px dashed #eee;">
-                <td style="padding:10px 0;">
-                    <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong><br>
-                    <span style="color:#0056b3; font-weight:bold; display:inline-block; max-width:250px; overflow-wrap:break-word;">
+                <td style="padding:10px 0; vertical-align:top;">
+                    <div style="margin-bottom:2px;">
+                        <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong>
+                        <!-- Mobile Stats (Right Aligned) -->
+                        <span class="mobile-stats">
+                            ${r.count} ชิ้น | ${rowTotalStr}
+                        </span>
+                    </div>
+                    <span style="color:#0056b3; font-weight:bold; display:inline-block; overflow-wrap:break-word;">
                         ${r.start === r.end ? r.start : `${r.start} - ${r.end}`}
                     </span><br>
-                    <small>น้ำหนัก (Weight): ${r.weight}</small>
+                    <small style="color:#666;">น้ำหนัก (Weight): ${r.weight}</small>
                 </td>
-                <td style="text-align:right; vertical-align:top; padding-top:10px;">${r.count}</td>
-                <td style="text-align:right; vertical-align:top; padding-top:10px;">@${r.price}</td>
-                <td style="text-align:right; vertical-align:top; padding-top:10px; font-weight:bold;">${rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td class="col-qty" style="text-align:right; vertical-align:top; padding-top:10px;">${r.count}</td>
+                <td class="col-price" style="text-align:right; vertical-align:top; padding-top:10px;">@${r.price}</td>
+                <td class="col-total" style="text-align:right; vertical-align:top; padding-top:10px; font-weight:bold;">${rowTotalStr}</td>
             </tr>
         `;
     });
@@ -792,15 +822,17 @@ function renderImportResult(ranges, missingItems = []) {
                     </tbody>
                     <tfoot>
                         <tr style="border-top:2px solid #000; border-bottom:2px solid #000;">
-                            <td colspan="3" style="text-align:right; padding:10px; font-weight:bold;">รวมทั้งสิ้น (Grand Total)</td>
-                            <td style="text-align:right; padding:10px; font-weight:bold; font-size:1.1rem;">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                            <td colspan="4" style="padding:10px;">
+                                <div class="mobile-grand-total">
+                                    <span style="font-weight:bold;">รวมทั้งสิ้น (Grand Total)</span>
+                                    <span style="font-weight:bold; font-size:1.1rem;">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            </td>
                         </tr>
                     </tfoot>
                 </table>
-            </div>
-            <!-- Scroll Hint -->
             <div style="font-size:0.8rem; color:#999; text-align:center; margin-top:5px; font-style:italic;">
-                (เลื่อนซ้าย-ขวา เพื่อดูข้อมูลทั้งหมด)
+                (บนมือถือ: จำนวนและยอดเงินจะแสดงที่มุมขวาของรายการ)
             </div>
         </div>
     `;
