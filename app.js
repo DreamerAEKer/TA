@@ -802,23 +802,22 @@ function renderImportResult(ranges, missingItems = []) {
 
         html += `
             <tr style="border-bottom:1px dashed #eee;">
-                <td style="padding:10px 0; vertical-align:top;">
-                    <div class="row-flex">
-                        <!-- Left: Info -->
-                        <div style="flex:1;">
-                            <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong><br>
-                            <span style="color:#0056b3; font-weight:bold; display:inline-block; overflow-wrap:break-word;">
-                                ${r.start === r.end ? r.start : `${r.start} - ${r.end}`}
-                            </span><br>
-                            <small style="color:#666;">น้ำหนัก (Weight): ${r.weight}</small>
-                        </div>
-
-                        <!-- Right: Stats (Mobile) -->
-                        <div class="mobile-stats">
-                            <div class="mobile-qty">${r.count} ชิ้น</div>
-                            <div class="mobile-total">${rowTotalStr}</div>
-                        </div>
+                <td style="padding:10px 0; vertical-align:top; width:100%;">
+                    <!-- Line 1: Title + Qty (Mobile) -->
+                    <div class="line-flex">
+                        <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong>
+                        <span class="mobile-stats" style="color:#d63384; font-weight:bold;">${r.count} ชิ้น</span>
                     </div>
+                    
+                    <!-- Line 2: Range + Total (Mobile) -->
+                    <div class="line-flex">
+                        <span style="color:#0056b3; font-weight:bold; overflow-wrap:break-word; max-width:70%;">
+                            ${r.start === r.end ? r.start : `${r.start} - ${r.end}`}
+                        </span>
+                        <span class="mobile-stats" style="font-weight:bold; color:#333;">${rowTotalStr}</span>
+                    </div>
+
+                    <small style="color:#666;">น้ำหนัก (Weight): ${r.weight}</small>
                 </td>
                 <td class="col-qty" style="text-align:right; vertical-align:top; padding-top:10px;">${r.count}</td>
                 <td class="col-price" style="text-align:right; vertical-align:top; padding-top:10px;">@${r.price}</td>
