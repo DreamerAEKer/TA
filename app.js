@@ -749,34 +749,6 @@ function renderImportResult(ranges, missingItems = []) {
 
     // Generate Receipt-style Table
     let html = `
-        <style>
-            .mobile-stats { display: none; }
-            .col-qty, .col-price, .col-total { display: table-cell; }
-            .row-flex { display: block; }
-            
-            @media (max-width: 600px) {
-                .col-qty, .col-price, .col-total { display: none !important; }
-                .row-flex { 
-                    display: flex !important; 
-                    justify-content: space-between; 
-                    align-items: flex-start; 
-                }
-                .mobile-stats { 
-                    display: block; 
-                    text-align: right;
-                    min-width: 100px;
-                    padding-left: 10px;
-                }
-                .mobile-qty { font-weight: bold; color: #d63384; margin-bottom: 2px; }
-                .mobile-total { font-weight: bold; color: #333; }
-                
-                .mobile-grand-total {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-            }
-        </style>
         <div style="background:white; padding:20px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.05); font-family:'Courier New', monospace;">
             <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">ใบสรุปรายการ (Optimized Report)</h4>
              <div style="font-size:0.8rem; color:red; text-align:center; margin-bottom:5px;">

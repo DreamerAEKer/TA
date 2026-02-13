@@ -641,3 +641,26 @@ table th {
         padding: 2px 6px;
     }
 }
+
+/* --- Mobile Report Layout (Optimized) --- */
+.mobile-stats { display: none; }
+.col-qty, .col-price, .col-total { display: table-cell; }
+
+@media (max-width: 600px) {
+    .col-qty, .col-price, .col-total { display: none !important; }
+    
+    .mobile-stats { display: inline-block !important; }
+    
+    .line-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        width: 100%;
+    }
+    
+    .mobile-grand-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
