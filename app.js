@@ -775,21 +775,23 @@ function renderImportResult(ranges, missingItems = []) {
         const rowTotal = r.total || (r.count * r.price);
         const rowTotalStr = rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 });
 
+        // Logic: Show total only if count > 1
+        const displayTotal = (r.count > 1) ? ` | ${rowTotalStr}` : '';
+
         html += `
             <tr style="border-bottom:1px dashed #eee;">
                 <td style="padding:10px 0; vertical-align:top; width:100%;">
-                    <!-- Line 1: Title + Qty (Mobile) -->
+                    <!-- Line 1: Title + Qty + Total (Mobile) -->
                     <div class="line-flex">
                         <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong>
-                        <span class="mobile-stats" style="color:#d63384; font-weight:bold;">${r.count} ชิ้น</span>
+                        <span class="mobile-stats" style="color:#d63384; font-weight:bold;">${r.count} ชิ้น${displayTotal}</span>
                     </div>
                     
-                    <!-- Line 2: Range + Total (Mobile) -->
+                    <!-- Line 2: Range Only (Mobile) -->
                     <div class="line-flex">
-                        <span style="color:#0056b3; font-weight:bold; overflow-wrap:break-word; max-width:70%;">
+                        <span style="color:#0056b3; font-weight:bold; overflow-wrap:break-word; max-width:100%;">
                             ${r.start === r.end ? r.start : `${r.start} - ${r.end}`}
                         </span>
-                        <span class="mobile-stats" style="font-weight:bold; color:#333;">${rowTotalStr}</span>
                     </div>
 
                     <small style="color:#666;">น้ำหนัก (Weight): ${r.weight}</small>
