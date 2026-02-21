@@ -419,19 +419,26 @@ function handleExcelImport(file) {
                     if (match) {
                         const price = parseFloat(row[3]) || 0;
                         let weight = row[4] || '-';
+                        let originalWeight = weight;
+                        let hasDiscrepancy = false;
 
                         // Apply Package A3 logic if price matches
                         if (price > 0 && typeof TrackingUtils !== 'undefined' && TrackingUtils.getWeightFromPriceA3) {
                             const calcWeight = TrackingUtils.getWeightFromPriceA3(price);
                             if (calcWeight !== '-') {
                                 weight = calcWeight;
+                                if (originalWeight !== '-' && originalWeight.toString().trim() !== weight.toString().trim()) {
+                                    hasDiscrepancy = true;
+                                }
                             }
                         }
 
                         newItems.push({
                             number: match[0].toUpperCase(),
                             price: price,
-                            weight: weight
+                            weight: weight,
+                            hasDiscrepancy: hasDiscrepancy,
+                            originalWeight: originalWeight
                         });
                     }
                 }
@@ -562,8 +569,15 @@ function analyzeImportedRanges(trackingList) {
 
     // Remove duplicates from total list
     const uniqueMap = new Map();
-    trackingList.forEach(item => uniqueMap.set(item.number, item));
+    const discrepancyMap = new Map();
+    trackingList.forEach(item => {
+        uniqueMap.set(item.number, item);
+        if (item.hasDiscrepancy) {
+            discrepancyMap.set(item.number, item);
+        }
+    });
     const uniqueList = Array.from(uniqueMap.values());
+    const discrepanciesList = Array.from(discrepancyMap.values());
 
     // Sort logic...
     // --- STEP 1: GAP ANALYSIS (100% Integrity Check) ---
@@ -622,7 +636,7 @@ function analyzeImportedRanges(trackingList) {
     // Helper to parse with price (reusing structure)
     const parseFull = (item) => {
         const p = parse(item.number);
-        if (p) { p.price = item.price; p.weight = item.weight; }
+        if (p) { p.price = item.price; p.weight = item.weight; p.hasDiscrepancy = item.hasDiscrepancy; p.originalWeight = item.originalWeight; }
         return p;
     };
 
@@ -672,10 +686,10 @@ function analyzeImportedRanges(trackingList) {
     const optimizedRanges = TrackingUtils.virtualOptimizeRanges(rawRanges);
 
     currentImportedBatches = optimizedRanges;
-    renderImportResult(optimizedRanges, missingItems);
+    renderImportResult(optimizedRanges, missingItems, discrepanciesList);
 }
 
-function renderImportResult(ranges, missingItems = []) {
+function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     const preview = document.getElementById('import-preview');
     const summary = document.getElementById('import-summary');
     const details = document.getElementById('import-details');
@@ -752,11 +766,26 @@ function renderImportResult(ranges, missingItems = []) {
         `;
     }
 
+    // --- DISCREPANCY ALERT SECTION ---
+    let discrepancyHtml = '';
+    if (discrepancies && discrepancies.length > 0) {
+        discrepancyHtml = `
+            <div class="result-error" style="margin-top:15px; padding:10px; border:2px solid #ff9800; background:#fff3e0; color:#e65100;">
+                <h4 style="margin:0 0 5px 0;">⚠️ พบข้อสังเกตจากไฟล์นำเข้า (Inconsistencies)</h4>
+                <p style="margin:0; font-size:0.95rem;">
+                    พบข้อมูลน้ำหนักที่ระบุในไฟล์ <strong>ไม่สัมพันธ์กับราคาตามตารางค่าบริการ</strong> จำนวน <strong>${discrepancies.length} รายการ</strong><br>
+                    <small>เช่น ในไฟล์ระบุ ${discrepancies[0].originalWeight} แต่ราคา ${discrepancies[0].price} บาท (ระบบได้ปรับแก้เป็น ${discrepancies[0].weight} อัตโนมัติแล้ว)</small>
+                </p>
+            </div>
+        `;
+    }
+
     summary.innerHTML = `
         <strong>📊 สรุปผลการวิเคราะห์ (Virtual Optimization)</strong><br>
         จำนวนทั้งหมด: ${totalItems.toLocaleString()} ชิ้น<br>
         ยอดเงินรวม: <span style="font-size:1.2rem; color:#d63384; font-weight:bold;">${grandTotal.toLocaleString()} บาท</span>
         ${gapHtml}
+        ${discrepancyHtml}
     `;
 
     // Generate Receipt-style Table
