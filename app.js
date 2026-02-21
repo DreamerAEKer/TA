@@ -418,7 +418,16 @@ function handleExcelImport(file) {
                     const match = row[2].match(regex);
                     if (match) {
                         const price = parseFloat(row[3]) || 0;
-                        const weight = row[4] || '-';
+                        let weight = row[4] || '-';
+
+                        // Apply Package A3 logic if price matches
+                        if (price > 0 && typeof TrackingUtils !== 'undefined' && TrackingUtils.getWeightFromPriceA3) {
+                            const calcWeight = TrackingUtils.getWeightFromPriceA3(price);
+                            if (calcWeight !== '-') {
+                                weight = calcWeight;
+                            }
+                        }
+
                         newItems.push({
                             number: match[0].toUpperCase(),
                             price: price,

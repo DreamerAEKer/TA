@@ -345,6 +345,35 @@ function summarizePrices(prices) {
     };
 }
 
+/**
+ * Calculates Package A3 weight based on price.
+ * @param {number} price 
+ * @returns {string} Weight string e.g. "2 กก" or "-" if unknown
+ */
+function getWeightFromPriceA3(price) {
+    if (!price || price <= 0) return '-';
+    
+    // Up to 10kg
+    if (price >= 19 && price <= 109) {
+        let w = (price - 9) / 10;
+        if (Number.isInteger(w)) return `${w} กก`;
+    }
+    // 11kg to 20kg
+    if (price >= 114 && price <= 159) {
+        let w = (price - 59) / 5;
+        if (Number.isInteger(w)) return `${w} กก`;
+    }
+    // > 20kg
+    if (price > 159) {
+        let excess = (price - 159) / 15;
+        if (Number.isInteger(excess)) {
+            return `${20 + excess} กก`;
+        }
+    }
+    
+    return '-'; // Fallback
+}
+
 window.TrackingUtils = {
     calculateS10CheckDigit,
     validateTrackingNumber,
@@ -354,5 +383,6 @@ window.TrackingUtils = {
     cleanTrackingText,
     extractTrackingNumbers,
     extractPrices,
-    summarizePrices
+    summarizePrices,
+    getWeightFromPriceA3
 };
