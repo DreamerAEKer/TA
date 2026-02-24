@@ -119,7 +119,7 @@ function checkSingleNumber() {
 
         resultBox.classList.add('result-success');
         resultBox.innerHTML = `
-            <strong>✅ ถูกต้อง (Valid)</strong><br>Tracking Number: ${input}
+            <strong>✅ ถูกต้อง (Valid)</strong><br>Tracking Number: ${TrackingUtils.formatTrackingNumber(input)}
             ${ownerHtml}
             ${similarHtml}
         `;
@@ -135,7 +135,7 @@ function checkSingleNumber() {
                      ⚠️ Check Digit ไม่ถูกต้อง (ใส่มา ${oldInput}) ระบบค้นหาด้วยเลขที่ถูกต้องให้แล้ว
                  </div>
                  <div class="result-box result-success" style="margin-top:0;">
-                     <strong>✅ ถูกต้อง (Valid)</strong><br>Tracking Number: ${fixedInput}
+                     <strong>✅ ถูกต้อง (Valid)</strong><br>Tracking Number: ${TrackingUtils.formatTrackingNumber(fixedInput)}
                  </div>
              `;
         } else {
@@ -250,7 +250,7 @@ function generateRange() {
         html += `
                 <tr ${rowClass}>
                 <td>${index + 1}</td>
-                <td class="tracking-id">${item.number}${ownerHtml}</td>
+                <td class="tracking-id">${TrackingUtils.formatTrackingNumber(item.number)}${ownerHtml}</td>
                 <td>${statusHtml}</td>
             </tr>
                 `;
@@ -715,8 +715,8 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
         // Generate Alert List
         let listHtml = missingItems.map(m => {
-            const startID = formatID(m.prefix, m.startBody, m.suffix);
-            const endID = formatID(m.prefix, m.endBody, m.suffix);
+            const startID = TrackingUtils.formatTrackingNumber(formatID(m.prefix, m.startBody, m.suffix));
+            const endID = TrackingUtils.formatTrackingNumber(formatID(m.prefix, m.endBody, m.suffix));
 
             const rangeText = (m.count === 1)
                 ? startID // Single ID
@@ -736,8 +736,8 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
         // Generate Table Rows for Gaps
         gapTableRows = missingItems.map((m, index) => {
-            const startID = formatID(m.prefix, m.startBody, m.suffix);
-            const endID = formatID(m.prefix, m.endBody, m.suffix);
+            const startID = TrackingUtils.formatTrackingNumber(formatID(m.prefix, m.startBody, m.suffix));
+            const endID = TrackingUtils.formatTrackingNumber(formatID(m.prefix, m.endBody, m.suffix));
 
             const rangeText = (m.count === 1)
                 ? startID
@@ -828,7 +828,9 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                     <!-- Line 2: Range Only (Mobile) -->
                     <div class="line-flex">
                         <span style="color:#0056b3; font-weight:bold; overflow-wrap:break-word; max-width:100%;">
-                            ${r.start === r.end ? r.start : `${r.start} - ${r.end}`}
+                            ${r.start === r.end
+                ? TrackingUtils.formatTrackingNumber(r.start)
+                : `${TrackingUtils.formatTrackingNumber(r.start)} - ${TrackingUtils.formatTrackingNumber(r.end)}`}
                         </span>
                     </div>
 

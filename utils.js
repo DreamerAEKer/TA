@@ -346,13 +346,23 @@ function summarizePrices(prices) {
 }
 
 /**
+ * Formats tracking number as XX 0000 0000 0 TH
+ * @param {string} trackingNumber 
+ * @returns {string} Formatted tracking number
+ */
+function formatTrackingNumber(trackingNumber) {
+    if (!trackingNumber || trackingNumber.length !== 13) return trackingNumber;
+    return `${trackingNumber.substring(0, 2)} ${trackingNumber.substring(2, 6)} ${trackingNumber.substring(6, 10)} ${trackingNumber.substring(10, 11)} ${trackingNumber.substring(11, 13)}`;
+}
+
+/**
  * Calculates Package A3 weight based on price.
  * @param {number} price 
  * @returns {string} Weight string e.g. "2 กก" or "-" if unknown
  */
 function getWeightFromPriceA3(price) {
     if (!price || price <= 0) return '-';
-    
+
     // Up to 10kg
     if (price >= 19 && price <= 109) {
         let w = (price - 9) / 10;
@@ -370,13 +380,14 @@ function getWeightFromPriceA3(price) {
             return `${20 + excess} กก`;
         }
     }
-    
+
     return '-'; // Fallback
 }
 
 window.TrackingUtils = {
     calculateS10CheckDigit,
     validateTrackingNumber,
+    formatTrackingNumber,
     generateTrackingRange,
     groupRangesByPrice,
     virtualOptimizeRanges,
