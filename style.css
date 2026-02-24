@@ -551,8 +551,9 @@ table th {
         padding: 15px;
         border-radius: 8px;
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        justify-content: flex-start;
+        align-items: baseline;
+        gap: 15px;
         margin-top: 10px;
     }
 
@@ -677,7 +678,8 @@ table th {
 
     .mobile-grand-total {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        justify-content: flex-start;
+        align-items: baseline;
+        gap: 15px;
     }
 }
