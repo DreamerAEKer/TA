@@ -548,7 +548,7 @@ table th {
     .report-footer {
         background: #333;
         color: white;
-        padding: 15px 20px 15px 15px;
+        padding: 15px;
         border-radius: 8px;
         display: flex;
         justify-content: space-between;
@@ -670,13 +670,11 @@ table th {
         justify-content: space-between;
         align-items: baseline;
         width: 100%;
-        padding-right: 10px;
     }
 
     .mobile-grand-total {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding-right: 10px;
     }
 }
