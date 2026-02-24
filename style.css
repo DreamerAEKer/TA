@@ -548,12 +548,11 @@ table th {
     .report-footer {
         background: #333;
         color: white;
-        padding: 15px;
+        padding: 15px 20px 15px 15px;
         border-radius: 8px;
         display: flex;
-        justify-content: flex-start;
-        align-items: baseline;
-        gap: 15px;
+        justify-content: space-between;
+        align-items: center;
         margin-top: 10px;
     }
 
@@ -668,18 +667,16 @@ table th {
 
     .line-flex {
         display: flex;
-        justify-content: flex-start;
-        /* Changed from space-between to align closer */
-        gap: 15px;
-        /* Add gap between Description and Stats */
+        justify-content: space-between;
         align-items: baseline;
         width: 100%;
+        padding-right: 10px;
     }
 
     .mobile-grand-total {
         display: flex;
-        justify-content: flex-start;
-        align-items: baseline;
-        gap: 15px;
+        justify-content: space-between;
+        align-items: center;
+        padding-right: 10px;
     }
 }
