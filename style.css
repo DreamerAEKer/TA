@@ -427,7 +427,8 @@ table th {
         /* Smooth scrolling on iOS */
     }
 
-    table {
+    #db-list-container table,
+    #import-history-table {
         min-width: 600px;
         /* Ensure table doesn't squish */
     }
@@ -667,7 +668,10 @@ table th {
 
     .line-flex {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-start;
+        /* Changed from space-between to align closer */
+        gap: 15px;
+        /* Add gap between Description and Stats */
         align-items: baseline;
         width: 100%;
     }
@@ -676,5 +680,6 @@ table th {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        padding-right: 15px;
     }
 }
