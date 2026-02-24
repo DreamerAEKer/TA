@@ -352,7 +352,7 @@ function summarizePrices(prices) {
  */
 function formatTrackingNumber(trackingNumber) {
     if (!trackingNumber || trackingNumber.length !== 13) return trackingNumber;
-    return `${trackingNumber.substring(0, 2)} ${trackingNumber.substring(2, 6)} ${trackingNumber.substring(6, 10)} ${trackingNumber.substring(10, 11)} ${trackingNumber.substring(11, 13)}`;
+    return `${trackingNumber.substring(0, 2)}\u202F${trackingNumber.substring(2, 6)}\u202F${trackingNumber.substring(6, 10)}\u202F${trackingNumber.substring(10, 11)}\u202F${trackingNumber.substring(11, 13)}`;
 }
 
 /**
