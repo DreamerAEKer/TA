@@ -126,6 +126,14 @@ function toggleSmartRange() {
 }
 
 function addSmartEntry() {
+    // Validate Customer Name first so we don't clear inputs if it's missing
+    const dbNameInput = document.getElementById('db-name');
+    if (dbNameInput && !dbNameInput.value.trim()) {
+        alert('กรุณากรอก "ชื่อลูกค้า / บริษัท" ก่อนเริ่มสแกนหรือบันทึกเลขพัสดุ');
+        dbNameInput.focus();
+        return;
+    }
+
     const prefix = document.getElementById('smart-prefix').value.trim().toUpperCase();
     const b1 = document.getElementById('smart-block1').value.replace(/\D/g, '');
     const b2 = document.getElementById('smart-block2').value.replace(/\D/g, '');
