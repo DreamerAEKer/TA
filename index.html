@@ -136,13 +136,13 @@ EB123456001TH
                 <div class="grid-form"
                     style="background:#f9f9f9; padding:15px; border-radius:8px; border:1px solid #eee;">
                     <div class="form-group" style="position: relative;">
-                        <label style="display:flex; justify-content:space-between; align-items:flex-end;">
-                            ชื่อลูกค้า / บริษัท
-                            <select id="db-name-select" onchange="selectCustomerFromDropdown(this.value)" style="padding: 2px 5px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 4px; max-width: 155px; background-color: #fff; cursor: pointer;">
+                        <label>ชื่อลูกค้า / บริษัท</label>
+                        <div style="display: flex; gap: 5px;">
+                            <input type="text" id="db-name" placeholder="เช่น บจก. เอบีซี เทรดดิ้ง" list="customer-name-list" style="flex: 1;">
+                            <select id="db-name-select" onchange="selectCustomerFromDropdown(this.value)" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; max-width: 155px; background-color: #f8f9fa; cursor: pointer;">
                                 <option value="">- เลือกลูกค้าประวัติ -</option>
                             </select>
-                        </label>
-                        <input type="text" id="db-name" placeholder="เช่น บจก. เอบีซี เทรดดิ้ง" list="customer-name-list">
+                        </div>
                         <datalist id="customer-name-list"></datalist>
                     </div>
                     <div class="form-group">
