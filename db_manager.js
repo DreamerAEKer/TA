@@ -229,6 +229,62 @@ CustomerDB.clearAll = () => {
 // UI State
 let currentSort = { key: 'timestamp', order: 'desc' };
 
+function renderCustomerList() {
+    const list = document.getElementById('customer-name-list');
+    const selectBox = document.getElementById('db-name-select');
+    const dbNameInput = document.getElementById('db-name');
+    if (!list) return;
+
+    const batches = CustomerDB.getBatches();
+    const customers = {}; // name -> { type, contract, timestamp }
+
+    // Extract unique customers
+    Object.values(batches).forEach(b => {
+        if (!customers[b.name] || b.timestamp > customers[b.name].timestamp) {
+            customers[b.name] = { type: b.type, contract: b.contract, timestamp: b.timestamp || 0 };
+        }
+    });
+
+    list.innerHTML = '';
+    if (selectBox) selectBox.innerHTML = '<option value="">- เลือกลูกค้าประวัติ -</option>';
+
+    Object.keys(customers).sort().forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        list.appendChild(opt);
+
+        if (selectBox) {
+            const selectOpt = document.createElement('option');
+            selectOpt.value = name;
+            selectOpt.textContent = name;
+            selectBox.appendChild(selectOpt);
+        }
+    });
+
+    // Add event listener to auto-fill (only once)
+    if (dbNameInput && !dbNameInput.hasAttribute('data-listener-added')) {
+        dbNameInput.setAttribute('data-listener-added', 'true');
+        dbNameInput.addEventListener('change', (e) => {
+            const selectedName = e.target.value;
+            if (customers[selectedName]) {
+                const typeSelect = document.getElementById('db-type');
+                const contractInput = document.getElementById('db-contract');
+                if (typeSelect) typeSelect.value = customers[selectedName].type;
+                if (contractInput) contractInput.value = customers[selectedName].contract || '';
+            }
+        });
+    }
+}
+
+window.selectCustomerFromDropdown = function(name) {
+    if (!name) return;
+    const dbNameInput = document.getElementById('db-name');
+    if (dbNameInput) {
+        dbNameInput.value = name;
+        dbNameInput.dispatchEvent(new Event('change'));
+    }
+};
+
 function sortDB(key) {
     if (currentSort.key === key) {
         currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
@@ -291,6 +347,7 @@ const Block1Manager = {
 // --- RENDER FUNCTIONS (Adapted for Batches) ---
 
 function renderDBTable() {
+    renderCustomerList(); // Automatically update dropdown when table renders
     const batches = CustomerDB.getBatches();
     const tbody = document.querySelector('#db-table tbody');
     const countSpan = document.getElementById('db-count');
