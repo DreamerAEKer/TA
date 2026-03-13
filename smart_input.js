@@ -10,6 +10,85 @@ function initSmartInput() {
     renderPrefixOptions();
     renderBlock1Options();
     setupSmartPaste();
+    setupSmartInputEvents();
+}
+
+function setupSmartInputEvents() {
+    const prefixInput = document.getElementById('smart-prefix');
+    const block1Input = document.getElementById('smart-block1');
+    const block2Input = document.getElementById('smart-block2');
+
+    if (!prefixInput || !block1Input || !block2Input) return;
+
+    // Map Thai Keyboard to English layout (for standard tracking ranges starting with EA, EQ, etc.)
+    const thENMap = {
+        'ฉ': 'E', 'ฏ': 'E',
+        'ๆ': 'Q',
+        'ไ': 'W', 'ร': 'I', 'น': 'O', 'ย': 'P',
+        'ฟ': 'A', 'ห': 'S', 'ก': 'D', 'ด': 'F',
+        'เ': 'G', '้': 'H', 'า': 'J',
+        'ส': 'L', 'ผ': 'Z', 'ป': 'X', 'แ': 'C',
+        'อ': 'V', 'ิ': 'B', 'ท': 'M', 'ม': '?',
+        'พ': 'R', 'ะ': 'T', 'ั': 'Y', 'ร': 'U',
+    };
+
+    prefixInput.addEventListener('input', (e) => {
+        let val = e.target.value;
+        let converted = '';
+        
+        for(let i = 0; i < val.length; i++) {
+            let ch = val[i];
+            // If it's a Thai character in our map, convert it
+            if (thENMap[ch]) {
+                converted += thENMap[ch];
+            } else {
+                converted += ch;
+            }
+        }
+        
+        // Remove non-alphanumeric just to be safe, force uppercase
+        converted = converted.replace(/[^A-Za-z]/g, '').toUpperCase();
+        
+        // Show warning if length changed due to removing non-letters
+        if (val.length > 0 && converted.length === 0) {
+            // Optional: small UI tick/warning here
+        }
+        
+        e.target.value = converted;
+
+        // Auto Advance
+        if (converted.length === 2) {
+            block1Input.focus();
+        }
+    });
+
+    block1Input.addEventListener('input', (e) => {
+        let val = e.target.value.replace(/\D/g, ''); // Numbers only
+        e.target.value = val;
+        
+        // Check digit
+        calculateSmartCheckDigit();
+        
+        // Auto Advance
+        if (val.length === 4) {
+             // Only auto-advance if user was entering from the end
+             block2Input.focus();
+        }
+    });
+
+    block2Input.addEventListener('input', (e) => {
+        let val = e.target.value.replace(/\D/g, ''); // Numbers only
+        e.target.value = val;
+        
+        // Check digit
+        calculateSmartCheckDigit();
+        
+        // Auto jump to quantity if range is enabled?
+        const isRange = document.getElementById('smart-range-enable').checked;
+        if (val.length === 4 && isRange) {
+             document.getElementById('smart-qty').focus();
+        }
+    });
 }
 
 function setupSmartPaste() {
