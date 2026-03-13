@@ -55,38 +55,50 @@ function setupSmartInputEvents() {
         }
         
         e.target.value = converted;
+    }); // <--- FIX: Missing closing brace for the 'input' event listener
 
-        // Auto Advance
-        if (converted.length === 2) {
+    // Only evaluate navigation on 'keyup' to avoid interrupting IME/Predictive Text 
+    // and correctly capture the length after 'input' has processed it.
+    prefixInput.addEventListener('keyup', (e) => {
+        // Don't auto-advance if they are backspacing or deleting
+        if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab') return;
+        
+        let val = e.target.value;
+        if (val.length >= 2) {
             block1Input.focus();
+            // Optional: select all text in next input for easy overwriting
+            block1Input.select();
         }
     });
 
     block1Input.addEventListener('input', (e) => {
         let val = e.target.value.replace(/\D/g, ''); // Numbers only
         e.target.value = val;
-        
-        // Check digit
         calculateSmartCheckDigit();
+    });
+
+    block1Input.addEventListener('keyup', (e) => {
+        if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab') return;
         
-        // Auto Advance
-        if (val.length === 4) {
-             // Only auto-advance if user was entering from the end
+        if (e.target.value.length >= 4) {
              block2Input.focus();
+             block2Input.select();
         }
     });
 
     block2Input.addEventListener('input', (e) => {
         let val = e.target.value.replace(/\D/g, ''); // Numbers only
         e.target.value = val;
-        
-        // Check digit
         calculateSmartCheckDigit();
-        
-        // Auto jump to quantity if range is enabled?
+    });
+
+    block2Input.addEventListener('keyup', (e) => {
+        if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab') return;
+
         const isRange = document.getElementById('smart-range-enable').checked;
-        if (val.length === 4 && isRange) {
+        if (e.target.value.length >= 4 && isRange) {
              document.getElementById('smart-qty').focus();
+             document.getElementById('smart-qty').select();
         }
     });
 }
