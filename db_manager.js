@@ -554,9 +554,11 @@ function renderDBTable() {
             </td>
             <td style="font-size:0.85rem; color:#666;">${dateStr}</td>
             <td>
-                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#007bff; color:white; margin-right:5px;" 
+                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#007bff; color:white; margin-right:5px; margin-bottom:5px;" 
                     onclick="loadBatchToView('${item.id}')">🔎 ดู (View)</button>
-                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#dc3545; color:white;" 
+                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#ffc107; color:black; margin-right:5px; margin-bottom:5px;" 
+                    onclick="loadBatchToEdit('${item.id}')">✏️ แก้ไขชุดนี้</button>
+                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#dc3545; color:white; margin-bottom:5px;" 
                     onclick="deleteBatchEntry('${item.id}', '${item.name}')">ลบ (Del)</button>
             </td>
         `;
@@ -583,10 +585,6 @@ function renderCompanyTable() {
             <td><strong>${company.totalCount.toLocaleString()}</strong> รายการ</td>
             <td>${company.batches.length} ชุด</td>
             <td><span class="badge ${company.type === 'Credit' ? 'badge-primary' : 'badge-neutral'}">${company.type}</span></td>
-            <td>
-                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#17a2b8; color:white; margin-right:5px;" 
-                    onclick="loadCompanyToEdit('${company.name}')">✏️ รวมเพื่อแก้ (Edit All)</button>
-            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -649,47 +647,25 @@ function emptyTrash() {
     }
 }
 
-function loadCompanyToEdit(companyName) {
-    if (!confirm(`นำข้อมูลของลูกค้า "${companyName}" ทั้งหมดขึ้นมาแก้ไข?\n(ข้อมูลเก่าของคุณจะถูกลบและแทนที่ด้วยข้อมูลชุดใหม่ตอนคุณกดบันทึก)`)) return;
+function loadBatchToEdit(batchId) {
+    const batches = CustomerDB.getBatches();
+    const batch = batches[batchId];
+    if (!batch) return;
 
-    const summaries = CustomerDB.getCompanySummaries();
-    const company = summaries.find(s => s.name === companyName);
-    
-    if (!company) return;
-    
+    if (!confirm(`นำข้อมูลชุดนี้ของลูกค้า "${batch.name}" ขึ้นมาแก้ไข?\n(ข้อมูลเดิมจะถูกย้ายไปถังขยะชั่วคราว เมื่อแก้ไขและกดบันทึกจะเป็นการสร้างชุดใหม่แทนที่)`)) return;
+
     // Fill upper form
-    document.getElementById('db-name').value = company.name;
-    document.getElementById('db-type').value = company.type;
-    
-    // We only have contract history in individual batches, try grab from first.
-    if(company.batches.length > 0 && company.batches[0].contract) {
-       document.getElementById('db-contract').value = company.batches[0].contract;
-    } else {
-       document.getElementById('db-contract').value = '';
-    }
+    document.getElementById('db-name').value = batch.name;
+    document.getElementById('db-type').value = batch.type || 'Credit';
+    document.getElementById('db-contract').value = batch.contract || '';
+    document.getElementById('db-request-date').value = batch.requestDate || '';
 
-    if(company.batches.length > 0 && company.batches[0].requestDate) {
-       document.getElementById('db-request-date').value = company.batches[0].requestDate;
-    } else {
-       document.getElementById('db-request-date').value = '';
-    }
+    // Move to Trash (Soft Delete)
+    CustomerDB.deleteBatch(batchId);
 
-    // Move to Trash (Soft Delete) all batches for this company so
-    // that when the user saves, it creates one new fresh batch.
-    company.batches.forEach(b => {
-        CustomerDB.deleteBatch(b.id);
-    });
-    
-    // Collect all tracking numbers from the old batches to display
-    // Since we just deleted them, they are in trash... let's read from trash items
+    // Get items from trash to display
     const trash = CustomerDB.getTrash();
-    const allItemsToEdit = [];
-    
-    company.batches.forEach(b => {
-        if(trash[b.id] && trash[b.id].items) {
-             allItemsToEdit.push(...trash[b.id].items);
-        }
-    });
+    const allItemsToEdit = (trash[batchId] && trash[batchId].items) ? trash[batchId].items : batch.items;
 
     // Populate textarea
     const textArea = document.getElementById('db-tracking-list');
@@ -702,7 +678,7 @@ function loadCompanyToEdit(companyName) {
     // Jump to form
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
-    alert(`ดึงเลขพัสดุ ${allItemsToEdit.length} รายการ ขึ้นมาแก้ไขแล้ว!\n(ข้อมูลชุดเดิมถูกย้ายไปที่ถังขยะชั่วคราว หากยกเลิกสามารถตามไปกู้คืนได้)`);
+    alert(`ดึงเลขพัสดุชุดนี้ จำนวน ${allItemsToEdit.length} รายการ ขึ้นมาแก้ไขแล้ว!\n(ข้อมูลชุดเดิมถูกย้ายไปที่ถังขยะชั่วคราว หากยกเลิกสามารถตามไปกู้คืนได้)`);
     updateDbViews();
 }
 
