@@ -171,6 +171,10 @@ const CustomerDB = {
         }
     },
 
+    emptyTrash: () => {
+        localStorage.removeItem(TRASH_KEY);
+    },
+
     // --- BACKUP & RESTORE SYSTEM ---
     exportBackup: () => {
         const data = {
