@@ -436,6 +436,24 @@ const Block1Manager = {
 
 // --- UI View Toggles ---
 let currentDbView = 'recent'; // 'recent', 'company', 'trash'
+let currentCompanySort = { key: 'totalCount', order: 'desc' };
+
+function sortCompanyDB(key) {
+    if (currentCompanySort.key === key) {
+        currentCompanySort.order = currentCompanySort.order === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentCompanySort.key = key;
+        currentCompanySort.order = (key === 'name' || key === 'type') ? 'asc' : 'desc';
+    }
+    renderCompanyTable();
+}
+
+function toggleCompanyRow(idx) {
+    const row = document.getElementById(`comp-batches-${idx}`);
+    if (row) {
+        row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+    }
+}
 
 function toggleCompanyView() {
     currentDbView = currentDbView === 'company' ? 'recent' : 'company';
@@ -574,23 +592,81 @@ function renderCompanyTable() {
     const tbody = document.querySelector('#company-table tbody');
     if (!tbody) return;
     
-    const summaries = CustomerDB.getCompanySummaries();
+    let summaries = CustomerDB.getCompanySummaries();
     tbody.innerHTML = '';
     
     if (summaries.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">ไม่พบข้อมูลบริษัท</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">ไม่พบข้อมูลบริษัท</td></tr>';
         return;
     }
+
+    // Sort summaries
+    summaries.sort((a, b) => {
+        let valA, valB;
+        switch(currentCompanySort.key) {
+            case 'name': valA = a.name.toLowerCase(); valB = b.name.toLowerCase(); break;
+            case 'totalCount': valA = a.totalCount; valB = b.totalCount; break;
+            case 'batches': valA = a.batches.length; valB = b.batches.length; break;
+            case 'type': valA = a.type; valB = b.type; break;
+            default: valA = a.name; valB = b.name;
+        }
+        if (valA < valB) return currentCompanySort.order === 'asc' ? -1 : 1;
+        if (valA > valB) return currentCompanySort.order === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // Update Headers UI
+    document.querySelectorAll('#company-table th').forEach(th => {
+        if(!th.dataset.sortcomp) return;
+        th.style.background = '#f8f9fa';
+        if (th.dataset.sortcomp === currentCompanySort.key) {
+            th.style.background = '#e2e6ea';
+        }
+    });
     
-    summaries.forEach(company => {
+    summaries.forEach((company, idx) => {
+        // Master Row
         const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = () => toggleCompanyRow(idx);
         tr.innerHTML = `
             <td><strong>${company.name}</strong></td>
             <td><strong>${company.totalCount.toLocaleString()}</strong> รายการ</td>
-            <td>${company.batches.length} ชุด</td>
+            <td><span style="border-bottom: 1px dashed #666;">${company.batches.length} ชุด ▼</span></td>
             <td><span class="badge ${company.type === 'Credit' ? 'badge-primary' : 'badge-neutral'}">${company.type}</span></td>
         `;
         tbody.appendChild(tr);
+
+        // Detail Row (Hidden by default)
+        const trDetail = document.createElement('tr');
+        trDetail.id = `comp-batches-${idx}`;
+        trDetail.style.display = 'none';
+        
+        let batchRowsHtml = company.batches.map((b, bidx) => {
+            const reqDate = b.requestDate ? new Date(b.requestDate).toLocaleDateString('th-TH') : '-';
+            return `
+                <tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:5px;">ชุดที่ ${bidx+1}: <strong>${b.rangeDesc}</strong></td>
+                    <td style="padding:5px; color:#28a745;">ขอเลขที่: ${reqDate}</td>
+                    <td style="padding:5px;">จำนวน: ${b.count} รายการ</td>
+                    <td style="padding:5px; text-align:right;">
+                        <button class="btn" style="padding:2px 6px; font-size:0.65rem; background:#ffc107; color:black;" 
+                            onclick="loadBatchToEdit('${b.id}')">✏️ แก้ไข</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        trDetail.innerHTML = `
+            <td colspan="4" style="background:#f1f3f5; padding:0;">
+                <div style="padding:10px; padding-left:20px; border-left:3px solid var(--primary-color);">
+                    <table style="width:100%; font-size:0.85rem; border-collapse:collapse; background:transparent;">
+                        ${batchRowsHtml}
+                    </table>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(trDetail);
     });
 }
 

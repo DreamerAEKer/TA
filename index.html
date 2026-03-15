@@ -341,10 +341,10 @@ EB123456001TH
                         <table id="company-table">
                             <thead>
                                 <tr>
-                                    <th>ลูกค้า (Customer)</th>
-                                    <th>จำนวนรวม (Total Items)</th>
-                                    <th>รายการอ้างอิง (Batches)</th>
-                                    <th>ประเภท (Type)</th>
+                                    <th style="cursor:pointer;" onclick="sortCompanyDB('name')" data-sortcomp="name">ลูกค้า (Customer) ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortCompanyDB('totalCount')" data-sortcomp="totalCount">จำนวนรวม (Total Items) ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortCompanyDB('batches')" data-sortcomp="batches">รายการอ้างอิง (Batches) ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortCompanyDB('type')" data-sortcomp="type">ประเภท (Type) ↕</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -508,10 +508,10 @@ EB123456001TH
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
         v1.0</div>
 
-    <script src="utils.js?v=13"></script>
-    <script src="db_manager.js?v=13"></script>
-    <script src="smart_input.js?v=13"></script>
-    <script src="app.js?v=13"></script>
+    <script src="utils.js?v=14"></script>
+    <script src="db_manager.js?v=14"></script>
+    <script src="smart_input.js?v=14"></script>
+    <script src="app.js?v=14"></script>
 </body>
 
 </html>
