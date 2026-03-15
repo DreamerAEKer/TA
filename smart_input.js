@@ -218,14 +218,19 @@ function toggleSmartRange() {
     }
 }
 
-function addSmartEntry() {
-    // Validate Customer Name first so we don't clear inputs if it's missing
+function addSmartEntryAndSave() {
+    // Validate Customer Name first
     const dbNameInput = document.getElementById('db-name');
-    if (dbNameInput && !dbNameInput.value.trim()) {
+    const name = dbNameInput ? dbNameInput.value.trim() : '';
+    if (!name) {
         alert('กรุณากรอก "ชื่อลูกค้า / บริษัท" ก่อนเริ่มสแกนหรือบันทึกเลขพัสดุ');
-        dbNameInput.focus();
+        if(dbNameInput) dbNameInput.focus();
         return;
     }
+
+    const type = document.getElementById('db-type') ? document.getElementById('db-type').value : 'Credit';
+    const contract = document.getElementById('db-contract') ? document.getElementById('db-contract').value.trim() : '';
+    const requestDate = document.getElementById('db-request-date') ? document.getElementById('db-request-date').value : '';
 
     const prefix = document.getElementById('smart-prefix').value.trim().toUpperCase();
     const b1 = document.getElementById('smart-block1').value.replace(/\D/g, '');
@@ -254,9 +259,7 @@ function addSmartEntry() {
     renderPrefixOptions();
     renderBlock1Options();
 
-    const textArea = document.getElementById('db-tracking-list');
-    const currentText = textArea.value.trim();
-    let newText = '';
+    let itemsToAdd = [];
 
     // --- Smart Input Logic ---
     if (isRange) {
@@ -267,7 +270,6 @@ function addSmartEntry() {
         }
         
         let startNum = parseInt(b1 + b2, 10);
-        let items = [];
         for (let i = 0; i < qty; i++) {
             let currentNumStr = (startNum + i).toString().padStart(8, '0');
             if (currentNumStr.length > 8) {
@@ -276,32 +278,37 @@ function addSmartEntry() {
             }
             let checkDigit = TrackingUtils.calculateS10CheckDigit(currentNumStr);
             if (checkDigit !== null) {
-                items.push(`${prefix}${currentNumStr}${checkDigit}${suffix}`);
+                itemsToAdd.push(`${prefix}${currentNumStr}${checkDigit}${suffix}`);
             }
         }
-        newText = items.join('\n');
     } else {
         let currentNumStr = b1 + b2;
         let checkDigit = TrackingUtils.calculateS10CheckDigit(currentNumStr);
         if (checkDigit !== null) {
-            newText = `${prefix}${currentNumStr}${checkDigit}${suffix}`;
+            itemsToAdd.push(`${prefix}${currentNumStr}${checkDigit}${suffix}`);
         } else {
             alert('ไม่สามารถคำนวณ Check Digit ได้');
             return;
         }
     }
 
-    // Append
-    if (currentText) {
-        textArea.value = currentText + '\n' + newText;
-    } else {
-        textArea.value = newText;
-    }
+    if(itemsToAdd.length === 0) return;
 
-    // Clear Input
+    // Save to DB directly
+    const batchInfo = { name, type, contract, requestDate, timestamp: new Date().getTime() };
+    const savedCount = CustomerDB.addBatch(batchInfo, itemsToAdd);
+
+    alert(`บันทึกเรียบร้อย! เพิ่ม ${savedCount} รายการ สำเร็จ`);
+
+    // Complete cleanup for UI
+    document.getElementById('db-name').value = '';
+    document.getElementById('db-contract').value = '';
+    document.getElementById('db-request-date').value = '';
     document.getElementById('smart-block2').value = '';
-    // document.getElementById('smart-qty').value = ''; // Keep qty for convenience
     document.getElementById('smart-check-digit').value = '-';
+    
+    // Refresh tables
+    if(typeof updateDbViews === 'function') updateDbViews();
 }
 
 async function handleImageSelection(files) {

@@ -693,9 +693,16 @@ function loadCompanyToEdit(companyName) {
 
     // Populate textarea
     const textArea = document.getElementById('db-tracking-list');
-    textArea.value = allItemsToEdit.join('\\n');
+    textArea.value = allItemsToEdit.join('\n');
     
-    alert(`ดึงเลขพัสดุ ${allItemsToEdit.length} รายการ ขึ้นมาแก้ไขแล้ว!\\n(ข้อมูลชุดเดิมถูกย้ายไปที่ถังขยะชั่วคราว หากยกเลิกสามารถตามไปกู้คืนได้)`);
+    // Unhide Edit Section & focus
+    document.getElementById('db-edit-section').classList.remove('hidden');
+    textArea.focus();
+    
+    // Jump to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    alert(`ดึงเลขพัสดุ ${allItemsToEdit.length} รายการ ขึ้นมาแก้ไขแล้ว!\n(ข้อมูลชุดเดิมถูกย้ายไปที่ถังขยะชั่วคราว หากยกเลิกสามารถตามไปกู้คืนได้)`);
     updateDbViews();
 }
 
@@ -706,8 +713,24 @@ function deleteBatchEntry(batchId, batchName) {
     }
 }
 
+function cancelDbEdit() {
+    if (confirm('ยกเลิกการแก้ไขใช่หรือไม่? (ถ้ากดยกเลิก ข้อมูลที่แก้ไขจะไม่ถูกบันทึก และข้อมูลรายบริษัทนี้จะอยู่ในถังขยะ ให้ไปกดกู้คืนจากถังขยะ)')) {
+        document.getElementById('db-edit-section').classList.add('hidden');
+        document.getElementById('db-tracking-list').value = '';
+        document.getElementById('db-name').value = '';
+        document.getElementById('db-contract').value = '';
+        document.getElementById('db-request-date').value = '';
+    }
+}
+
+function clearDbEditData() {
+    if (confirm('ยืนยันล้างข้อความในกล่องนี้ทิ้งทั้งหมด?')) {
+        document.getElementById('db-tracking-list').value = '';
+    }
+}
+
 function clearAllData() {
-    if (confirm('ยืนยันลบข้อมูลทั้งหมด? (ข้อมูลชุดทั้งหมดจะหายไป)')) {
+    if (confirm('ยืนยันล้างข้อมูลทั้งหมดในฐานข้อมูลลูกค้า? (ข้อมูลชุดทั้งหมดจะหายไป)')) {
         CustomerDB.clearAll();
         updateDbViews();
     }
@@ -773,11 +796,13 @@ function saveCustomerData() {
     const count = CustomerDB.addBatch(batchInfo, numbersToAdd);
     alert(`บันทึกเรียบร้อย! เพิ่ม ${count} รายการ (เป็น 1 ชุด)`);
 
-    // Reset inputs
+    // Reset inputs & hide edit section
     document.getElementById('db-name').value = '';
     document.getElementById('db-contract').value = '';
     document.getElementById('db-request-date').value = '';
     document.getElementById('db-tracking-list').value = '';
+    document.getElementById('db-edit-section').classList.add('hidden');
+    
     currentDbView = 'recent';
     updateDbViews();
 }

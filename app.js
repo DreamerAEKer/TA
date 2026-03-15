@@ -1198,6 +1198,292 @@ function loadBatchToView(batchId) {
     box.innerHTML = fallbackHtml;
 }
 
+// --- ADMIN TOOLS ---
+
+function adminHandleTrackInput(inputEl) {
+    // Only allow letters and numbers, force uppercase
+    let val = inputEl.value;
+    val = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    inputEl.value = val;
+}
+
+function adminOpenThpTrack() {
+    let trackNum = document.getElementById('admin-track-input').value.trim();
+    if (trackNum.length < 13) {
+        alert("กรุณากรอกเลขพัสดุให้ครบ 13 หลัก (รวมตัวอักษร)");
+        return;
+    }
+    
+    // Auto calculate check digit if it's missing (length 12) or replace it if it's 13 but user typed something random
+    if (trackNum.length === 13) {
+        const prefix = trackNum.substring(0, 2);
+        const seq = trackNum.substring(2, 10);
+        const suffix = trackNum.substring(11, 13);
+        const cd = TrackingUtils.calculateS10CheckDigit(seq);
+        if (cd !== null) {
+            trackNum = prefix + seq + cd + suffix;
+            document.getElementById('admin-track-input').value = trackNum;
+        }
+    }
+
+    const url = `https://track.thailandpost.co.th/?trackNumber=${trackNum}`;
+    window.open(url, '_blank');
+}
+
+async function adminHandleImageOcr(files) {
+    if (!files || files.length === 0) return;
+
+    const statusEl = document.getElementById('admin-ocr-status');
+    const resultEl = document.getElementById('admin-ocr-result');
+    resultEl.classList.remove('hidden');
+    resultEl.innerHTML = '';
+    
+    if (statusEl) statusEl.textContent = `กำลังประมวลผล ${files.length} รูป... กรุณารอสักครู่ OCR อาจใช้เวลาสักพัก`;
+
+    let combinedText = "";
+
+    try {
+        for (let i = 0; i < files.length; i++) {
+            if (statusEl) statusEl.textContent = `กำลังแยกข้อความจากภาพ ${i + 1}/${files.length}...`;
+            const file = files[i];
+
+            // Tesseract OCR
+            const worker = typeof Tesseract !== 'undefined' ? await Tesseract.createWorker('tha+eng') : null;
+            if (worker) {
+                const { data: { text } } = await worker.recognize(file);
+                await worker.terminate();
+                combinedText += "\n" + text;
+            }
+        }
+
+        if (statusEl) statusEl.textContent = "กำลังวิเคราะห์ข้อมูล (Analyzing)...";
+
+        const lines = combinedText.split('\n');
+        let extractedItems = [];
+        
+        // 1. Line-by-line parsing to link Tracking and Price on the SAME line
+        lines.forEach(line => {
+            const trackMatch = line.match(/[A-Z]{2}\s*\d{9}\s*[A-Z]{2}/i);
+            const priceMatch = line.match(/(?:\s|^)(\d{1,4}(?:[.,]\d{2})?)(?:\s|$)/); 
+            // Thai post receipt usually has price like 42, 32, 52 or 42.00 at the end of the line
+            
+            if (trackMatch) {
+                let track = trackMatch[0].replace(/\s/g, '').toUpperCase();
+                let price = 0;
+                
+                // If there's a number that looks like a price on the same line
+                if (priceMatch && priceMatch[1]) {
+                     // Filter out numbers that are just sequence numbers like "1", "2" at the start
+                     const potentialPrice = parseFloat(priceMatch[1].replace(',', '.'));
+                     if (potentialPrice >= 10 && potentialPrice < 5000) { // Reasonable postal bounds
+                         price = potentialPrice;
+                     }
+                }
+                extractedItems.push({ track, price, raw: line });
+            }
+        });
+
+        if (extractedItems.length === 0) {
+            statusEl.textContent = "ประมวลผลเสร็จสิ้น: ไม่พบเลขพัสดุในภาพ";
+            resultEl.innerHTML = `<em>ไม่พบข้อมูลที่ตรงกับรูปแบบเลขไปรษณีย์ไทย 13 หลัก</em>\n\n[ข้อความดิบจาก OCR]\n${combinedText}`;
+            return;
+        }
+
+        // 2. Output Formatting & Missing Check
+        let outputHtml = `<strong style="color:var(--primary-color);">📌 ตรวจพบทั้งหมด ${extractedItems.length} รายการ</strong>\n<hr>`;
+        let totalPrice = 0;
+        
+        // Sort items conceptually if possible, but keep original order for display
+        let tracksOnly = extractedItems.map(x => x.track);
+        
+        // Find Missing logic
+        let missingReport = "";
+        const seqs = extractedItems.map(item => {
+            let seqStr = item.track.substring(2, 10);
+            return {
+                prefix: item.track.substring(0,2),
+                suffix: item.track.substring(11,13),
+                seq: parseInt(seqStr, 10),
+                full: item.track
+            };
+        }).filter(x => !isNaN(x.seq));
+
+        // Group by prefix+suffix
+        const groups = {};
+        seqs.forEach(s => {
+            let key = s.prefix + s.suffix;
+            if(!groups[key]) groups[key] = [];
+            groups[key].push(s.seq);
+        });
+
+        for (const [key, seqList] of Object.entries(groups)) {
+            seqList.sort((a,b) => a - b);
+            let missingInGrp = [];
+            for (let i = 0; i < seqList.length - 1; i++) {
+                let diff = seqList[i+1] - seqList[i];
+                if (diff > 1 && diff < 50) { // arbitrary bound so we don't list thousands if it's two different books
+                     for (let j = seqList[i] + 1; j < seqList[i+1]; j++) {
+                         let missingNum = j.toString().padStart(8, '0');
+                         let cd = TrackingUtils.calculateS10CheckDigit(missingNum);
+                         if(cd !== null){
+                             missingInGrp.push(`${key.substring(0,2)}${missingNum}${cd}${key.substring(2,4)}`);
+                         }
+                     }
+                }
+            }
+            if (missingInGrp.length > 0) {
+                missingReport += `<div style="color:var(--error-color); margin-bottom:10px;">
+                    <strong>🚨 แจ้งเตือน: พบช่องโหว่ (เลขที่หายไป) ในช่วงหมวด ${key}:</strong><br>
+                    ${missingInGrp.join(', ')}
+                </div>`;
+            }
+        }
+
+        if (missingReport) {
+            outputHtml += missingReport + "<hr>";
+        }
+
+        // List all with Prices
+        outputHtml += `<table style="width:100%; font-size:0.9rem;">
+            <tr style="background:#eee;">
+                <th style="padding:5px; text-align:left;">ลำดับ</th>
+                <th style="padding:5px; text-align:left;">เลขพัสดุ</th>
+                <th style="padding:5px; text-align:right;">ราคา (บาท)</th>
+            </tr>
+        `;
+        
+        extractedItems.forEach((item, idx) => {
+             totalPrice += item.price;
+             outputHtml += `
+             <tr>
+                 <td style="padding:5px; border-bottom:1px solid #eee;">${idx+1}</td>
+                 <td style="padding:5px; border-bottom:1px solid #eee;"><strong>${item.track}</strong></td>
+                 <td style="padding:5px; border-bottom:1px solid #eee; text-align:right;">${item.price > 0 ? item.price.toFixed(2) : '-'}</td>
+             </tr>`;
+        });
+        
+        outputHtml += `
+            <tr style="background:#fce8e6; font-weight:bold;">
+                <td colspan="2" style="padding:10px; text-align:right;">ยอดรวมทั้งหมด (Total):</td>
+                <td style="padding:10px; text-align:right;">${totalPrice.toFixed(2)}</td>
+            </tr>
+        </table>`;
+
+        resultEl.innerHTML = outputHtml;
+        statusEl.textContent = "ประมวลผลเสร็จสิ้น (Done)";
+
+    } catch (err) {
+        console.error(err);
+        if (statusEl) statusEl.textContent = "Error: " + err.message;
+        resultEl.innerHTML = `<span style="color:red;">Error processing image.</span>`;
+    }
+
+    // Reset input
+    const uploadInput = document.getElementById('admin-ocr-upload');
+    if (uploadInput) uploadInput.value = '';
+}
+
+function adminCrossReference() {
+    const input = document.getElementById('admin-crossref-input').value;
+    const extracted = TrackingUtils.extractTrackingNumbers(input);
+    _performCrossRef(extracted);
+}
+
+async function adminCrossRefImage(files) {
+    if (!files || files.length === 0) return;
+    
+    const statusEl = document.getElementById('admin-crossref-status');
+    const resultEl = document.getElementById('admin-crossref-result');
+    resultEl.classList.add('hidden');
+    
+    if (statusEl) statusEl.textContent = `กำลังสแกนรูปภาพด้วย OCR...`;
+
+    try {
+        const worker = typeof Tesseract !== 'undefined' ? await Tesseract.createWorker('eng') : null; // 'eng' is faster for just numbers
+        if (worker) {
+            const { data: { text } } = await worker.recognize(files[0]);
+            await worker.terminate();
+            
+            const extracted = TrackingUtils.extractTrackingNumbers(text);
+            if(extracted.length > 0) {
+                 // Push to textarea so user sees what was found
+                 const textArea = document.getElementById('admin-crossref-input');
+                 textArea.value = textArea.value + (textArea.value ? '\n' : '') + extracted.join('\n');
+                 
+                 _performCrossRef(extracted);
+            } else {
+                 if (statusEl) statusEl.textContent = `ไม่พบเลขพัสดุในรูปภาพ`;
+            }
+        }
+    } catch(err) {
+         if (statusEl) statusEl.textContent = `Error OCR: ` + err.message;
+    }
+    
+    // Reset file input
+    document.getElementById('admin-crossref-file').value = '';
+}
+
+function _performCrossRef(trackingArray) {
+    const statusEl = document.getElementById('admin-crossref-status');
+    const resultEl = document.getElementById('admin-crossref-result');
+    
+    if (!trackingArray || trackingArray.length === 0) {
+        statusEl.textContent = "กรุณาวางข้อมูล หรือ อัปโหลดรูปภาพที่มีเลขพัสดุก่อน";
+        resultEl.classList.add('hidden');
+        return;
+    }
+
+    statusEl.textContent = `กำลังเทียบข้อมูล ${trackingArray.length} รายการ กับฐานข้อมูลลูกค้า...`;
+    
+    const lookup = CustomerDB.getLookup();
+    const batches = CustomerDB.getBatches();
+    
+    let html = `
+        <table style="width:100%; font-size:0.9rem;">
+            <thead>
+                <tr style="background:#eee;">
+                    <th>ลำดับ</th>
+                    <th>เลขพัสดุ</th>
+                    <th>สังกัดบริษัทในระบบ (Company / Name)</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let foundCount = 0;
+
+    trackingArray.forEach((track, idx) => {
+        let dbInfo = lookup[track];
+        let companyName = '<span style="color:#999; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
+        let rowStyle = '';
+
+        if (dbInfo) {
+            companyName = `<strong style="color:var(--primary-color);">${dbInfo.name}</strong>`;
+            // If requestDate is available, show it
+            if(batches[dbInfo.batchId] && batches[dbInfo.batchId].requestDate) {
+                 companyName += ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[dbInfo.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
+            }
+            rowStyle = 'background-color:#f8fff9;'; // light green highlight for found items
+            foundCount++;
+        }
+
+        html += `
+            <tr style="${rowStyle}">
+                <td style="text-align:center;">${idx + 1}</td>
+                <td><span style="font-family:monospace;">${track}</span></td>
+                <td>${companyName}</td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
+    
+    resultEl.innerHTML = html;
+    resultEl.classList.remove('hidden');
+    
+    statusEl.innerHTML = `ตรวจพบสังกัดตรงกัน <strong style="color:green;">${foundCount}</strong> จากทั้งหมด ${trackingArray.length} รายการ`;
+}
+
 // --- Authentication & Isolation System ---
 
 // Initial Run with improved reliability

@@ -17,7 +17,7 @@
         <div class="container">
             <div class="brand">
                 <div class="brand-logo">POST</div>
-                <span>Tracking Analyst (Business Customer) v0.9.1</span>
+                <span>Tracking Analyst (Business Customer) v1.0</span>
             </div>
 
         </div>
@@ -36,6 +36,7 @@
             <button class="tab-btn" onclick="switchTab('gap')">เช็คของตกหล่น (Missing Items)</button>
             <button class="tab-btn" onclick="switchTab('customer')">ฐานข้อมูลลูกค้า (Customer DB)</button>
             <button class="tab-btn" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
+            <button class="tab-btn" onclick="switchTab('admin')" style="color:#d32f2f;">⚙️ เครื่องมือแอดมิน (Admin Tools)</button>
         </div>
 
         <!-- SECTION 1: Check & Fix -->
@@ -236,9 +237,10 @@ EB123456001TH
 
                             <!-- Add Button -->
                             <div style="flex:1; min-width:140px;">
-                                <button type="button" class="btn btn-primary" onclick="addSmartEntry()"
-                                    style="width:100%; height:42px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">⬇
-                                    แสดงข้อมูล</button>
+                                <button type="button" class="btn btn-primary" onclick="addSmartEntryAndSave()"
+                                    style="width:100%; height:42px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">💾
+                                    บันทึกข้อมูล (Save)
+                                </button>
                             </div>
                         </div>
 
@@ -268,19 +270,30 @@ EB123456001TH
                                 </div>
                             </div>
                         </div>
+                        </div>
                     </div>
-                    <textarea id="db-tracking-list" rows="3" placeholder="รายการจะถูกเติมลงที่นี่..."></textarea>
+
+                    <!-- Hidden Edit Section -->
+                    <div id="db-edit-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 20px; background: #fffdf2;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h4 style="margin: 0; color: #cc7a00;">✏️ หมวดแก้ไขข้อมูล (Edit/Manual Mode)</h4>
+                            <button class="btn btn-neutral" onclick="cancelDbEdit()" style="padding:4px 8px; font-size:0.8rem;">❌ ปิดหมวดแก้ไข</button>
+                        </div>
+                        <p style="font-size:0.85rem; color:#666;">วางข้อมูลเลขพัสดุ (หรือแก้ไขข้อมูลลูกค้ารายนี้) แล้วกดบันทึก</p>
+                        <textarea id="db-tracking-list" rows="6" placeholder="รายการจะถูกเติมลงที่นี่..."></textarea>
+                        
+                        <div class="mt-4" style="display:flex; gap:10px; align-items:center;">
+                            <button class="btn btn-primary" onclick="saveCustomerData()">บันทึกข้อมูลที่แก้ไข (Save Edit)</button>
+                            <button class="btn btn-danger" onclick="clearDbEditData()">ล้างข้อความทิ้ง</button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="mt-4" style="display:flex; gap:10px; align-items:center;">
-                    <button class="btn btn-primary" onclick="saveCustomerData()">บันทึกข้อมูล (Save)</button>
-                    <button class="btn btn-danger" onclick="clearAllData()">ล้างข้อมูลทั้งหมด</button>
-                    <div style="flex-grow:1;"></div>
-                    <!-- Backup Controls -->
-                    <button class="btn btn-neutral" onclick="backupData()" style="border:1px solid #ccc;">⬇
-                        Backup</button>
+                <!-- Backup Controls -->
+                <div class="mt-4" style="display:flex; justify-content:flex-end; gap:10px; align-items:center;">
+                    <button class="btn btn-neutral" onclick="backupData()" style="border:1px solid #ccc;">⬇ Backup DB</button>
                     <button class="btn btn-neutral" onclick="document.getElementById('restore-upload').click()"
-                        style="border:1px solid #ccc;">⬆ Restore</button>
+                        style="border:1px solid #ccc;">⬆ Restore DB</button>
                     <input type="file" id="restore-upload" accept=".json" style="display:none;"
                         onchange="restoreData(event)">
                 </div>
@@ -442,16 +455,66 @@ EB123456001TH
             </div>
         </section>
 
+        <!-- SECTION 6: Admin Tools -->
+        <section id="tab-admin" class="tab-content">
+            <div class="card">
+                <h2>⚙️ เครื่องมือแอดมิน (Admin Tools)</h2>
+                
+                <!-- Tool 1: Single Check -->
+                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+                    <h3 style="color:var(--primary-color);">1. ระบบเช็คเลข & สถานะ (Track & Check Digit)</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; max-width: 600px;">
+                        <input type="text" id="admin-track-input" placeholder="กรอกเลขพัสดุ... เช่น EQ123456785TH" style="flex:1;" oninput="adminHandleTrackInput(this)">
+                        <button class="btn btn-primary" onclick="adminOpenThpTrack()">🔍 เช็คสถานะ (THP)</button>
+                    </div>
+                </div>
+
+                <!-- Tool 2: Image OCR Receipt -->
+                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+                    <h3 style="color:var(--primary-color);">2. ดึงข้อมูลจากใบเสร็จ (Receipt OCR & Missing Check)</h3>
+                    <p style="font-size:0.9rem; color:#666;">ประมวลผลรูปใบเสร็จที่มีเลขพัสดุและราคา ระบบจะไล่อ่านข้อมูล ถอดรหัสราคา และหาช่วงเลขที่ขาดหายให้อัตโนมัติ</p>
+                    
+                    <div class="upload-area" onclick="document.getElementById('admin-ocr-upload').click()">
+                        <span class="upload-icon">📄</span>
+                        <p>คลิกเพื่อเลือกภาพใบเสร็จ (Receipt Image)</p>
+                        <input type="file" id="admin-ocr-upload" accept="image/*" multiple style="display:none" onchange="adminHandleImageOcr(this.files)">
+                    </div>
+                    <div id="admin-ocr-status" style="margin-top:10px; font-weight:bold; color:#0056b3;"></div>
+                    <div id="admin-ocr-result" class="hidden" style="margin-top:10px; padding:15px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px; font-family:monospace; max-height:400px; overflow-y:auto; white-space:pre-wrap;"></div>
+                </div>
+
+                <!-- Tool 3: Cross Reference DB -->
+                <div style="margin-bottom: 10px;">
+                    <h3 style="color:var(--primary-color);">3. ระบบตรวจสอบสังกัดบริษัท (Cross-Reference DB)</h3>
+                    <p style="font-size:0.9rem; color:#666;">วางข้อมูลชุดเลขพัสดุ (หรือรูปภาพ) แล้วกดตรวจสอบ เพื่อค้นหาว่าเลขแต่ละตัวเป็นของบริษัทไหนในระบบ</p>
+                    
+                    <textarea id="admin-crossref-input" rows="6" placeholder="วางเลขพัสดุที่นี่..." style="margin-bottom:10px;"></textarea>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button class="btn btn-primary" onclick="adminCrossReference()">ค้นหาสังกัดบริษัท</button>
+                        <input type="file" id="admin-crossref-file" accept="image/*" style="display:none" onchange="adminCrossRefImage(this.files)">
+                        <button class="btn btn-neutral" onclick="document.getElementById('admin-crossref-file').click()">📸 อัปโหลดรูปเพื่อสแกนเลข</button>
+                    </div>
+
+                    <div id="admin-crossref-status" style="font-weight:bold; color:#0056b3;"></div>
+                    <div id="admin-crossref-result" class="hidden" style="margin-top:10px; overflow-x:auto;">
+                        <!-- Results Table -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
     </main>
 
     <div
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v0.9.1</div>
+        v1.0</div>
 
-    <script src="utils.js?v=11"></script>
-    <script src="db_manager.js?v=11"></script>
-    <script src="smart_input.js?v=11"></script>
-    <script src="app.js?v=11"></script>
+    <script src="utils.js?v=12"></script>
+    <script src="db_manager.js?v=12"></script>
+    <script src="smart_input.js?v=12"></script>
+    <script src="app.js?v=12"></script>
 </body>
 
 </html>
