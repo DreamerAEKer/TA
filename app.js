@@ -1004,7 +1004,8 @@ function deleteHistoryItem(batchId, batchName) {
         // Refresh this table
         renderImportHistory();
         // Also refresh main DB table if it exists (keep in sync)
-        if (typeof renderDBTable === 'function') renderDBTable();
+        if (typeof updateDbViews === 'function') updateDbViews();
+        else if (typeof renderDBTable === 'function') renderDBTable();
     }
 }
 
@@ -1077,7 +1078,8 @@ function restoreData(event) {
     CustomerDB.importBackup(file)
         .then(() => {
             alert('✅ กู้คืนข้อมูลสำเร็จ (Restore Complete)');
-            renderDBTable(); // Refresh UI
+            if (typeof updateDbViews === 'function') updateDbViews();
+            else if (typeof renderDBTable === 'function') renderDBTable(); // Refresh UI
         })
         .catch(err => {
             alert('❌ เกิดข้อผิดพลาด: ' + err.message);

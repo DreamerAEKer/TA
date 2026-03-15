@@ -213,6 +213,8 @@ function toggleSmartRange() {
     } else {
         box.classList.add('hidden');
         document.getElementById('smart-qty').value = '';
+        if(document.getElementById('smart-box')) document.getElementById('smart-box').value = '';
+        if(document.getElementById('smart-book')) document.getElementById('smart-book').value = '';
     }
 }
 
@@ -389,4 +391,25 @@ function insertToTextArea(textArea, content) {
     textArea.value = textBefore + (textBefore && textBefore.slice(-1) !== '\n' ? '\n' : '') + content + (textAfter && textAfter[0] !== '\n' ? '\n' : '') + textAfter;
 
     textArea.selectionStart = textArea.selectionEnd = startPos + content.length + 1;
+}
+
+function calculateSmartQtyFromHelpers() {
+    const boxInput = document.getElementById('smart-box');
+    const bookInput = document.getElementById('smart-book');
+    const qtyInput = document.getElementById('smart-qty');
+    
+    if (!boxInput || !bookInput || !qtyInput) return;
+    
+    const boxes = parseInt(boxInput.value) || 0;
+    const books = parseInt(bookInput.value) || 0;
+    
+    // 1 Box = 50 Books, 1 Book = 240 Items
+    const totalBooks = (boxes * 50) + books;
+    const totalItems = totalBooks * 240;
+    
+    if (totalItems > 0) {
+        qtyInput.value = totalItems;
+    } else {
+        qtyInput.value = '';
+    }
 }

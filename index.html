@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THP Tracking Analyst v0.7</title>
+    <title>THP Tracking Analyst v0.8</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=8">
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
@@ -17,7 +17,7 @@
         <div class="container">
             <div class="brand">
                 <div class="brand-logo">POST</div>
-                <span>Tracking Analyst (Business Customer) v0.7</span>
+                <span>Tracking Analyst (Business Customer) v0.8</span>
             </div>
 
         </div>
@@ -246,10 +246,20 @@ EB123456001TH
                             </label>
                             <div id="smart-range-box" class="hidden"
                                 style="margin-top:5px; padding-left:10px; border-left:3px solid #ccc;">
-                                <div style="display:flex; align-items:center; gap:10px;">
-                                    <label style="font-size:0.8rem;">จำนวนที่ต้องการ (Quantity)</label>
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <label style="font-size:0.8rem; margin-right:5px;">คำนวณจาก:</label>
+                                    <input type="number" id="smart-box" placeholder="กล่อง" min="0" 
+                                        style="width:60px;" oninput="calculateSmartQtyFromHelpers()">
+                                    <span style="font-size:0.8rem; color:#666;">ซอง/กล่อง</span>
+                                    
+                                    <input type="number" id="smart-book" placeholder="เล่ม" min="0" 
+                                        style="width:60px; margin-left:5px;" oninput="calculateSmartQtyFromHelpers()">
+                                    <span style="font-size:0.8rem; color:#666;">เล่ม</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:10px; margin-top:5px;">
+                                    <label style="font-size:0.8rem; font-weight:bold;">รวม (Quantity):</label>
                                     <input type="number" id="smart-qty" placeholder="เช่น 50" min="1"
-                                        style="width:100px;">
+                                        style="width:100px; font-weight:bold; color:var(--primary-color);">
                                     <span style="font-size:0.8rem; color:#666;">รายการ</span>
                                 </div>
                             </div>
@@ -283,8 +293,14 @@ EB123456001TH
                 </div>
 
                 <div class="mt-4">
-                    <h3>รายการที่บันทึกไว้ (<span id="db-count">0</span> รายการ)</h3>
-                    <div id="db-list-container" style="max-height: 300px; overflow-y: auto;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>รายการที่บันทึกไว้ (<span id="db-count">0</span> รายการ)</h3>
+                        <div>
+                            <button class="btn btn-neutral" onclick="toggleCompanyView()" id="btn-toggle-company" style="font-size:0.8rem; border:1px solid #ccc; margin-right:5px;">🏢 ดูสรุปตามบริษัท</button>
+                            <button class="btn btn-neutral" onclick="toggleTrashView()" id="btn-toggle-trash" style="font-size:0.8rem; border:1px solid #ccc;">🗑️ ถังขยะ (<span id="trash-count">0</span>)</button>
+                        </div>
+                    </div>
+                    <div id="db-list-container" style="max-height: 300px; overflow-y: auto; margin-top:10px;">
                         <table id="db-table">
                             <thead>
                                 <tr>
@@ -296,6 +312,41 @@ EB123456001TH
                                         ↕</th>
                                     <th style="cursor:pointer;" onclick="sortDB('timestamp')" data-sort="timestamp">
                                         วันที่ (Date) ↕</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Company View Container -->
+                    <div id="db-company-container" class="hidden" style="max-height: 300px; overflow-y: auto; margin-top:10px;">
+                        <table id="company-table">
+                            <thead>
+                                <tr>
+                                    <th>ลูกค้า (Customer)</th>
+                                    <th>จำนวนรวม (Total Items)</th>
+                                    <th>รายการอ้างอิง (Batches)</th>
+                                    <th>ประเภท (Type)</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Trash View Container -->
+                    <div id="db-trash-container" class="hidden" style="max-height: 300px; overflow-y: auto; margin-top:10px; background:#fff3f3; padding:10px; border-radius:4px; border:1px solid #ffccd5;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                            <strong style="color:#d32f2f;">รายการในถังขยะ (Recycle Bin - กู้คืนได้)</strong>
+                            <button class="btn btn-danger" onclick="emptyTrash()" style="font-size:0.8rem; padding:4px 8px;">ล้างถังขยะทั้งหมด</button>
+                        </div>
+                        <table id="trash-table" style="background:white; width:100%;">
+                            <thead>
+                                <tr>
+                                    <th>ชุดข้อมูล (Batch)</th>
+                                    <th>ลูกค้า (Customer)</th>
+                                    <th>วันที่ลบ (Deleted)</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -391,7 +442,7 @@ EB123456001TH
 
     <div
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v0.7</div>
+        v0.8</div>
 
     <script src="utils.js?v=6"></script>
     <script src="db_manager.js?v=5"></script>

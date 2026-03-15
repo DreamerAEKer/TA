@@ -9,6 +9,9 @@ const LOOKUP_KEY = 'thp_tracking_lookup_v1';
 // 2. Batch DB: Stores Batch Details (The "Sets")
 const BATCH_KEY = 'thp_tracking_batches_v1';
 
+// 3. Trash DB: Deleted Batches (Soft delete)
+const TRASH_KEY = 'thp_tracking_trash_v1';
+
 const CustomerDB = {
     // --- LOOKUP OPERATIONS ---
     getLookup: () => {
@@ -28,12 +31,42 @@ const CustomerDB = {
         localStorage.setItem(BATCH_KEY, JSON.stringify(data));
     },
 
+    // --- TRASH OPERATIONS ---
+    getTrash: () => {
+        const raw = localStorage.getItem(TRASH_KEY);
+        return raw ? JSON.parse(raw) : {}; // { batchId: { ...info, deletedAt, items } }
+    },
+    saveTrash: (data) => {
+        localStorage.setItem(TRASH_KEY, JSON.stringify(data));
+    },
+
     // --- MAIN ACTIONS ---
 
     // Compatibility for app.js
     get: (id) => {
         const lookup = CustomerDB.getLookup();
         return lookup[id] || null;
+    },
+
+    // Group batches by company
+    getCompanySummaries: () => {
+        const batches = CustomerDB.getBatches();
+        const summaries = {};
+
+        Object.values(batches).forEach(b => {
+            if (!summaries[b.name]) {
+                summaries[b.name] = {
+                    name: b.name,
+                    type: b.type,
+                    totalCount: 0,
+                    batches: []
+                };
+            }
+            summaries[b.name].totalCount += b.count;
+            summaries[b.name].batches.push(b);
+        });
+
+        return Object.values(summaries).sort((a, b) => a.name.localeCompare(b.name));
     },
 
     // Add a new Batch
@@ -67,26 +100,75 @@ const CustomerDB = {
         return { count: trackingList.length, id: batchId };
     },
 
-    // Delete a Batch
+    // Delete a Batch (Move to Trash)
     deleteBatch: (batchId) => {
         const batches = CustomerDB.getBatches();
         const lookup = CustomerDB.getLookup();
+        const trash = CustomerDB.getTrash();
 
         if (!batches[batchId]) return;
 
-        // 1. Remove from Lookup (Expensive but necessary for consistency)
-        // Optimization: In a real DB, we'd query by batchId. Here we iterate.
+        const batchToTrash = { ...batches[batchId], deletedAt: Date.now() };
+        const itemsToTrash = [];
+
+        // 1. Remove from Lookup and save items for restoring later
         Object.keys(lookup).forEach(key => {
             if (lookup[key].batchId === batchId) {
+                itemsToTrash.push(key);
                 delete lookup[key];
             }
         });
 
-        // 2. Remove Batch
+        // 2. Save into Trash
+        batchToTrash.items = itemsToTrash;
+        trash[batchId] = batchToTrash;
+
+        // 3. Remove Batch
         delete batches[batchId];
 
         CustomerDB.saveBatches(batches);
         CustomerDB.saveLookup(lookup);
+        CustomerDB.saveTrash(trash);
+    },
+
+    // Restore a Batch from Trash
+    restoreTrash: (batchId) => {
+        const trash = CustomerDB.getTrash();
+        const batches = CustomerDB.getBatches();
+        const lookup = CustomerDB.getLookup();
+
+        if (!trash[batchId]) return;
+
+        const batchToRestore = trash[batchId];
+        const items = batchToRestore.items || [];
+
+        // Clean up trash specific fields
+        delete batchToRestore.deletedAt;
+        delete batchToRestore.items;
+
+        batches[batchId] = batchToRestore;
+
+        items.forEach(id => {
+            lookup[id] = {
+                batchId: batchId,
+                name: batchToRestore.name,
+                type: batchToRestore.type
+            };
+        });
+
+        delete trash[batchId];
+
+        CustomerDB.saveBatches(batches);
+        CustomerDB.saveLookup(lookup);
+        CustomerDB.saveTrash(trash);
+    },
+
+    permanentlyDeleteTrash: (batchId) => {
+        const trash = CustomerDB.getTrash();
+        if (trash[batchId]) {
+            delete trash[batchId];
+            CustomerDB.saveTrash(trash);
+        }
     },
 
     // --- BACKUP & RESTORE SYSTEM ---
@@ -94,8 +176,9 @@ const CustomerDB = {
         const data = {
             batches: CustomerDB.getBatches(),
             lookup: CustomerDB.getLookup(),
+            trash: CustomerDB.getTrash(),
             timestamp: new Date().toISOString(),
-            version: "1.0"
+            version: "1.1"
         };
         const json = JSON.stringify(data, null, 2);
         const blob = new Blob([json], { type: "application/json" });
@@ -122,6 +205,7 @@ const CustomerDB = {
                     // Restore
                     CustomerDB.saveBatches(data.batches);
                     CustomerDB.saveLookup(data.lookup);
+                    if (data.trash) CustomerDB.saveTrash(data.trash);
                     resolve(true);
                 } catch (err) {
                     reject(err);
@@ -134,6 +218,8 @@ const CustomerDB = {
     clearAll: () => {
         localStorage.removeItem(BATCH_KEY);
         localStorage.removeItem(LOOKUP_KEY);
+        // Do we want to clear trash too? Yes, clearAll means factory reset-ish.
+        localStorage.removeItem(TRASH_KEY);
     },
 
     // Find similar (using Lookup DB)
@@ -344,6 +430,66 @@ const Block1Manager = {
     }
 };
 
+// --- UI View Toggles ---
+let currentDbView = 'recent'; // 'recent', 'company', 'trash'
+
+function toggleCompanyView() {
+    currentDbView = currentDbView === 'company' ? 'recent' : 'company';
+    updateDbViews();
+}
+
+function toggleTrashView() {
+    currentDbView = currentDbView === 'trash' ? 'recent' : 'trash';
+    updateDbViews();
+}
+
+function updateDbViews() {
+    const listCont = document.getElementById('db-list-container');
+    const compCont = document.getElementById('db-company-container');
+    const trashCont = document.getElementById('db-trash-container');
+    
+    if(listCont) listCont.classList.add('hidden');
+    if(compCont) compCont.classList.add('hidden');
+    if(trashCont) trashCont.classList.add('hidden');
+    
+    const btnComp = document.getElementById('btn-toggle-company');
+    const btnTrash = document.getElementById('btn-toggle-trash');
+    
+    if(btnComp) {
+        btnComp.classList.remove('active', 'btn-primary');
+        btnComp.classList.add('btn-neutral');
+    }
+    if(btnTrash) {
+        btnTrash.classList.remove('active', 'btn-danger');
+        btnTrash.classList.add('btn-neutral');
+    }
+
+    if (currentDbView === 'recent') {
+        if(listCont) listCont.classList.remove('hidden');
+        renderDBTable();
+    } else if (currentDbView === 'company') {
+        if(compCont) compCont.classList.remove('hidden');
+        if(btnComp) {
+            btnComp.classList.remove('btn-neutral');
+            btnComp.classList.add('btn-primary');
+        }
+        renderCompanyTable();
+    } else if (currentDbView === 'trash') {
+        if(trashCont) trashCont.classList.remove('hidden');
+        if(btnTrash) {
+            btnTrash.classList.remove('btn-neutral');
+            btnTrash.classList.add('btn-danger'); // Use red for trash
+        }
+        renderTrashTable();
+    }
+    
+    // Update Trash Count
+    const trashSpan = document.getElementById('trash-count');
+    if(trashSpan) {
+        trashSpan.innerText = Object.keys(CustomerDB.getTrash()).length;
+    }
+}
+
 // --- RENDER FUNCTIONS (Adapted for Batches) ---
 
 function renderDBTable() {
@@ -365,14 +511,12 @@ function renderDBTable() {
     rows.sort((a, b) => {
         let valA, valB;
         if (currentSort.key === 'id') {
-            // Sort by Range Desc String?
             valA = a.rangeDesc; valB = b.rangeDesc;
         } else if (currentSort.key === 'name') {
             valA = a.name.toLowerCase(); valB = b.name.toLowerCase();
         } else if (currentSort.key === 'type') {
             valA = a.type; valB = b.type;
         } else {
-            // Timestamp default
             valA = a.timestamp || 0; valB = b.timestamp || 0;
         }
 
@@ -383,6 +527,7 @@ function renderDBTable() {
 
     // Update Headers
     document.querySelectorAll('#db-table th').forEach(th => {
+        if(!th.dataset.sort) return;
         th.style.background = '#f8f9fa';
         if (th.dataset.sort === currentSort.key) {
             th.style.background = '#e2e6ea';
@@ -418,6 +563,135 @@ function renderDBTable() {
     });
 }
 
+function renderCompanyTable() {
+    const tbody = document.querySelector('#company-table tbody');
+    if (!tbody) return;
+    
+    const summaries = CustomerDB.getCompanySummaries();
+    tbody.innerHTML = '';
+    
+    if (summaries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">ไม่พบข้อมูลบริษัท</td></tr>';
+        return;
+    }
+    
+    summaries.forEach(company => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${company.name}</strong></td>
+            <td><strong>${company.totalCount.toLocaleString()}</strong> รายการ</td>
+            <td>${company.batches.length} ชุด</td>
+            <td><span class="badge ${company.type === 'Credit' ? 'badge-primary' : 'badge-neutral'}">${company.type}</span></td>
+            <td>
+                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#17a2b8; color:white; margin-right:5px;" 
+                    onclick="loadCompanyToEdit('${company.name}')">✏️ รวมเพื่อแก้ (Edit All)</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function renderTrashTable() {
+    const tbody = document.querySelector('#trash-table tbody');
+    if (!tbody) return;
+    
+    const trash = CustomerDB.getTrash();
+    tbody.innerHTML = '';
+    
+    const keys = Object.keys(trash);
+    if (keys.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">ถังขยะว่างเปล่า</td></tr>';
+        return;
+    }
+    
+    const rows = keys.map(k => trash[k]).sort((a,b) => b.deletedAt - a.deletedAt);
+    
+    rows.forEach(item => {
+        const deleteDate = new Date(item.deletedAt).toLocaleString('th-TH');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <strong>${item.rangeDesc}</strong><br>
+                <small>(${item.count.toLocaleString()} รายการ)</small>
+            </td>
+            <td>${item.name}</td>
+            <td style="color:#d32f2f; font-size:0.85rem;">${deleteDate}</td>
+            <td>
+                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#007bff; color:white; margin-right:5px;" 
+                    onclick="restoreTrashItem('${item.id}', '${item.name}')">♻️ กู้คืน (Restore)</button>
+                <button class="btn" style="padding:2px 6px; font-size:0.7rem; background:#dc3545; color:white;" 
+                    onclick="hardDeleteTrashItem('${item.id}', '${item.name}')">ลบทิ้งถาวร</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function restoreTrashItem(batchId, batchName) {
+    if (confirm(`ต้องการกู้คืนข้อมูลชุดนี้ใช่หรือไม่?\n\nลูกค้า: ${batchName}`)) {
+        CustomerDB.restoreTrash(batchId);
+        updateDbViews();
+    }
+}
+
+function hardDeleteTrashItem(batchId, batchName) {
+    if (confirm(`⚠️ ยืนยันการลบทิ้งถาวร ไม่สามารถกู้คืนได้อีก!\n\nลูกค้า: ${batchName}`)) {
+        CustomerDB.permanentlyDeleteTrash(batchId);
+        updateDbViews();
+    }
+}
+
+function emptyTrash() {
+    if (confirm('⚠️ ยืนยันการล้างถังขยะทั้งหมด ข้อมูลในถังขยะจะถูกลบทิ้งอย่างถาวร ไม่สามารถกู้คืนได้!')) {
+        CustomerDB.emptyTrash();
+        updateDbViews();
+    }
+}
+
+function loadCompanyToEdit(companyName) {
+    if (!confirm(`นำข้อมูลของลูกค้า "${companyName}" ทั้งหมดขึ้นมาแก้ไข?\n(ข้อมูลเก่าของคุณจะถูกลบและแทนที่ด้วยข้อมูลชุดใหม่ตอนคุณกดบันทึก)`)) return;
+
+    const summaries = CustomerDB.getCompanySummaries();
+    const company = summaries.find(s => s.name === companyName);
+    
+    if (!company) return;
+    
+    // Fill upper form
+    document.getElementById('db-name').value = company.name;
+    document.getElementById('db-type').value = company.type;
+    
+    // We only have contract history in individual batches, try grab from first.
+    if(company.batches.length > 0 && company.batches[0].contract) {
+       document.getElementById('db-contract').value = company.batches[0].contract;
+    } else {
+       document.getElementById('db-contract').value = '';
+    }
+
+    // Move to Trash (Soft Delete) all batches for this company so
+    // that when the user saves, it creates one new fresh batch.
+    company.batches.forEach(b => {
+        CustomerDB.deleteBatch(b.id);
+    });
+    
+    // Collect all tracking numbers from the old batches to display
+    // Since we just deleted them, they are in trash... let's read from trash items
+    const trash = CustomerDB.getTrash();
+    const allItemsToEdit = [];
+    
+    company.batches.forEach(b => {
+        if(trash[b.id] && trash[b.id].items) {
+             allItemsToEdit.push(...trash[b.id].items);
+        }
+    });
+
+    // Populate textarea
+    const textArea = document.getElementById('db-tracking-list');
+    textArea.value = allItemsToEdit.join('\\n');
+    
+    alert(`ดึงเลขพัสดุ ${allItemsToEdit.length} รายการ ขึ้นมาแก้ไขแล้ว!\\n(ข้อมูลชุดเดิมถูกย้ายไปที่ถังขยะชั่วคราว หากยกเลิกสามารถตามไปกู้คืนได้)`);
+    updateDbViews();
+}
+
 function deleteBatchEntry(batchId, batchName) {
     if (confirm(`ยืนยันการลบข้อมูลชุดนี้?\n\nลูกค้า: ${batchName}`)) {
         CustomerDB.deleteBatch(batchId);
@@ -428,7 +702,7 @@ function deleteBatchEntry(batchId, batchName) {
 function clearAllData() {
     if (confirm('ยืนยันลบข้อมูลทั้งหมด? (ข้อมูลชุดทั้งหมดจะหายไป)')) {
         CustomerDB.clearAll();
-        renderDBTable();
+        updateDbViews();
     }
 }
 
@@ -493,8 +767,9 @@ function saveCustomerData() {
 
     // Reset inputs
     document.getElementById('db-tracking-list').value = '';
-    renderDBTable();
+    currentDbView = 'recent';
+    updateDbViews();
 }
 
 // Hook into Window Load to Init Table
-window.addEventListener('load', renderDBTable);
+window.addEventListener('load', updateDbViews);
