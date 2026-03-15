@@ -550,6 +550,7 @@ function renderDBTable() {
                     ${item.type}
                 </span>
                 ${item.contract ? `<br><small>${item.contract}</small>` : ''}
+                ${item.requestDate ? `<br><small style="color:#28a745;">📅 ขอเลข: ${new Date(item.requestDate).toLocaleDateString('th-TH')}</small>` : ''}
             </td>
             <td style="font-size:0.85rem; color:#666;">${dateStr}</td>
             <td>
@@ -667,6 +668,12 @@ function loadCompanyToEdit(companyName) {
        document.getElementById('db-contract').value = '';
     }
 
+    if(company.batches.length > 0 && company.batches[0].requestDate) {
+       document.getElementById('db-request-date').value = company.batches[0].requestDate;
+    } else {
+       document.getElementById('db-request-date').value = '';
+    }
+
     // Move to Trash (Soft Delete) all batches for this company so
     // that when the user saves, it creates one new fresh batch.
     company.batches.forEach(b => {
@@ -710,6 +717,7 @@ function saveCustomerData() {
     const name = document.getElementById('db-name').value.trim();
     const type = document.getElementById('db-type').value;
     const contract = document.getElementById('db-contract').value.trim();
+    const requestDate = document.getElementById('db-request-date').value;
     const loadedList = document.getElementById('db-tracking-list').value.trim();
 
     if (!name || !loadedList) {
@@ -717,7 +725,7 @@ function saveCustomerData() {
         return;
     }
 
-    const batchInfo = { name, type, contract, timestamp: new Date().getTime() };
+    const batchInfo = { name, type, contract, requestDate, timestamp: new Date().getTime() };
     const numbersToAdd = [];
 
     // Parse list (support Ranges!)
@@ -766,6 +774,9 @@ function saveCustomerData() {
     alert(`บันทึกเรียบร้อย! เพิ่ม ${count} รายการ (เป็น 1 ชุด)`);
 
     // Reset inputs
+    document.getElementById('db-name').value = '';
+    document.getElementById('db-contract').value = '';
+    document.getElementById('db-request-date').value = '';
     document.getElementById('db-tracking-list').value = '';
     currentDbView = 'recent';
     updateDbViews();

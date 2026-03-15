@@ -1120,6 +1120,7 @@ function loadBatchToView(batchId) {
                  <div style="margin-bottom:10px; font-size:0.9rem;">
                     <strong>Customer:</strong> ${batch.name}<br>
                     <strong>Type:</strong> ${batch.type}<br>
+                    ${batch.requestDate ? `<strong>Request Date:</strong> ${new Date(batch.requestDate).toLocaleDateString('th-TH')}<br>` : ''}
                     <strong>Date:</strong> ${new Date(batch.timestamp).toLocaleString('th-TH')}
                 </div>
                  <div style="font-size:0.8rem; color:red; text-align:center; margin-bottom:5px;">
