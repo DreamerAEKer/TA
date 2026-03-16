@@ -1391,6 +1391,14 @@ async function adminHandleImageOcr(files) {
                 <td style="padding:10px; text-align:right;">${totalPrice.toFixed(2)}</td>
             </tr>
         </table>`;
+        
+        // DEBUG BLOCK: Output raw text to help us fix the regex
+        outputHtml += `
+            <div style="margin-top:20px; padding:10px; background:#f8f9fa; border:1px solid #ccc; border-radius:4px; max-height:200px; overflow-y:auto;">
+                 <strong style="color:#666; font-size:0.8rem;">[DEBUG] RAW OCR TEXT:</strong>
+                 <pre style="font-size:0.75rem; white-space:pre-wrap; margin:0;">${combinedText}</pre>
+            </div>
+        `;
 
         resultEl.innerHTML = outputHtml;
         statusEl.textContent = "ประมวลผลเสร็จสิ้น (Done)";
