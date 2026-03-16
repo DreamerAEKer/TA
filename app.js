@@ -1551,75 +1551,12 @@ function _performCrossRef(trackingArray) {
     const resultEl = document.getElementById('admin-crossref-result');
     
     if (!trackingArray || trackingArray.length === 0) {
-        statusEl.textContent = "กรุณาวางข้อมูล หรือ อัปโหลดรูปภาพที่มีเลขพัสดุก่อน";
-        resultEl.classList.add('hidden');
-        return;
-    }
-
-    statusEl.textContent = `กำลังเทียบข้อมูล ${trackingArray.length} รายการ กับฐานข้อมูลลูกค้า...`;
+        statusEl.textContent = "กรุณาวางข้อมูล หรือ �    resultEl.innerHTML = html;
+    resultEl.classList.remove('hidden');
     
-    const lookup = CustomerDB.getLookup();
-    const batches = CustomerDB.getBatches();
-    
-    let html = '';
-
-    let foundCount = 0;
-
-    trackingArray.forEach((track, idx) => {
-        // Find DB info for the primary tracking number
-        let dbInfoMain = lookup[track];
-        
-        // Define the items to show in order (e.g. -2, -1, 0, +1)
-        let displayList = [];
-        
-        if (track.length === 13 && typeof TrackingUtils !== 'undefined') {
-            displayList = TrackingUtils.generateTrackingRange(track, 2, 1);
-        } else {
-            displayList = [{ number: track, offset: 0, isCenter: true }];
-        }
-
-        // Start a group card for each searched tracking number
-        const mainFound = !!dbInfoMain;
-        const mainCompanyInfo = mainFound 
-            ? `<strong style="color:var(--primary-color);">${dbInfoMain.name}</strong>${batches[dbInfoMain.batchId] && batches[dbInfoMain.batchId].requestDate ? ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[dbInfoMain.batchId].requestDate).toLocaleDateString('th-TH')})</small>` : ''}`
-            : '<span style="color:#999; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
-        
-        if (mainFound) foundCount++;
-
-        html += `
-            <div style="border: 2px solid ${mainFound ? '#28a745' : '#ddd'}; border-radius: 8px; margin-bottom: 14px; overflow: hidden;">
-                <!-- Group Header: Main tracking number -->
-                <div style="background: ${mainFound ? 'linear-gradient(90deg, #e8f5e9, #f1f8f2)' : '#f5f5f5'}; padding: 10px 14px; border-bottom: 1px solid ${mainFound ? '#c8e6c9' : '#e0e0e0'}; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                    <div>
-                        <span style="font-size: 0.75rem; font-weight: bold; color: #666; margin-right: 6px; background: #fff; border: 1px solid #ccc; border-radius: 3px; padding: 1px 5px;">#${idx + 1}</span>
-                        <span style="font-family:monospace; font-weight:bold; font-size: 1.2em; color: ${mainFound ? '#1a6b2e' : '#333'}; letter-spacing:1px;">${track}</span>
-                        <span style="font-size: 0.8rem; margin-left: 8px; color: #666;">${mainCompanyInfo}</span>
-                    </div>
-                    <div style="display:flex; gap:6px; align-items:center;">
-                        <a href="https://track.thailandpost.co.th/?trackNumber=${track}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9; font-weight:bold;">🔗 Official</a>
-                        <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer; font-weight:bold;" onclick="navigator.clipboard.writeText('${track}').then(() => alert('คัดลอก ${track} แล้ว'))">📋 Copy</button>
-                    </div>
-                </div>
-                <!-- Sequence sub-rows -->
-                <div style="padding: 4px 0;">
-        `;
-
-        // Render the surrounding sequence items (excluding the main one)
-        displayList.forEach((item) => {
-            const isMain = (item.offset === 0);
-            if (isMain) return; // Skip main - already shown in header
-
-            let dbInfo = lookup[item.number];
-            let companyName = '<span style="color:#ccc; font-style:italic;">ไม่พบ</span>';
-            let seqBg = '#fafafa';
-
-            if (dbInfo) {
-                companyName = `<strong style="color:var(--primary-color);">${dbInfo.name}</strong>${batches[dbInfo.batchId] && batches[dbInfo.batchId].requestDate ? ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[dbInfo.batchId].requestDate).toLocaleDateString('th-TH')})</small>` : ''}`;
-                seqBg = '#f0fbf2';
-            }
-
-            let label = '';
-            if (item.offset < 0) label = `<span style="color:#888; font-size:0.75rem;">(ก่อนหน้า ${Math.abs(item.offset)})</span>`;
+    statusEl.innerHTML = `\u0e15\u0e23\u0e27\u0e08\u0e1e\u0e1a\u0e2a\u0e31\u0e07\u0e01\u0e31\u0e14\u0e15\u0e23\u0e07\u0e01\u0e31\u0e19 <strong style="color:green;">${foundCount}</strong> \u0e08\u0e32\u0e01\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14 ${trackingArray.length} \u0e23\u0e32\u0e22\u0e01\u0e32\u0e23`;
+}
+�่อนหน้า ${Math.abs(item.offset)})</span>`;
             if (item.offset > 0) label = `<span style="color:#1976d2; font-size:0.75rem;">(ถัดไป ${item.offset})</span>`;
 
             html += `
