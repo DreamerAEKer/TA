@@ -1759,3 +1759,177 @@ function checkAuth() {
     }
 }
 
+// ==========================================
+// SECTION: EXCEPTION LOG (ตกหล่น)
+// ==========================================
+
+function renderExceptionTable() {
+    const container = document.getElementById('exception-table-container');
+    if (!container) return;
+    
+    // Check if ExceptionManager is ready
+    if(typeof ExceptionManager === 'undefined') {
+        container.innerHTML = '<span style="color:red;">ExceptionManager not loaded. Check db_manager.js</span>';
+        return;
+    }
+
+    const exceptions = ExceptionManager.getAll();
+    
+    if (exceptions.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">ยังไม่มีข้อมูลประวัติการตกหล่น</p>';
+        return;
+    }
+
+    // Sort by newest first
+    exceptions.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    let html = `
+        <div id="exception-export-target" style="background:white; padding:15px; border-radius:8px;">
+            <div style="margin-bottom:10px; border-bottom:2px solid #333; padding-bottom:10px;">
+                <strong style="font-size:1.1rem;">รายการพัสดุรับฝากตกหล่น / มีปัญหา</strong><br>
+                <small style="color:#666;">ข้อมูล ณ วันที่: ${new Date().toLocaleString('th-TH')}</small>
+            </div>
+            <table style="width:100%; font-size:0.9rem; border-collapse: collapse;">
+                <thead>
+                    <tr style="background:#f1f1f1;">
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;">ลำดับ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เลขพัสดุ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">ชื่อบริษัท/สังกัด (ถ้ามี)</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เหตุผล / สถานะ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;" data-html2canvas-ignore>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    exceptions.forEach((item, idx) => {
+        const dateStr = new Date(item.timestamp).toLocaleDateString('th-TH');
+        html += `
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding:10px 8px; text-align:center;">${idx + 1}</td>
+                <td style="padding:10px 8px; font-family:monospace; font-weight:bold;">${item.trackNum}</td>
+                <td style="padding:10px 8px;">${item.companyName}</td>
+                <td style="padding:10px 8px; color:#d32f2f;">${item.reason}</td>
+                <td style="padding:10px 8px; text-align:center;" data-html2canvas-ignore>
+                    <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteException('${item.id}')">ลบ</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top:10px; text-align:right;">
+             <button class="btn btn-neutral" onclick="clearAllExceptions()">🗑️ ล้างประวัติทั้งหมด</button>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+function addExceptionEntry() {
+    const trackInput = document.getElementById('exception-track-input');
+    const reasonInput = document.getElementById('exception-reason-input');
+    
+    const trackNum = trackInput.value.trim().toUpperCase();
+    const reason = reasonInput.value.trim();
+    
+    if (!trackNum || trackNum.length !== 13) {
+        alert('กรุณากรอกเลขพัสดุให้ครบ 13 หลัก');
+        trackInput.focus();
+        return;
+    }
+    
+    if (!reason) {
+        alert('กรุณาระบุเหตุผลที่ตกหล่น');
+        reasonInput.focus();
+        return;
+    }
+    
+    // Attempt lookup to find company name
+    let companyName = '-';
+    if(typeof CustomerDB !== 'undefined') {
+        const lookupInfo = CustomerDB.get(trackNum);
+        if(lookupInfo) {
+             companyName = lookupInfo.name;
+        }
+    }
+    
+    ExceptionManager.save(trackNum, companyName, reason);
+    
+    // Clear inputs
+    trackInput.value = '';
+    // reasonInput.value = ''; // keep reason in case of multiple similar entries
+    trackInput.focus();
+    
+    renderExceptionTable();
+}
+
+function deleteException(id) {
+    if(confirm('ยอดลบรายการนี้ใช่หรือไม่?')) {
+        ExceptionManager.remove(id);
+        renderExceptionTable();
+    }
+}
+
+function clearAllExceptions() {
+    if(ExceptionManager.clearAll()) {
+         renderExceptionTable();
+    }
+}
+
+function exportExceptionImage() {
+    const targetNode = document.getElementById('exception-export-target');
+    if (!targetNode) {
+        alert('ไม่พบข้อมูลที่จะสร้างรูปภาพ กรุณาเพิ่มประวัติก่อนครับ');
+        return;
+    }
+    
+    if(typeof html2canvas === 'undefined') {
+        alert('ระบบกำลังโหลดเครื่องมือสร้างภาพ หรือโหลดไม่สำเร็จ กรุณาลองใหม่ (ต้องต่อเน็ต)');
+        return;
+    }
+    
+    const originalBackground = targetNode.style.background;
+    targetNode.style.background = '#ffffff'; // Ensure white background for image
+    
+    // Temporarily apply padding for better image borders
+    const originalPadding = targetNode.style.padding;
+    targetNode.style.padding = "30px";
+    
+    html2canvas(targetNode, {
+        scale: 2, // higher resolution
+        backgroundColor: '#ffffff',
+        logging: false
+    }).then(canvas => {
+        // Restore styles
+        targetNode.style.background = originalBackground;
+        targetNode.style.padding = originalPadding;
+        
+        // Trigger Download
+        const imgData = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `Exception_Report_${new Date().toISOString().slice(0,10)}.png`;
+        link.href = imgData;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }).catch(err => {
+        targetNode.style.background = originalBackground;
+        targetNode.style.padding = originalPadding;
+        console.error('Error generating image:', err);
+        alert('เกิดข้อผิดพลาดในการสร้างภาพ: ' + err.message);
+    });
+}
+
+// Update checkAuth hook internally to also init exception table if Admin
+const originalCheckAuth = checkAuth;
+checkAuth = function() {
+    originalCheckAuth();
+    if(document.getElementById('exception-table-container')) {
+        renderExceptionTable();
+    }
+};
+

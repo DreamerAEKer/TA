@@ -865,3 +865,51 @@ function saveCustomerData() {
 
 // Hook into Window Load to Init Table
 window.addEventListener('load', updateDbViews);
+
+/**
+ * Exception Manager (For Tracking Errors / Reasons)
+ */
+const EXCEPTION_KEY = 'thp_tracking_exceptions_v1';
+
+const ExceptionManager = {
+    getAll: () => {
+        try {
+            const raw = localStorage.getItem(EXCEPTION_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch(e) {
+            console.error("Error loading exceptions", e);
+            return [];
+        }
+    },
+    
+    save: (trackNum, companyName, reason) => {
+        const exceptions = ExceptionManager.getAll();
+        
+        // Remove existing entry for this tracking number if it exists (Overwrite)
+        const filtered = exceptions.filter(e => e.trackNum !== trackNum);
+        
+        filtered.push({
+            id: Date.now().toString(),
+            trackNum: trackNum,
+            companyName: companyName,
+            reason: reason,
+            timestamp: new Date().toISOString()
+        });
+        
+        localStorage.setItem(EXCEPTION_KEY, JSON.stringify(filtered));
+    },
+    
+    remove: (id) => {
+        const exceptions = ExceptionManager.getAll();
+        const filtered = exceptions.filter(e => e.id !== id);
+        localStorage.setItem(EXCEPTION_KEY, JSON.stringify(filtered));
+    },
+    
+    clearAll: () => {
+        if(confirm('ยืนยันลบประวัติการตกหล่นทั้งหมดระวังจะกู้คืนไม่ได้?')) {
+            localStorage.removeItem(EXCEPTION_KEY);
+            return true;
+        }
+        return false;
+    }
+};

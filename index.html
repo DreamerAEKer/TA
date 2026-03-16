@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="style.css?v=11">
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src='https://unpkg.com/tesseract.js@v5.0.0/dist/tesseract.min.js'></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
 
 <body>
@@ -17,7 +18,7 @@
         <div class="container">
             <div class="brand">
                 <div class="brand-logo">POST</div>
-                <span>Tracking Analyst (Business Customer) v1.10</span>
+                <span>Tracking Analyst (Business Customer) v1.11</span>
             </div>
 
         </div>
@@ -507,6 +508,39 @@ EB123456001TH
                     </div>
                 </div>
 
+                <!-- Tool 4: Exception Log (ตกหล่น) -->
+                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="color:#d32f2f;">4. บันทึกเหตุผลตกหล่น (Exception Log)</h3>
+                        <button class="btn btn-primary" onclick="exportExceptionImage()" style="background-color:#0288d1; border-color:#0288d1; color:white;">📸 สร้างรูปภาพแจ้งหัวหน้า</button>
+                    </div>
+                    <p style="font-size:0.9rem; color:#666;">บันทึกเลขพัสดุที่ไม่สามารถหาข้อมูลพบหรือมีปัญหา พร้อมระบุสาเหตุ เพื่อเก็บเป็นประวัติและส่งรายงานผ่านไลน์</p>
+                    
+                    <div style="display:flex; gap:10px; margin-bottom:15px; align-items:flex-end;">
+                        <div style="flex:1;">
+                            <label style="font-size:0.8rem;">เลขพัสดุ (Tracking Number)</label>
+                            <input type="text" id="exception-track-input" placeholder="เช่น EQ123456785TH" maxlength="13" style="text-transform:uppercase;">
+                        </div>
+                        <div style="flex:2;">
+                            <label style="font-size:0.8rem;">เหตุผล (Reason)</label>
+                            <input type="text" id="exception-reason-input" placeholder="เช่น ของยังไม่มาส่ง, จ่าหน้าไม่ชัดเจน..." list="exception-reason-list">
+                            <datalist id="exception-reason-list">
+                                <option value="ของยังไม่มาส่งที่ ปณ.">
+                                <option value="รอแก้จ่าหน้า">
+                                <option value="สลับของกับบริษัทอื่น">
+                                <option value="ชำรุด/กล่องแตก">
+                            </datalist>
+                        </div>
+                        <div style="flex:0.5;">
+                            <button class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; height:40px;">➕ บันทึก</button>
+                        </div>
+                    </div>
+
+                    <div id="exception-table-container">
+                        <!-- Table injected via app.js -->
+                    </div>
+                </div>
+
             </div>
         </section>
 
@@ -514,12 +548,12 @@ EB123456001TH
 
     <div
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v1.10</div>
+        v1.11</div>
 
-    <script src="utils.js?v=24"></script>
-    <script src="db_manager.js?v=24"></script>
-    <script src="smart_input.js?v=24"></script>
-    <script src="app.js?v=24"></script>
+    <script src="utils.js?v=25"></script>
+    <script src="db_manager.js?v=25"></script>
+    <script src="smart_input.js?v=25"></script>
+    <script src="app.js?v=25"></script>
 </body>
 
 </html>
