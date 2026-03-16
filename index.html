@@ -17,7 +17,7 @@
         <div class="container">
             <div class="brand">
                 <div class="brand-logo">POST</div>
-                <span>Tracking Analyst (Business Customer) v1.3</span>
+                <span>Tracking Analyst (Business Customer) v1.4</span>
             </div>
 
         </div>
@@ -471,6 +471,13 @@ EB123456001TH
                     <h3 style="color:var(--primary-color);">2. ดึงข้อมูลจากใบเสร็จ (Receipt OCR & Missing Check)</h3>
                     <p style="font-size:0.9rem; color:#666;">ประมวลผลรูปใบเสร็จที่มีเลขพัสดุและราคา ระบบจะไล่อ่านข้อมูล ถอดรหัสราคา และหาช่วงเลขที่ขาดหายให้อัตโนมัติ</p>
                     
+                    <div style="margin-bottom:10px;">
+                        <label style="font-size:0.85rem; display:flex; gap:5px; align-items:center; cursor:pointer;">
+                            <input type="checkbox" id="admin-ocr-eng-only" checked>
+                            📝 โหมดอ่านตาราง/ตัวเลข (แนะนำสำหรับใบสรุปที่มีตัวเลขเป็นหลัก)
+                        </label>
+                    </div>
+
                     <div class="upload-area" onclick="document.getElementById('admin-ocr-upload').click()">
                         <span class="upload-icon">📄</span>
                         <p>คลิกเพื่อเลือกภาพใบเสร็จ (Receipt Image)</p>
@@ -506,12 +513,12 @@ EB123456001TH
 
     <div
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v1.3</div>
+        v1.4</div>
 
-    <script src="utils.js?v=17"></script>
-    <script src="db_manager.js?v=17"></script>
-    <script src="smart_input.js?v=17"></script>
-    <script src="app.js?v=17"></script>
+    <script src="utils.js?v=18"></script>
+    <script src="db_manager.js?v=18"></script>
+    <script src="smart_input.js?v=18"></script>
+    <script src="app.js?v=18"></script>
 </body>
 
 </html>

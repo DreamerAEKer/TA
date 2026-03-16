@@ -483,7 +483,9 @@ async function handleImageImport(files) {
             statusEl.innerText = `OCR Scanning Image ${i + 1}/${files.length}...`;
             const file = files[i];
 
-            const worker = await Tesseract.createWorker('tha+eng');
+            const useEngOnly = document.getElementById('admin-ocr-eng-only') && document.getElementById('admin-ocr-eng-only').checked;
+            const lang = useEngOnly ? 'eng' : 'tha+eng';
+            const worker = await Tesseract.createWorker(lang);
             const { data: { text } } = await worker.recognize(file);
             await worker.terminate();
 
@@ -1271,7 +1273,9 @@ async function adminHandleImageOcr(files) {
             const file = files[i];
 
             // Tesseract OCR
-            const worker = typeof Tesseract !== 'undefined' ? await Tesseract.createWorker('tha+eng') : null;
+            const useEngOnly = document.getElementById('admin-ocr-eng-only') && document.getElementById('admin-ocr-eng-only').checked;
+            const lang = useEngOnly ? 'eng' : 'tha+eng';
+            const worker = typeof Tesseract !== 'undefined' ? await Tesseract.createWorker(lang) : null;
             if (worker) {
                 const { data: { text } } = await worker.recognize(file);
                 await worker.terminate();
