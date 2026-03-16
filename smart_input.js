@@ -95,10 +95,19 @@ function setupSmartInputEvents() {
     block2Input.addEventListener('keyup', (e) => {
         if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab') return;
 
+        // Fast Entry: Press Enter to Save and Clear Block 2
+        if (e.key === 'Enter') {
+             addSmartEntryAndSave();
+             return;
+        }
+
         const isRange = document.getElementById('smart-range-enable').checked;
         if (e.target.value.length >= 4 && isRange) {
              document.getElementById('smart-qty').focus();
              document.getElementById('smart-qty').select();
+        } else if (e.target.value.length === 4 && !isRange) {
+            // Optional: Auto-save on 4th digit (disabled by default to prevent accidental saves)
+            // addSmartEntryAndSave();
         }
     });
 }
