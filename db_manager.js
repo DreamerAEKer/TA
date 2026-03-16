@@ -765,7 +765,7 @@ function loadBatchToEdit(batchId) {
 function deleteBatchEntry(batchId, batchName) {
     if (confirm(`ยืนยันการลบข้อมูลชุดนี้?\n\nลูกค้า: ${batchName}`)) {
         CustomerDB.deleteBatch(batchId);
-        renderDBTable();
+        updateDbViews();
     }
 }
 
