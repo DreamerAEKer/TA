@@ -1255,6 +1255,47 @@ function adminOpenThpTrack() {
     window.open(url, '_blank');
 }
 
+/**
+ * Applies grayscale and high-contrast thresholding to an image file.
+ * Returns a Data URL of the processed image.
+ * This removes grey backgrounds and light table lines, helping Tesseract OCR.
+ */
+function preprocessImageForOCR(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            ctx.drawImage(img, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Threshold value (0-255). Lower = more things become white.
+            // 150 is usually good for removing light grey shadows but keeping blue/black ink
+            const threshold = 150; 
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                // Luminance formula
+                const v = (0.2126 * r + 0.7152 * g + 0.0722 *b >= threshold) ? 255 : 0;
+                
+                data[i] = data[i + 1] = data[i + 2] = v; // Set R, G, B
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            resolve(canvas.toDataURL('image/jpeg', 1.0));
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+    });
+}
+
 async function adminHandleImageOcr(files) {
     if (!files || files.length === 0) return;
 
@@ -1263,21 +1304,32 @@ async function adminHandleImageOcr(files) {
     resultEl.classList.remove('hidden');
     resultEl.innerHTML = '';
     
-    if (statusEl) statusEl.textContent = `กำลังประมวลผล ${files.length} รูป... กรุณารอสักครู่ OCR อาจใช้เวลาสักพัก`;
+    if (statusEl) statusEl.textContent = `กำลังเริ่มประมวลผล...`;
 
     let combinedText = "";
+    let debugProcessedImageUrl = "";
 
     try {
         for (let i = 0; i < files.length; i++) {
             if (statusEl) statusEl.textContent = `กำลังแยกข้อความจากภาพ ${i + 1}/${files.length}...`;
             const file = files[i];
 
+            // Image Preprocessing: Grayscale + Thresholding
+            if (statusEl) statusEl.textContent = `กำลังปรับแต่งรูปภาพ (Preprocessing)...`;
+            const processedFileUrl = await preprocessImageForOCR(file);
+            debugProcessedImageUrl = processedFileUrl; // Save for debug display
+
             // Tesseract OCR
+            if (statusEl) statusEl.textContent = `กำลังแยกข้อความจากภาพ ${i + 1}/${files.length}...`;
             const useEngOnly = document.getElementById('admin-ocr-eng-only') && document.getElementById('admin-ocr-eng-only').checked;
             const lang = useEngOnly ? 'eng' : 'tha+eng';
             const worker = typeof Tesseract !== 'undefined' ? await Tesseract.createWorker(lang) : null;
             if (worker) {
-                const { data: { text } } = await worker.recognize(file);
+                // Adjust PSM for tabular data (6 = Assume a single uniform block of text)
+                await worker.setParameters({
+                    tessedit_pageseg_mode: '6',
+                });
+                const { data: { text } } = await worker.recognize(processedFileUrl);
                 await worker.terminate();
                 combinedText += "\n" + text;
             }
@@ -1312,7 +1364,7 @@ async function adminHandleImageOcr(files) {
 
         if (extractedItems.length === 0) {
             statusEl.textContent = "ประมวลผลเสร็จสิ้น: ไม่พบเลขพัสดุในภาพ";
-            resultEl.innerHTML = `<em>ไม่พบข้อมูลที่ตรงกับรูปแบบเลขไปรษณีย์ไทย 13 หลัก</em>\n\n[ข้อความดิบจาก OCR]\n${combinedText}`;
+            resultEl.innerHTML = `<em>ไม่พบข้อมูลที่ตรงกับรูปแบบเลขไปรษณีย์ไทย 13 หลัก</em>\n\n[ข้อความดิบจาก OCR]\n${combinedText}\n<hr><img src="${debugProcessedImageUrl}" style="max-width:100%; border:1px solid #ccc; margin-top:10px;">`;
             return;
         }
 
@@ -1401,6 +1453,10 @@ async function adminHandleImageOcr(files) {
             <div style="margin-top:20px; padding:10px; background:#f8f9fa; border:1px solid #ccc; border-radius:4px; max-height:200px; overflow-y:auto;">
                  <strong style="color:#666; font-size:0.8rem;">[DEBUG] RAW OCR TEXT:</strong>
                  <pre style="font-size:0.75rem; white-space:pre-wrap; margin:0;">${combinedText}</pre>
+            </div>
+            <div style="margin-top:10px;">
+                <strong style="color:#666; font-size:0.8rem;">[DEBUG] ภาพที่ปรับแสงแล้ว:</strong><br>
+                <img src="${debugProcessedImageUrl}" style="max-width:100%; border:1px solid #ccc; margin-top:5px;">
             </div>
         `;
 
