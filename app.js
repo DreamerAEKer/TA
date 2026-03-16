@@ -1480,6 +1480,38 @@ function adminCrossReference() {
     _performCrossRef(extracted);
 }
 
+function copyCrossRefAll() {
+    const inputArea = document.getElementById('admin-crossref-input');
+    if (!inputArea || !inputArea.value.trim()) {
+        alert('ไม่มีข้อมูลให้คัดลอกครับ');
+        return;
+    }
+    
+    // Extract only valid tracking numbers so no junk text gets copied
+    const extracted = TrackingUtils.extractTrackingNumbers(inputArea.value);
+    
+    if (extracted && extracted.length > 0) {
+        const textToCopy = extracted.join('\n');
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const btn = document.querySelector('button[onclick="copyCrossRefAll()"]');
+            if (btn) {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `✅ คัดลอก ${extracted.length} รายการแล้ว`;
+                btn.classList.add('btn-success');
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('btn-success');
+                }, 1500);
+            }
+            alert(`คัดลอกเลขพัสดุสำเร็จ ${extracted.length} รายการ`);
+        }).catch(err => {
+            alert('ไม่สามารถคัดลอกได้: ' + err);
+        });
+    } else {
+        alert('ค้นหาไม่พบรูปแบบเลขพัสดุที่ถูกต้องเพื่อคัดลอกครับ');
+    }
+}
+
 async function adminCrossRefImage(files) {
     if (!files || files.length === 0) return;
     
