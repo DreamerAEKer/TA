@@ -512,16 +512,26 @@ async function handleImageImport(files) {
         }
 
         // --- NEW: Use Smart Extraction (Robust) ---
-        // Reuse the logic we just built in utils.js
-        const extractedSmart = TrackingUtils.extractTrackingNumbers(combinedText);
-        const contextData = TrackingUtils.extractTrackingWithContext(combinedText);
-        const contextMap = new Map();
-        contextData.forEach(c => contextMap.set(c.trackingNumber, c));
-
-        extractedSmart.forEach(num => {
-            const context = contextMap.get(num) || null;
-            newItems.push({ number: num, price: 0, weight: 'OCR-Smart', context: context });
-        });
+        // First try the new handwritten table parser
+        const tableItems = TrackingUtils.extractHandwrittenTable(combinedText);
+        
+        // If the table extraction found prices, use that. Otherwise fallback to basic list mapping
+        const hasPrices = tableItems.some(item => item.price > 0);
+        
+        if (hasPrices) {
+            newItems.push(...tableItems);
+        } else {
+             // Fallback to simple extraction
+             const extractedSmart = TrackingUtils.extractTrackingNumbers(combinedText);
+             const contextData = TrackingUtils.extractTrackingWithContext(combinedText);
+             const contextMap = new Map();
+             contextData.forEach(c => contextMap.set(c.trackingNumber, c));
+             
+             extractedSmart.forEach(num => {
+                 const context = contextMap.get(num) || null;
+                 newItems.push({ number: num, price: 0, weight: 'OCR-Smart', context: context });
+             });
+        }
 
         // De-duplicate locally (within this batch) logic if needed, 
         // but analyzeImportedRanges handles grouping.

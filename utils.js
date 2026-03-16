@@ -400,6 +400,80 @@ function extractPrices(text) {
 }
 
 /**
+ * Parses lines specifically formatted like a Thai Post sender summary table.
+ * Looks for Tracking IDs and optionally a price or weight on the same line.
+ * @param {string} text 
+ * @returns {Array} List of { number, price, weight, hasDiscrepancy, originalWeight }
+ */
+function extractHandwrittenTable(text) {
+    const lines = text.split('\n');
+    const results = [];
+    
+    // Looser regex to find tracking ID and a following number that could be a price (2-4 digits mostly)
+    // The table structure often has tracking ID in the middle and price at the far right.
+    // Example line: "2 มหาวิทยาลัยขอนแก่น WMD 40002 EQ021239785TH 42"
+    
+    for (const line of lines) {
+        const cleanLine = line.trim().toUpperCase();
+        if (!cleanLine) continue;
+        
+        // Find tracking number first
+        let trackingCandidates = extractTrackingNumbers(cleanLine);
+        if (trackingCandidates.length === 0) {
+            // Sometimes OCR reads it with spaces e.g., EQ 0601 3917 4
+            // Let's try aggressive space removal just for this check
+            const noSpaceLine = cleanLine.replace(/\s+/g, '');
+            const strictMatch = noSpaceLine.match(/([A-Z]{2})(\d{9})([A-Z]{2})/);
+            if (strictMatch) {
+                const isValid = validateTrackingNumber(strictMatch[0]);
+                if (isValid.isValid) trackingCandidates = [strictMatch[0]];
+            }
+        }
+        
+        if (trackingCandidates.length > 0) {
+            const trackNum = trackingCandidates[0];
+            const trackIndex = cleanLine.indexOf(trackNum.substring(0,2)); // Rough index, OCR might have spaces in it
+            
+            // Look for price AFTER the tracking number
+            // Get everything after the middle of the tracking number (to be safe against spaced OCR)
+            let afterPart = cleanLine;
+            // Let's just find the last number on the line that looks like a price (15-200)
+            const numberMatch = cleanLine.match(/(\d{2,4})(?:\.\d{2})?\s*$/); 
+            
+            let price = 0;
+            if (numberMatch && numberMatch[1]) {
+                 const possiblePrice = parseInt(numberMatch[1], 10);
+                 // Reasonable price check for postal service (e.g., EMS starts around 30, Reg around 18)
+                 if (possiblePrice >= 15 && possiblePrice <= 5000) {
+                     price = possiblePrice;
+                 }
+            }
+            
+            // Calculate weight based on price logic (A3 package logic)
+            let weight = '-';
+            let hasDiscrepancy = false;
+            let originalWeight = '-';
+            
+            if (price > 0 && typeof getWeightFromPriceA3 !== 'undefined') {
+                 weight = getWeightFromPriceA3(price);
+            }
+            
+            results.push({
+                number: trackNum,
+                price: price,
+                weight: weight,
+                hasDiscrepancy: hasDiscrepancy,
+                originalWeight: originalWeight
+            });
+        }
+    }
+    
+    // Sort array so that identical prices group together nicely? 
+    // Usually keep original order, let analyzeImportedRanges sort it.
+    return results;
+}
+
+/**
  * Summarizes a list of prices into groups.
  * @param {Array} prices 
  * @returns {object} { groupings: [], totalCount, totalValue }
@@ -478,5 +552,6 @@ window.TrackingUtils = {
     extractTrackingWithContext,
     extractPrices,
     summarizePrices,
-    getWeightFromPriceA3
+    getWeightFromPriceA3,
+    extractHandwrittenTable
 };
