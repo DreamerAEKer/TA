@@ -432,18 +432,26 @@ function extractHandwrittenTable(text) {
         
         if (trackingCandidates.length > 0) {
             const trackNum = trackingCandidates[0];
-            const trackIndex = cleanLine.indexOf(trackNum.substring(0,2)); // Rough index, OCR might have spaces in it
             
-            // Look for price AFTER the tracking number
-            // Get everything after the middle of the tracking number (to be safe against spaced OCR)
+            // To find the price securely, let's grab the text *after* the tracking number.
+            // Since OCR might have messed up the tracking number spacing in the original line, 
+            // we'll split the line by the last 4 digits of the trackNum which are usually intact.
+            const trackLast4 = trackNum.substring(8, 12); 
+            const splitIdx = cleanLine.lastIndexOf(trackLast4);
+            
             let afterPart = cleanLine;
-            // Let's just find the last number on the line that looks like a price (15-200)
-            const numberMatch = cleanLine.match(/(\d{2,4})(?:\.\d{2})?\s*$/); 
+            if (splitIdx !== -1) {
+                afterPart = cleanLine.substring(splitIdx + 4);
+            }
             
+            // Now find the LAST number block in the trailing text that looks like a price (15-5000)
+            const matches = afterPart.match(/\d{2,4}(?:\.\d{2})?/g);
             let price = 0;
-            if (numberMatch && numberMatch[1]) {
-                 const possiblePrice = parseInt(numberMatch[1], 10);
-                 // Reasonable price check for postal service (e.g., EMS starts around 30, Reg around 18)
+            
+            if (matches && matches.length > 0) {
+                 // The price is usually the last number on the line
+                 const lastMatch = matches[matches.length - 1];
+                 const possiblePrice = parseInt(lastMatch, 10);
                  if (possiblePrice >= 15 && possiblePrice <= 5000) {
                      price = possiblePrice;
                  }
