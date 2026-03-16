@@ -254,33 +254,33 @@ function extractTrackingNumbers(text) {
     // Strategy: Look for Sequence: 2 letters + many digits + optional 2 letters
     // We expect 9 digits total.
 
-    // Pattern: 
-    // Prefix (2 letters)
-    // Optional Spaces
-    // Digits (Sequence of 9 digits, potentially separated by spaces)
-    // Optional Spaces
-    // Suffix (2 letters, Optional)
+    // Regex: 
+    // ([A-Za-z]{2}) : Prefix
+    // \s*           : Optional spaces before digits
+    // ((?:\d\s*){9}): 9 digits with optional spaces between them (e.g., "6 0 5 4  4 5 0 2  5")
+    // \s*           : Optional spaces before suffix
+    // ([A-Za-z]{0,2}): Optional 2-letter suffix
 
-    // We will find all candidates that look like tracking numbers.
-    const regex = /([A-Za-z]{2})\s*([0-9\s]{9,})\s*([A-Za-z]{0,2})/g;
+    const regex = /([A-Za-z]{2})\s*((?:\d\s*){9})\s*([A-Za-z]{0,2})/g;
 
     let match;
     while ((match = regex.exec(text)) !== null) {
         const fullMatch = match[0];
         const prefix = match[1].toUpperCase();
-        const rawDigits = match[2].replace(/\s/g, ""); // Remove inner spaces from digits
+        // Remove spaces inside the digit group to get the 9 digits
+        const rawDigits = match[2].replace(/\s+/g, ""); 
         const suffix = match[3] ? match[3].toUpperCase() : "";
 
-        // We only care if we have exactly 9 digits for S10
-        if (rawDigits.length !== 9) {
-            continue;
-        }
+        // Should theoretically be exactly 9 digits by the regex
+        if (rawDigits.length !== 9) continue;
 
         let candidateSuffix = suffix;
 
-        // Logic: If suffix is missing (empty), assume 'TH' (Thailand) as per user requirements for 11-char codes
+        // Logic: If suffix is missing, assume 'TH'
         if (candidateSuffix.length === 0) {
             candidateSuffix = "TH";
+        } else if (candidateSuffix.length === 1) {
+            candidateSuffix += "H"; // Rough fallback, assume ends in TH
         }
 
         // Must have 2-char suffix now
@@ -412,48 +412,42 @@ function extractHandwrittenTable(text) {
     // Looser regex to find tracking ID and a following number that could be a price (2-4 digits mostly)
     // The table structure often has tracking ID in the middle and price at the far right.
     // Example line: "2 มหาวิทยาลัยขอนแก่น WMD 40002 EQ021239785TH 42"
+    // Or weird spaced OCR: "ET 6054 4998 8 TH L. nsu Ny"
     
     for (const line of lines) {
         const cleanLine = line.trim().toUpperCase();
         if (!cleanLine) continue;
         
-        // Find tracking number first
+        // Find tracking number securely (our updated extractTrackingNumbers handles spaces)
         let trackingCandidates = extractTrackingNumbers(cleanLine);
-        if (trackingCandidates.length === 0) {
-            // Sometimes OCR reads it with spaces e.g., EQ 0601 3917 4
-            // Let's try aggressive space removal just for this check
-            const noSpaceLine = cleanLine.replace(/\s+/g, '');
-            const strictMatch = noSpaceLine.match(/([A-Z]{2})(\d{9})([A-Z]{2})/);
-            if (strictMatch) {
-                const isValid = validateTrackingNumber(strictMatch[0]);
-                if (isValid.isValid) trackingCandidates = [strictMatch[0]];
-            }
-        }
         
         if (trackingCandidates.length > 0) {
             const trackNum = trackingCandidates[0];
             
-            // To find the price securely, let's grab the text *after* the tracking number.
-            // Since OCR might have messed up the tracking number spacing in the original line, 
-            // we'll split the line by the last 4 digits of the trackNum which are usually intact.
-            const trackLast4 = trackNum.substring(8, 12); 
-            const splitIdx = cleanLine.lastIndexOf(trackLast4);
+            // Because OCR spacing on the tracking ID is unpredictable in the original string (e.g., "ET 6054 4998 8 TH"),
+            // we split the line around the *last 4 digits* instead of the exact string.
+            // 9 digits total, check dig is 9th. Let's find index by sweeping digits.
+            // A safer way is to find the index of the last digit in the original line.
             
-            let afterPart = cleanLine;
-            if (splitIdx !== -1) {
-                afterPart = cleanLine.substring(splitIdx + 4);
-            }
-            
-            // Now find the LAST number block in the trailing text that looks like a price (15-5000)
-            const matches = afterPart.match(/\d{2,4}(?:\.\d{2})?/g);
+            // Alternatively, extract Prices from the ENTIRE line and assume the LAST sensible price belongs to it.
+            // Because standard lines look like: "... ID ... PRICE"
+            const matches = cleanLine.match(/\d{2,4}(?:\.\d{2})?/g);
             let price = 0;
             
             if (matches && matches.length > 0) {
-                 // The price is usually the last number on the line
-                 const lastMatch = matches[matches.length - 1];
-                 const possiblePrice = parseInt(lastMatch, 10);
-                 if (possiblePrice >= 15 && possiblePrice <= 5000) {
-                     price = possiblePrice;
+                 // Scan backwards for a reasonable price value
+                 for (let i = matches.length - 1; i >= 0; i--) {
+                     const possiblePriceStr = matches[i];
+                     const possiblePrice = parseInt(possiblePriceStr, 10);
+                     
+                     // Postal price bounds on handwritten receipts usually 15 - 5000 
+                     // Ignore digits block that might just be postal codes like "10110", or "40002" if it's over 5000
+                     if (possiblePrice >= 15 && possiblePrice <= 5000) {
+                         // Extra check: prevent snagging parts of the tracking number (which are usually spaced like "6054" or "4502")
+                         // It's unlikely a 4-digit tracking number block is the *last* thing on a line, but just in case:
+                         price = possiblePrice;
+                         break; // Found the rightmost price
+                     }
                  }
             }
             
