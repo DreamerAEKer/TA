@@ -1576,84 +1576,83 @@ function _performCrossRef(trackingArray) {
     let foundCount = 0;
 
     trackingArray.forEach((track, idx) => {
-        let dbInfo = lookup[track];
-        let companyName = '<span style="color:#999; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
-        let rowStyle = '';
-
-        if (dbInfo) {
-            companyName = `<strong style="color:var(--primary-color);">${dbInfo.name}</strong>`;
-            // If requestDate is available, show it
-            if(batches[dbInfo.batchId] && batches[dbInfo.batchId].requestDate) {
-                 companyName += ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[dbInfo.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
-            }
-            rowStyle = 'background-color:#f8fff9;'; // light green highlight for found items
-            foundCount++;
-        }
-
-        const actionsHtml = `
-            <div class="status-actions" style="margin-top:5px; margin-bottom: 5px;">
-                <a href="https://track.thailandpost.co.th/?trackNumber=${track}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9;" title="Official Deep Link">🔗 Official</a>
-                <a href="https://www.aftership.com/track/thailand-post/${track}?lang=th" target="_blank" class="badge badge-neutral" style="background-color:#fff3e0; color:#e65100; border-color:#ffcc80;" title="Server 2 (AfterShip) - Backup">🚀 Server 2</a>
-                <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer;" onclick="navigator.clipboard.writeText('${track}').then(() => alert('คัดลอก ${track} แล้ว'))" title="Copy ID">📋 Copy</button>
-            </div>
-        `;
-
-        html += `
-            <tr style="${rowStyle}">
-                <td style="text-align:center; vertical-align: top; padding-top: 15px;">${idx + 1}</td>
-                <td style="vertical-align: top; padding-top: 15px;">
-                    <span style="font-family:monospace; font-weight:bold; font-size: 1.1em;">${track}</span>
-                    <br>
-                    ${actionsHtml}
-                </td>
-                <td style="vertical-align: top; padding-top: 15px;">${companyName}</td>
-            </tr>
-        `;
-
-        // Only generate sequence if this is a valid S10 tracking number (usually 13 chars)
+        // Find DB info for the primary tracking number
+        let dbInfoMain = lookup[track];
+        
+        // Define the items to show in order (e.g. -2, -1, 0, +1)
+        let displayList = [];
+        
         if (track.length === 13 && typeof TrackingUtils !== 'undefined') {
-             // Generate Previous 2 and Next 1
-             const seqList = TrackingUtils.generateTrackingRange(track, 2, 1);
-             // seqList will contain the center item too, so filter it out
-             const surrounding = seqList.filter(item => item.number !== track);
-
-             if (surrounding.length > 0) {
-                 surrounding.forEach(seqItem => {
-                      let seqDbInfo = lookup[seqItem.number];
-                      let seqCompanyName = '<span style="color:#ccc; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
-                      let seqRowStyle = 'background-color:#fafafa; color: #888;'; // faded style
-
-                      if (seqDbInfo) {
-                          seqCompanyName = `<strong style="color:var(--primary-color);">${seqDbInfo.name}</strong>`;
-                          if(batches[seqDbInfo.batchId] && batches[seqDbInfo.batchId].requestDate) {
-                               seqCompanyName += ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[seqDbInfo.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
-                          }
-                          seqRowStyle = 'background-color:#f0fbf2; color: #444;'; // slightly greener if found
-                      }
-
-                      const seqActionsHtml = `
-                          <div class="status-actions" style="margin-top:2px; font-size: 0.8em; opacity: 0.8;">
-                              <a href="https://track.thailandpost.co.th/?trackNumber=${seqItem.number}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9; padding: 2px 4px;" title="Official">🔗</a>
-                              <a href="https://www.aftership.com/track/thailand-post/${seqItem.number}?lang=th" target="_blank" class="badge badge-neutral" style="background-color:#fff3e0; color:#e65100; border-color:#ffcc80; padding: 2px 4px;" title="Server 2">🚀</a>
-                              <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer; padding: 2px 4px;" onclick="navigator.clipboard.writeText('${seqItem.number}').then(() => alert('คัดลอก ${seqItem.number} แล้ว'))" title="Copy">📋</button>
-                          </div>
-                      `;
-
-                      let label = seqItem.offset < 0 ? `(ก่อนหน้า ${Math.abs(seqItem.offset)})` : `(ถัดไป ${seqItem.offset})`;
-
-                      html += `
-                          <tr style="${seqRowStyle}">
-                              <td style="text-align:center; font-size:0.85em; border-top: none;"></td>
-                              <td style="font-size:0.9em; border-top: none; padding-top: 5px; padding-bottom: 5px;">
-                                  <span style="font-family:monospace; margin-left:15px;">↳ ${seqItem.number} ${label}</span>
-                                  <div style="margin-left: 15px;">${seqActionsHtml}</div>
-                              </td>
-                              <td style="font-size:0.9em; border-top: none; padding-top: 5px; padding-bottom: 5px;">${seqCompanyName}</td>
-                          </tr>
-                      `;
-                 });
-             }
+            displayList = TrackingUtils.generateTrackingRange(track, 2, 1);
+        } else {
+            // fallback if not a full tracking number
+            displayList = [{ number: track, offset: 0, isCenter: true }];
         }
+
+        // Loop through the chronological list and render rows for this group
+        displayList.forEach((item, innerIdx) => {
+            let dbInfo = lookup[item.number];
+            let companyName = '<span style="color:#ccc; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
+            let rowStyle = '';
+            
+            // Is this the main requested tracking number?
+            const isMain = (item.offset === 0);
+            
+            if (isMain) {
+                // Style for the main number user entered
+                companyName = '<span style="color:#999; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
+                if (dbInfoMain) {
+                    companyName = `<strong style="color:var(--primary-color);">${dbInfoMain.name}</strong>`;
+                    if(batches[dbInfoMain.batchId] && batches[dbInfoMain.batchId].requestDate) {
+                         companyName += ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[dbInfoMain.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
+                    }
+                    rowStyle = 'background-color:#f8fff9;'; 
+                    foundCount++;
+                }
+            } else {
+                // Style for the surrounding sequence numbers
+                rowStyle = 'background-color:#fafafa; color: #888;'; 
+                if (dbInfo) {
+                    companyName = `<strong style="color:var(--primary-color);">${dbInfo.name}</strong>`;
+                    if(batches[dbInfo.batchId] && batches[dbInfo.batchId].requestDate) {
+                         companyName += ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[dbInfo.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
+                    }
+                    rowStyle = 'background-color:#f0fbf2; color: #444;'; 
+                }
+            }
+
+            // UI Label and Formatting Difference
+            let label = '';
+            let trackDisplay = `<span style="font-family:monospace; font-weight:bold; font-size: 1.1em;">${item.number}</span>`;
+            let indexCol = '';
+            
+            if (!isMain) {
+                if (item.offset < 0) label = `(ก่อนหน้า ${Math.abs(item.offset)})`;
+                if (item.offset > 0) label = `(ถัดไป ${item.offset})`;
+                trackDisplay = `<span style="font-family:monospace; margin-left:15px;">↳ ${item.number} ${label}</span>`;
+            } else {
+                indexCol = (idx + 1).toString();
+            }
+
+            const actionsHtml = `
+                <div class="status-actions" style="margin-top:${isMain ? '5px' : '2px'}; margin-bottom: 5px; ${isMain ? '' : 'font-size: 0.8em; opacity: 0.8;'}">
+                    <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9; ${isMain ? '' : 'padding: 2px 4px;'}" title="Official Deep Link">🔗 Official</a>
+                    <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer; ${isMain ? '' : 'padding: 2px 4px;'}" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('คัดลอก ${item.number} แล้ว'))" title="Copy ID">📋 Copy</button>
+                </div>
+            `;
+
+            html += `
+                <tr style="${rowStyle}">
+                    <td style="text-align:center; vertical-align: top; padding-top: 15px; border-top: ${isMain ? '1px solid #ddd' : 'none'};">${indexCol}</td>
+                    <td style="vertical-align: top; padding-top: ${isMain ? '15px' : '5px'}; padding-bottom: ${isMain ? '5px' : '5px'}; border-top: ${isMain ? '1px solid #ddd' : 'none'};">
+                        ${trackDisplay}
+                        <br>
+                        <div style="${isMain ? '' : 'margin-left: 15px;'}">${actionsHtml}</div>
+                    </td>
+                    <td style="vertical-align: top; padding-top: ${isMain ? '15px' : '5px'}; border-top: ${isMain ? '1px solid #ddd' : 'none'};">${companyName}</td>
+                </tr>
+            `;
+        });
     });
 
     html += `</tbody></table>`;
