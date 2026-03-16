@@ -1208,32 +1208,30 @@ function loadBatchToView(batchId) {
 // --- ADMIN TOOLS ---
 
 function adminHandleTrackInput(inputEl) {
-    // Only allow letters and numbers, force uppercase
+    // Basic cleanup but allow spaces and commas for multiple items
     let val = inputEl.value;
-    val = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    val = val.toUpperCase().replace(/[^A-Z0-9\s,]/g, '');
     inputEl.value = val;
 }
 
 function adminOpenThpTrack() {
-    let trackNum = document.getElementById('admin-track-input').value.trim();
-    if (trackNum.length < 13) {
-        alert("กรุณากรอกเลขพัสดุให้ครบ 13 หลัก (รวมตัวอักษร)");
+    let rawInput = document.getElementById('admin-track-input').value.trim();
+    if (!rawInput) {
+        alert("กรุณากรอกเลขพัสดุ");
         return;
     }
     
-    // Auto calculate check digit if it's missing (length 12) or replace it if it's 13 but user typed something random
-    if (trackNum.length === 13) {
-        const prefix = trackNum.substring(0, 2);
-        const seq = trackNum.substring(2, 10);
-        const suffix = trackNum.substring(11, 13);
-        const cd = TrackingUtils.calculateS10CheckDigit(seq);
-        if (cd !== null) {
-            trackNum = prefix + seq + cd + suffix;
-            document.getElementById('admin-track-input').value = trackNum;
-        }
+    // Extract all tracking numbers using our robust parser
+    const extracted = TrackingUtils.extractTrackingNumbers(rawInput);
+    
+    if (extracted.length === 0) {
+        alert("ไม่พบรูปแบบเลขพัสดุที่ถูกต้อง (13 หลัก)");
+        return;
     }
-
-    const url = `https://track.thailandpost.co.th/?trackNumber=${trackNum}`;
+    
+    // THP supports submitting multiple numbers joined by comma
+    const joinedIds = extracted.join(',');
+    const url = `https://track.thailandpost.co.th/dashboard?trackNumber=${joinedIds}`;
     window.open(url, '_blank');
 }
 
