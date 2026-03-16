@@ -302,6 +302,88 @@ function extractTrackingNumbers(text) {
 }
 
 /**
+ * Extracts tracking numbers along with contextual data from the surrounding text (e.g. QMS screenshot).
+ * Captures Zipcode (pre2), Branch (pre1), and Status (after1).
+ * 
+ * @param {string} text - Raw OCR text
+ * @returns {Array} - Array of objects containing { trackingNumber, pre2, pre1, after1, rawLine }
+ */
+function extractTrackingWithContext(text) {
+    const lines = text.split('\n');
+    const results = [];
+    
+    for (const line of lines) {
+        const cleanLine = line.trim();
+        if (!cleanLine) continue;
+        
+        // Flexible regex for Tracking ID
+        const trackingRegex = /[A-Za-z]{2}\s*([0-9\s]{9,})\s*[A-Za-z]{0,2}/;
+        const strictTrackingRegex = /[A-Za-z]{2}\d{9}[A-Za-z]{2}/;
+        
+        // Try to match strict first, if not try loose mapping like extractTrackingNumbers
+        let match = cleanLine.match(strictTrackingRegex);
+        let trackingNum = '';
+        
+        if (match) {
+            trackingNum = match[0];
+        } else {
+             // Fallback to finding something that looks like tracking in the line and cleaning it up to see if valid
+            const looseMatch = cleanLine.match(trackingRegex);
+            if (looseMatch) {
+                const candidates = extractTrackingNumbers(looseMatch[0]);
+                if (candidates.length > 0) {
+                     trackingNum = candidates[0]; // Take first valid
+                     // To slice properly, we need the raw string that mapped to this candidate
+                     match = looseMatch; 
+                }
+            }
+        }
+        
+        if (trackingNum && match) {
+            const trackIndex = cleanLine.indexOf(match[0]);
+            
+            const beforeStr = cleanLine.substring(0, trackIndex).trim();
+            const afterStr = cleanLine.substring(trackIndex + match[0].length).trim();
+            
+            const beforeTokens = beforeStr.split(/\s+/).filter(t => t);
+            let pre2 = '-', pre1 = '-';
+            if (beforeTokens.length >= 2) {
+                pre1 = beforeTokens[beforeTokens.length - 1];
+                pre2 = beforeTokens[beforeTokens.length - 2];
+            } else if (beforeTokens.length === 1) {
+                pre1 = beforeTokens[0];
+            }
+            
+            let after1 = '-';
+            // Find the date DD/MM/YYYY
+            const dateMatch = afterStr.match(/\d{2}\/\d{2}(\/\d{2,4})?/); // Matches DD/MM or DD/MM/YYYY
+            if (dateMatch) {
+                after1 = afterStr.substring(0, dateMatch.index).trim();
+            } else {
+                // fallback to just next word
+                const afterTokens = afterStr.split(/\s+/).filter(t => t);
+                if (afterTokens.length >= 1) {
+                    after1 = afterTokens[0];
+                }
+            }
+
+            // Optional: If after1 is too long (contains multiple words but not date), we might want to truncate, but let's keep it as is.
+            if(after1.length === 0) after1 = '-';
+
+            results.push({
+                trackingNumber: trackingNum.toUpperCase(),
+                pre2: pre2,
+                pre1: pre1,
+                after1: after1,
+                rawLine: cleanLine
+            });
+        }
+    }
+    
+    return results;
+}
+
+/**
  * Extracts price-like values (e.g. 32.00, 474.00) from text.
  * @param {string} text 
  * @returns {Array} Array of numbers (floats)
@@ -393,6 +475,7 @@ window.TrackingUtils = {
     virtualOptimizeRanges,
     cleanTrackingText,
     extractTrackingNumbers,
+    extractTrackingWithContext,
     extractPrices,
     summarizePrices,
     getWeightFromPriceA3

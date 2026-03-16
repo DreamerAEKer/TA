@@ -514,8 +514,13 @@ async function handleImageImport(files) {
         // --- NEW: Use Smart Extraction (Robust) ---
         // Reuse the logic we just built in utils.js
         const extractedSmart = TrackingUtils.extractTrackingNumbers(combinedText);
+        const contextData = TrackingUtils.extractTrackingWithContext(combinedText);
+        const contextMap = new Map();
+        contextData.forEach(c => contextMap.set(c.trackingNumber, c));
+
         extractedSmart.forEach(num => {
-            newItems.push({ number: num, price: 0, weight: 'OCR-Smart' });
+            const context = contextMap.get(num) || null;
+            newItems.push({ number: num, price: 0, weight: 'OCR-Smart', context: context });
         });
 
         // De-duplicate locally (within this batch) logic if needed, 
@@ -636,7 +641,7 @@ function analyzeImportedRanges(trackingList) {
     // Helper to parse with price (reusing structure)
     const parseFull = (item) => {
         const p = parse(item.number);
-        if (p) { p.price = item.price; p.weight = item.weight; p.hasDiscrepancy = item.hasDiscrepancy; p.originalWeight = item.originalWeight; }
+        if (p) { p.price = item.price; p.weight = item.weight; p.hasDiscrepancy = item.hasDiscrepancy; p.originalWeight = item.originalWeight; p.context = item.context; }
         return p;
     };
 
@@ -666,7 +671,8 @@ function analyzeImportedRanges(trackingList) {
                 count: currentList.length,
                 price: start.price,
                 weight: start.weight,
-                items: currentList.map(x => x.number)
+                items: currentList.map(x => x.number),
+                contexts: currentList.map(x => x.context).filter(c => c !== null)
             });
             start = curr;
             prev = curr;
@@ -679,7 +685,8 @@ function analyzeImportedRanges(trackingList) {
         count: currentList.length,
         price: start.price,
         weight: start.weight,
-        items: currentList.map(x => x.number)
+        items: currentList.map(x => x.number),
+        contexts: currentList.map(x => x.context).filter(c => c !== null)
     });
 
     // Virtual Optimization
