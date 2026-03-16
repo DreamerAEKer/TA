@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tracking Analysis Tool - App Logic
  */
 
@@ -63,15 +63,15 @@ function checkAdminUI() {
     if (uploadIcon && uploadTitle && uploadDesc && importInput) {
         if (isAdmin) {
             // Admin: Excel + Images
-            uploadIcon.textContent = "้ฆๆจ / ้ฆๆ‘ณ";
-            uploadTitle.textContent = "ๅ–ไฝฎ็ฌ—ๅ–”็ญ็ฎ‘ๅ–”็ง้ๅ–ๅ —่…‘ๅ–โฌๅ–”ใ ้ๅ–”๏ฟฝ็ซตๅ–ๅฆ็ฌฉๅ–”ใ ็ฎค Excel ๅ–”๏ฟฝ็ฆๅ–”็ฒช่…‘ ๅ–”๏ฝ€่…นๅ–”ๆถ็ฌญๅ–”ไพง็ฌง";
-            uploadDesc.textContent = "ๅ–”๏ฝ€่…‘ๅ–”ๅ็ฆๅ–”็ผ–็ฌ .xlsx, .xls ๅ–ไฝฎๅผ—ๅ–”๏ฟฝ ๅ–”๏ฝ€่…นๅ–”ๆถ็ฌญๅ–”ไพง็ฌง (ๅ–โฌๅ–”ใ ้ๅ–”๏ฟฝ็ซตๅ–ๅฆ็ฌ–ๅ–ๅคๆ–งๅ–”ใ ่ฆๅ–”โ‘ง็ฆๅ–”็็ฌก)";
+            uploadIcon.textContent = "📂 / 📸";
+            uploadTitle.textContent = "แตะเพื่อเลือกไฟล์ Excel หรือ รูปภาพ";
+            uploadDesc.textContent = "รองรับ .xlsx, .xls และ รูปภาพ (เลือกได้หลายรูป)";
             importInput.setAttribute('accept', '.xlsx, .xls, .jpg, .jpeg, .png, .heic');
         } else {
             // User: Excel Only
-            uploadIcon.textContent = "้ฆๆจ";
-            uploadTitle.textContent = "ๅ–ไฝฎ็ฌ—ๅ–”็ญ็ฎ‘ๅ–”็ง้ๅ–ๅ —่…‘ๅ–โฌๅ–”ใ ้ๅ–”๏ฟฝ็ซตๅ–ๅฆ็ฌฉๅ–”ใ ็ฎค Excel";
-            uploadDesc.textContent = "ๅ–”๏ฝ€่…‘ๅ–”ๅ็ฆๅ–”็ผ–็ฌ .xlsx, .xls (ๅ–”๏ฟฝ่ตๅ–”๏ฟฝ็ฆๅ–”็ผ–็ฌๅ–”็ง็ฌๅ–”็ผ–็ซตๅ–”ๅ่ฆๅ–”๏ฟฝ)";
+            uploadIcon.textContent = "📂";
+            uploadTitle.textContent = "แตะเพื่อเลือกไฟล์ Excel";
+            uploadDesc.textContent = "รองรับ .xlsx, .xls (สำหรับพนักงาน)";
             importInput.setAttribute('accept', '.xlsx, .xls'); // Restrict native file picker
         }
     }
@@ -95,7 +95,7 @@ function checkSingleNumber() {
         if (owner) {
             ownerHtml = `
                 <div style="margin-top:10px; padding:10px; background:#e3f2fd; border-radius:4px; border:1px solid #bbdefb;">
-                    <strong>้ฆๆ ๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—ๅ–”ใ ่…นๅ–”ไฝฎ็ซธๅ–ๅค่ฆ (Customer Info)</strong><br>
+                    <strong>👤 ข้อมูลลูกค้า (Customer Info)</strong><br>
                     Name: ${owner.name}<br>
                     Type: <span class="badge ${owner.type === 'Credit' ? 'badge-primary' : 'badge-neutral'}">${owner.type}</span>
                     ${owner.contract ? ` | Contract: ${owner.contract}` : ''}
@@ -110,8 +110,8 @@ function checkSingleNumber() {
             const similarList = similars.map(s => `<li>${s.number} (${s.info.name})</li>`).join('');
             similarHtml = `
                 <div class="result-warning" style="margin-top:10px;">
-                    <strong>้ฟ็…็ฌ ๅ–ไฝฎ็ฌ€ๅ–ๅค็ซพๅ–โฌๅ–”ๆ•้ๅ–”๏ฟฝ็ฌ: ๅ–”็ง็ฌๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆๅ–”ๅฆๅผ—ๅ–ๅค่ฆๅ–”โ‘ง็ซตๅ–”็ผ–็ฌ (Different Prefix)</strong><br>
-                    ๅ–”็ง็ฌๅ–โฌๅ–”ใ ็ซถๅ–”ๆคธๅ…ๅ–ๅ —ๆตฎๅ–”ๆ็ฌ—ๅ–”็ผ–ๆๅ–โฌๅ–”ใ ็ซถๅ–โฌๅ–”๏ฟฝๆตฎๅ–”็ฒช่…‘ๅ–”ๆฌ็ซตๅ–”็ผ–็ฌๅ–ไฝฎ็ฌ—ๅ–ๅ —่…‘ๅ–”็ผ–็ซตๅ–”โ”ผ็ฆๅ–”๏ฟฝ็ฌๅ–ๅค่ฆๅ–”ๆ•็ฎๅ–”ไพง็ซพๅ–”ไฝฎๅฏๅ–”ๆฌ็ฎ–ๅ–”ๆฌ็ฌๅ–”ไพง็ฌๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—:
+                    <strong>⚠️ แจ้งเตือน: พบรายการคล้ายกัน (Different Prefix)</strong><br>
+                    พบเลขที่มีตัวเลขเหมือนกันแต่อักษรหน้าต่างกันในฐานข้อมูล:
                     <ul style="margin:5px 0; padding-left:20px;">${similarList}</ul>
                 </div>
             `;
@@ -119,7 +119,7 @@ function checkSingleNumber() {
 
         resultBox.classList.add('result-success');
         resultBox.innerHTML = `
-            <strong>้๏ฟฝ ๅ–”ๆ ข่…นๅ–”ไฝฎ็ฌ—ๅ–ๅค่…‘ๅ–”๏ฟฝ (Valid)</strong><br>Tracking Number: ${TrackingUtils.formatTrackingNumber(input)}
+            <strong>✅ ถูกต้อง (Valid)</strong><br>Tracking Number: ${TrackingUtils.formatTrackingNumber(input)}
             ${ownerHtml}
             ${similarHtml}
         `;
@@ -132,15 +132,15 @@ function checkSingleNumber() {
 
             resultBox.innerHTML = `
                  <div class="result-warning">
-                     ้ฟ็…็ฌ Check Digit ๅ–ๅฆๆตฎๅ–ๅ —็ฌๅ–”็็ซตๅ–”ๆ•็ฎๅ–”๏ฟฝ็ซพ (ๅ–ๅ้ๅ–ๅ —ๆตฎๅ–”๏ฟฝ ${oldInput}) ๅ–”๏ฝ€่ตดๅ–”ๆฐ็ฌๅ–”ๅฆ็ฎๅ–”ๆฌๆ–งๅ–”ไพง็ฌ–ๅ–ๅคๆๅ–”โ‘ง็ฎ‘ๅ–”ใ ็ซถๅ–”ๆคธๅ…ๅ–ๅ —็ฌๅ–”็็ซตๅ–”ๆ•็ฎๅ–”๏ฟฝ็ซพๅ–ๅๆ–งๅ–ๅค็ฎ’ๅ–”ใ ็ฎๅ–”๏ฟฝ
+                     ⚠️ Check Digit ไม่ถูกต้อง (ใส่มา ${oldInput}) ระบบค้นหาด้วยเลขที่ถูกต้องให้แล้ว
                  </div>
                  <div class="result-box result-success" style="margin-top:0;">
-                     <strong>้๏ฟฝ ๅ–”ๆ ข่…นๅ–”ไฝฎ็ฌ—ๅ–ๅค่…‘ๅ–”๏ฟฝ (Valid)</strong><br>Tracking Number: ${TrackingUtils.formatTrackingNumber(fixedInput)}
+                     <strong>✅ ถูกต้อง (Valid)</strong><br>Tracking Number: ${TrackingUtils.formatTrackingNumber(fixedInput)}
                  </div>
              `;
         } else {
             resultBox.classList.add('result-error');
-            let html = `<strong>้๏ฟฝ ๅ–ๅฆๆตฎๅ–ๅ —็ฌๅ–”็็ซตๅ–”ๆ•็ฎๅ–”๏ฟฝ็ซพ (Invalid)</strong><br>Reason: ${validation.error}`;
+            let html = `<strong>❌ ไม่ถูกต้อง (Invalid)</strong><br>Reason: ${validation.error}`;
             resultBox.innerHTML = html;
         }
     }
@@ -155,7 +155,7 @@ function generateRange() {
     const box = document.getElementById('result-range-box');
 
     if (!center) {
-        alert('ๅ–”ไฝฎ็ฆๅ–”่็ฌ“ๅ–”ไพง็ฆๅ–”็ญ็ฌๅ–”่็ฎ‘ๅ–”ใ ็ซถๅ–”ๆ•ๅฏๅ–ๅค็ซพๅ–”ๆ•็ฎๅ–”๏ฟฝ');
+        alert('กรุณาระบุเลขตั้งต้น');
         return;
     }
 
@@ -167,13 +167,13 @@ function generateRange() {
             // Auto-correct
             warningHtml = `
                 <div class="result-warning">
-                    ้ฟ็…็ฌ ๅ–โฌๅ–”ใ ็ซถๅ–”ๆ•ๅฏๅ–ๅค็ซพๅ–”ๆ•็ฎๅ–”ๆฌ็ฌขๅ–”่็ฌ– (${center}) ๅ–”๏ฝ€่ตดๅ–”ๆฐ็ฌๅ–ๅ็ฌๅ–ๅค็ฎ‘ๅ–”ใ ็ซถๅ–”ๆคธๅ…ๅ–ๅ —็ฌๅ–”็็ซตๅ–”ๆ•็ฎๅ–”๏ฟฝ็ซพ <strong>${startValidation.suggestion}</strong> ๅ–ไฝฎ็ฌๅ–”๏ฟฝ
+                    ⚠️ เลขตั้งต้นผิด (${center}) ระบบใช้เลขที่ถูกต้อง <strong>${startValidation.suggestion}</strong> แทน
                 </div>
              `;
             center = startValidation.suggestion;
             centerInput.value = center;
         } else {
-            alert('ๅ–โฌๅ–”ใ ็ซถๅ–”ๆ•ๅฏๅ–ๅค็ซพๅ–”ๆ•็ฎๅ–”ๆฌ็ฎๅ–”โด็ฎๅ–”ๆ ข่…นๅ–”ไฝฎ็ฌ—ๅ–ๅค่…‘ๅ–”๏ฟฝ: ' + startValidation.error);
+            alert('เลขตั้งต้นไม่ถูกต้อง: ' + startValidation.error);
             return;
         }
     }
@@ -197,7 +197,7 @@ function generateRange() {
 
     let html = warningHtml + `
         <div style="margin-bottom:10px;">
-            <strong>ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆๅ–”ๆคธๅฏๅ–ๅค็ซพๅ–”๏ฟฝๆตฎๅ–”๏ฟฝ: ${list.length} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ</strong>
+            <strong>รายการทั้งหมด: ${list.length} รายการ</strong>
             <button class="btn" style="padding:4px 8px; font-size:0.8rem; margin-left:10px;" onclick="copyRangeResults()">Copy All</button>
         </div>
         <div class="table-responsive">
@@ -219,30 +219,30 @@ function generateRange() {
         let ownerHtml = '';
 
         if (owner) {
-            ownerHtml = `<br><small style="color:#0056b3;">้ฆๆ ${owner.name} (${owner.type})</small>`;
+            ownerHtml = `<br><small style="color:#0056b3;">👤 ${owner.name} (${owner.type})</small>`;
         } else {
             // Check similar if no direct owner
             const similars = typeof CustomerDB !== 'undefined' ? CustomerDB.findSimilarByBody(item.number) : [];
             if (similars.length > 0) {
                 const simTitle = similars.map(s => `${s.number} (${s.info.name})`).join(', ');
-                ownerHtml = `<br><small style="color:#856404; cursor:help;" title="ๅ–”็ง็ฌ : ${simTitle}">้ฟ็…็ฌ ๅ–”ๅฆๅผ—ๅ–ๅค่ฆๅ–”โ‘ง็ซตๅ–”็ผ–็ฌ ${similars[0].number}...</small>`;
+                ownerHtml = `<br><small style="color:#856404; cursor:help;" title="พบ : ${simTitle}">⚠️ คล้ายกับ ${similars[0].number}...</small>`;
             }
         }
 
         if (hasReference) {
             if (refSet.has(item.number)) {
-                statusHtml = `<span class="badge badge-success">ๅ–ๅ้ๅ–ๅ —็ซถๅ–”๏ฟฝ็ซพๅ–”ใ ็ซพๅ–”ๆ ข็ถๅ–”๏ฟฝ (Items Posted)</span>`;
+                statusHtml = `<span class="badge badge-success">ใส่ของลงถุง (Items Posted)</span>`;
             } else {
-                statusHtml = `<span class="badge badge-error">ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”๏ฟฝ (Not Found)</span>`;
+                statusHtml = `<span class="badge badge-error">ไม่พบข้อมูล (Not Found)</span>`;
             }
         } else {
             // Default with link
             statusHtml = `
                 <div class="status-actions">
-                    <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9;" title="Official Deep Link">้ฆๆ• Official</a>
-                    <a href="https://www.aftership.com/track/thailand-post/${item.number}?lang=th" target="_blank" class="badge badge-neutral" style="background-color:#fff3e0; color:#e65100; border-color:#ffcc80;" title="Server 2 (AfterShip) - Backup">้ฆๆฎ Server 2</a>
-                    <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer;" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('ๅ–”ๅฆๅฏๅ–”ๆ–ทๅผ—ๅ–”๏ฟฝ็ซต ${item.number} ๅ–ไฝฎๅผ—ๅ–ๅคๆ'))" title="Copy ID">้ฆๆต Copy</button>
-                    <a href="https://track.thailandpost.co.th" target="_blank" class="badge badge-neutral" style="border:1px solid #ccc; color:#555;" title="Open Official Site (Manual)">้ฆๅฏช Manual</a>
+                    <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9;" title="Official Deep Link">🔗 Official</a>
+                    <a href="https://www.aftership.com/track/thailand-post/${item.number}?lang=th" target="_blank" class="badge badge-neutral" style="background-color:#fff3e0; color:#e65100; border-color:#ffcc80;" title="Server 2 (AfterShip) - Backup">🚀 Server 2</a>
+                    <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer;" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('คัดลอก ${item.number} แล้ว'))" title="Copy ID">📋 Copy</button>
+                    <a href="https://track.thailandpost.co.th" target="_blank" class="badge badge-neutral" style="border:1px solid #ccc; color:#555;" title="Open Official Site (Manual)">🌐 Manual</a>
                 </div>
             `;
         }
@@ -273,7 +273,7 @@ function findGaps() {
     const box = document.getElementById('result-gap-box');
 
     if (!startObjStr || !endObjStr) {
-        alert('ๅ–”ไฝฎ็ฆๅ–”่็ฌ“ๅ–”ไพง็ฆๅ–”็ญ็ฌๅ–”่็ฎ‘ๅ–”ใ ็ซถๅ–โฌๅ–”๏ฝ€ๅคๅ–ๅ —ๆตฎๅ–”ๆ•็ฎๅ–”ๆฌ็ฎ’ๅ–”ใ ่ตดๅ–”๏ฟฝๅคๅ–ๅค็ฌๅ–”๏ฟฝ็ถๅ–”๏ฟฝ');
+        alert('กรุณาระบุเลขเริ่มต้นและสิ้นสุด');
         return;
     }
 
@@ -283,7 +283,7 @@ function findGaps() {
     const endMatch = endObjStr.toUpperCase().match(regex);
 
     if (!startMatch || !endMatch) {
-        alert('ๅ–”๏ฝ€่…นๅ–”ๆถ็ฎ’ๅ–”ๆฐ็ฌๅ–โฌๅ–”ใ ็ซถๅ–โฌๅ–”๏ฝ€ๅคๅ–ๅ —ๆตฎๅ–”ๆ•็ฎๅ–”ๆฌๆ–งๅ–”๏ฝ€้ๅ–”๏ฟฝ้ๅ–”่็ฎๅ–”ๆฌ้ๅ–”่็ฌ–ๅ–ๅฆๆตฎๅ–ๅ —็ฌๅ–”็็ซตๅ–”ๆ•็ฎๅ–”๏ฟฝ็ซพ');
+        alert('รูปแบบเลขเริ่มต้นหรือสิ้นสุดไม่ถูกต้อง');
         return;
     }
 
@@ -293,17 +293,17 @@ function findGaps() {
     const suffix = startMatch[4];
 
     if (prefix !== endMatch[1] || suffix !== endMatch[4]) {
-        alert('Prefix ๅ–”๏ฟฝ็ฆๅ–”็ฒช่…‘ Suffix ๅ–ๅฆๆตฎๅ–ๅ —็ฌ—ๅ–”๏ฝ€็ซพๅ–”ไฝฎๅฏๅ–”ๆฌ็ฆๅ–”็ญๆ–งๅ–”ะพ็ฎๅ–”ไพง็ซพๅ–โฌๅ–”๏ฝ€ๅคๅ–ๅ —ๆตฎๅ–ไฝฎๅผ—ๅ–”็ญ็ฌ€ๅ–”๏ฟฝ');
+        alert('Prefix หรือ Suffix ไม่ตรงกันระหว่างเริ่มและจบ');
         return;
     }
 
     if (endVal < startVal) {
-        alert('ๅ–โฌๅ–”ใ ็ซถๅ–”๏ฟฝๅคๅ–ๅค็ฌๅ–”๏ฟฝ็ถๅ–”ๆ–ท็ฌ—ๅ–ๅค่…‘ๅ–”ๅๆตฎๅ–”ไพง็ซตๅ–”ไฝฎๆๅ–ๅ —่ฆๅ–โฌๅ–”ใ ็ซถๅ–โฌๅ–”๏ฝ€ๅคๅ–ๅ —ๆตฎๅ–”ๆ•็ฎๅ–”๏ฟฝ');
+        alert('เลขสิ้นสุดต้องมากกว่าเลขเริ่มต้น');
         return;
     }
 
     if ((endVal - startVal) > 1000) {
-        if (!confirm('ๅ–”ๅจป็ฎๅ–”ะพ็ซพๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—ๅ–”ไฝฎๆๅ–ๅค่ฆๅ–”ๅ็ซตๅ–”ะพ็ฎๅ–”๏ฟฝ 1,000 ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ ๅ–”๏ฟฝ่ฆๅ–”ๅ —็ฎ–ๅ–”ๅจป็ฎๅ–โฌๅ–”ะพๅผ—ๅ–”ไพง็ซธๅ–”่ตค็ฌๅ–”ะพ็ฌ“ๅ–”ๆฌ่ฆๅ–”๏ฟฝ ๅ–”โ‘ง้ๅ–”ๆฌๆถชๅ–”็ผ–็ฌๅ–”ๆคธ่ตๅ–”ๆ•็ฎๅ–”๏ฟฝ?')) return;
+        if (!confirm('ช่วงข้อมูลกว้างกว่า 1,000 รายการ อาจใช้เวลาคำนวณนาน ยืนยันทำต่อ?')) return;
     }
 
     // Build Expected Set
@@ -336,11 +336,11 @@ function findGaps() {
 
     box.classList.remove('hidden');
     if (missing.length === 0) {
-        box.innerHTML = `<div class="result-success" style="padding:10px;">้๏ฟฝ ๅ–”ๅฆ็ฆๅ–”ๆฐ็ฌๅ–ๅคๆๅ–”๏ฟฝ! ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ฆๅ–”ไพงๆถชๅ–”ไฝฎ่ฆๅ–”๏ฝ€็ฌ—ๅ–”ไฝฎๆ–งๅ–”ใ ็ฎๅ–”๏ฟฝ</div>`;
+        box.innerHTML = `<div class="result-success" style="padding:10px;">✅ ครบถ้วน! ไม่พบรายการตกหล่น</div>`;
     } else {
         let html = `
                 <div class="result-error" style="padding:10px; margin-bottom:10px;">
-                    <strong>้ฟ็…็ฌ ๅ–”็ง็ฌๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆๅ–”๏ฟฝ่ฆๅ–”โ‘ง็ฎๅ–”๏ฟฝ ${missing.length} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ</strong>
+                    <strong>⚠️ พบรายการหายไป ${missing.length} รายการ</strong>
             </div>
                 <textarea style="height:150px;">${missing.join('\n')}</textarea>
             `;
@@ -356,13 +356,13 @@ let importedFileCount = 0; // Track number of files uploaded (for limit)
 
 function clearImportData() {
     if (rawTrackingData.length === 0) return;
-    if (!confirm('ๅ–”ๆ•็ฎๅ–”๏ฟฝ็ซพๅ–”ไฝฎ่ฆๅ–”๏ฝ€ๅผ—ๅ–ๅค่ฆๅ–”ๅ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”ใ ็ฌๅ–”่ตค็ฎ‘ๅ–”ๅ•็ฎๅ–”ไพง็ฌๅ–”็ผ–็ฎๅ–”ๅๆ–งๅ–”โด็ฌ–ๅ–”๏ฟฝ็ฆๅ–”็ฒช่…‘ๅ–ๅฆๆตฎๅ–๏ฟฝ?')) return;
+    if (!confirm('ต้องการล้างข้อมูลนำเข้าทั้งหมดหรือไม่?')) return;
 
     rawTrackingData = [];
     currentImportedBatches = [];
     importedFileCount = 0; // Reset Limit
     document.getElementById('import-preview').classList.add('hidden');
-    document.getElementById('upload-status').innerText = 'ๅ–”ใ ็ฎๅ–”ไพง็ซพๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—ๅ–โฌๅ–”๏ฝ€ๅ…ๅ–”โ‘ง็ฌๅ–”๏ฝ€็ฎๅ–”๏ฟฝๆถช (Ready)';
+    document.getElementById('upload-status').innerText = 'ล้างข้อมูลเรียบร้อย (Ready)';
     // Reset file input
     document.getElementById('import-upload').value = '';
 }
@@ -379,7 +379,7 @@ function handleFileUpload(event) {
     if (!isAdmin) {
         // Normal User Limit: 2 Files Max (Cumulative)
         if ((importedFileCount + files.length) > 2) {
-            alert(`้ฟ็…็ฌ ๅ–”ๅ —่ตๅ–”ไฝฎๅฏๅ–”ๆ–ท็ซตๅ–”ไพง็ฆๅ–”๏ฟฝๅฏๅ–”ๆถ็ฎ“ๅ–”๏ฟฝๅผ—ๅ–”ๆ–ท้ๅ–”็็ซพๅ–”๏ฟฝ็ถๅ–”๏ฟฝ 2 ๅ–ๅฆ็ฌฉๅ–”ใ ็ฎคๅ–”๏ฟฝ่ตๅ–”๏ฟฝ็ฆๅ–”็ผ–็ฌๅ–”ๆฐๅฏๅ–”ๅตฟ็ฌๅ–”ๆ็ฌๅ–”็ผ–็ฎๅ–”ะพ็ฎๅ–”ๆฒ‘n(ๅ–”ๅฆ็ถๅ–”ๆ’ช่…‘ๅ–”็ผ–็ฌกๅ–ๅ•ๆ–งๅ–”ใ ็ฌ–ๅ–ๅฆ็ฌกๅ–ไฝฎๅผ—ๅ–ๅคๆ ${importedFileCount} ๅ–ๅฆ็ฌฉๅ–”ใ ็ฎค, ๅ–”็งๆถชๅ–”ไพงๆถชๅ–”ไพงๆตฎๅ–โฌๅ–”็งๅคๅ–ๅ —ๆตฎๅ–”๏ฟฝๅ…ๅ–”๏ฟฝ ${files.length} ๅ–ๅฆ็ฌฉๅ–”ใ ็ฎค)\n\nๅ–”ไฝฎ็ฆๅ–”่็ฌ“ๅ–”ไพงๅผ—ๅ–ๅค่ฆๅ–”ๅ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”ใ ็ฎ‘ๅ–”ไฝฎ็ฎๅ–”ไพง็ซตๅ–ๅ —่…‘ๅ–”ๆฌๆ–งๅ–”ไพง็ซตๅ–”ๆ•็ฎๅ–”๏ฟฝ็ซพๅ–”ไฝฎ่ฆๅ–”๏ฝ€็ฎ‘ๅ–”๏ฝ€ๅคๅ–ๅ —ๆตฎๅ–ๅๆ–งๅ–”โด็ฎ`);
+            alert(`⚠️ จำกัดการอัปโหลดสูงสุด 2 ไฟล์สำหรับบัญชีทั่วไป\n(คุณอัปโหลดไปแล้ว ${importedFileCount} ไฟล์, พยายามเพิ่มอีก ${files.length} ไฟล์)\n\nกรุณาล้างข้อมูลเก่าก่อนหากต้องการเริ่มใหม่`);
             document.getElementById('import-upload').value = ''; // Reset input to allow re-selection
             return;
         }
@@ -400,7 +400,7 @@ function handleFileUpload(event) {
 }
 
 function handleExcelImport(file) {
-    document.getElementById('upload-status').innerText = `ๅ–”ไฝฎ่ตๅ–”ใ ๅฏๅ–”ๅ่…‘ๅ–ๅ —่ฆๅ–”ๆฌ็ฎๅ–”็ฐๅผ—ๅ–๏ฟฝ Excel...`;
+    document.getElementById('upload-status').innerText = `กำลังอ่านไฟล์ Excel...`;
     const reader = new FileReader();
     reader.onload = function (e) {
         const data = new Uint8Array(e.target.result);
@@ -446,15 +446,15 @@ function handleExcelImport(file) {
         });
 
         if (newItems.length === 0) {
-            alert('ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ฎ‘ๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่็ฎ–ๅ–”ๆฌ็ฎๅ–”็ฐๅผ—ๅ–๏ฟฝ Excel (ๅ–”ๆ•็ฆๅ–”ะพ็ฌ€ๅ–”๏ฟฝ่…‘ๅ–”ๆฐ็ซธๅ–”๏ฟฝๅผ—ๅ–”็ผ–ๆตฎๅ–”ๆฌ็ฎค C)');
-            document.getElementById('upload-status').innerText = 'ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ฎ‘ๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”๏ฟฝ';
+            alert('ไม่พบเลขพัสดุในไฟล์ Excel (ตรวจสอบคอลัมน์ C)');
+            document.getElementById('upload-status').innerText = 'ไม่พบเลขพัสดุ';
             return;
         }
 
         // Cumulative Append
         rawTrackingData.push(...newItems);
 
-        document.getElementById('upload-status').innerText = `ๅ–”๏ฟฝ็ฎๅ–”ไพง็ฌ Excel ๅ–”๏ฟฝ่ตๅ–โฌๅ–”๏ฝ€็ฎๅ–”๏ฟฝ! ๅ–โฌๅ–”็งๅคๅ–ๅ —ๆตฎ ${newItems.length} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ (ๅ–”๏ฝ€ๆๅ–”๏ฟฝ ${rawTrackingData.length})`;
+        document.getElementById('upload-status').innerText = `อ่าน Excel สำเร็จ! เพิ่ม ${newItems.length} รายการ (รวม ${rawTrackingData.length})`;
         analyzeImportedRanges(rawTrackingData);
     };
     reader.readAsArrayBuffer(file);
@@ -465,7 +465,7 @@ async function handleImageImport(files) {
     // Check if Admin
     const urlParams = new URLSearchParams(window.location.search);
     if (!urlParams.has('admin')) {
-        alert('ๅ–”็ฐๅ…ๅ–โฌๅ–”ๅ —่…‘ๅ–”๏ฝ€็ฎค "ๅ–”ๆฌ่ตๅ–โฌๅ–”ๅ•็ฎๅ–”ไพง็ฆๅ–”็็ฌกๅ–”็ฉ่ฆๅ–”๏ฟฝ" ๅ–”๏ฟฝ็ซพๅ–”ะพ็ฌๅ–”๏ฟฝๅคๅ–”ๆคธ็ฌๅ–”่็ฎคๅ–”๏ฟฝ่ตๅ–”๏ฟฝ็ฆๅ–”็ผ–็ฌ Admin ๅ–โฌๅ–”ๆคธ็ฎๅ–”ไพง็ฌๅ–”็ผ–็ฎๅ–”ๆฉฝn(ๅ–”็ง็ฌๅ–”็ผ–็ซตๅ–”ๅ่ฆๅ–”ๆฌ็ฌๅ–”็ผ–็ฎๅ–”ะพ็ฎๅ–”ๆถ็ซตๅ–”๏ฝ€็ถๅ–”ๆ’ช่ฆๅ–ๅ็ฌๅ–ๅค็ฎๅ–”็ฐๅผ—ๅ–๏ฟฝ Excel)');
+        alert('ฟีเจอร์ "นำเข้ารูปภาพ" สงวนสิทธิ์สำหรับ Admin เท่านั้น\n(พนักงานทั่วไปกรุณาใช้ไฟล์ Excel)');
         // Clear input safely
         const input = document.getElementById('import-upload');
         if (input) input.value = '';
@@ -542,7 +542,7 @@ async function handleImageImport(files) {
             // Price Fallback...
             const prices = TrackingUtils.extractPrices(combinedText);
             if (prices.length > 0) {
-                if (confirm(`ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ฎ‘ๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่็ฎ–ๅ–”ๆฌ็ฌญๅ–”ไพง็ฌง ๅ–ไฝฎ็ฌ—ๅ–ๅ —็ฌงๅ–”ๆฐๆถชๅ–”๏ฟฝ็ฌ–ๅ–โฌๅ–”ๅๅคๅ–”๏ฟฝ ${prices.length} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ\nๅ–”ๆ•็ฎๅ–”๏ฟฝ็ซพๅ–”ไฝฎ่ฆๅ–”๏ฝ€้ๅ–”๏ฝ€็ฎๅ–”ไพง็ซพๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซพๅ–”ไพง็ฌๅ–ไฝฎๆถชๅ–”ไฝฎ็ฌ—ๅ–”ไพงๆตฎๅ–”๏ฝ€่ฆๅ–”ๅฆ่ฆๅ–”๏ฟฝๅคๅ–”ๆฌ็ซธๅ–ๅค่ฆๅ–ไฝฎ็ฌๅ–”ๆฌๆ–งๅ–”๏ฝ€้ๅ–”๏ฟฝ็ฎๅ–”โด็ฎ?`)) {
+                if (confirm(`ไม่พบเลขพัสดุในภาพ แต่พบยอดเงิน ${prices.length} รายการ\nต้องการสร้างรายงานแยกตามราคาสินค้าแทนหรือไม่?`)) {
                     const summary = TrackingUtils.summarizePrices(prices);
                     const priceRanges = summary.groupings.map(g => ({
                         start: 'PRICE-ONLY',
@@ -558,25 +558,25 @@ async function handleImageImport(files) {
                     rawTrackingData = [];
                     currentImportedBatches = priceRanges;
                     renderImportResult(priceRanges);
-                    statusEl.innerText = `ๅ–”ะพๅคๅ–โฌๅ–”ๅฆ็ฆๅ–”ไพง่ตดๅ–”๏ฟฝ็ฎคๅ–”โ‘ง่…‘ๅ–”ๆ–ท็ฎ‘ๅ–”ๅๅคๅ–”ๆฌ้ๅ–”่ตค็ฎ‘ๅ–”๏ฝ€็ฎๅ–”๏ฟฝ (${summary.totalCount} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ)`;
+                    statusEl.innerText = `วิเคราะห์ยอดเงินสำเร็จ (${summary.totalCount} รายการ)`;
                     return;
                 }
             }
 
-            alert('ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ฎ‘ๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่็ฎ–ๅ–”ๆฌ็ฆๅ–”็็ฌกๅ–”็ฉ่ฆๅ–”็ง็ฌๅ–”ๆ็ฎ');
-            statusEl.innerText = 'ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”ใ ็ฎ–ๅ–”ๆฌ็ฌญๅ–”ไพง็ฌงๅ–”ใ ็ฎๅ–”ไพง้ๅ–”่็ฌ–';
+            alert('ไม่พบเลขพัสดุในรูปภาพนี้');
+            statusEl.innerText = 'ไม่พบข้อมูลในภาพล่าสุด';
             return;
         }
 
         // Cumulative Append
         rawTrackingData.push(...newItems);
 
-        statusEl.innerText = `OCR ๅ–โฌๅ–”๏ฟฝ็ฆๅ–ๅ็ฌ€ๅ–”๏ฟฝๅคๅ–ๅค็ฌ! ๅ–โฌๅ–”็งๅคๅ–ๅ —ๆตฎ ${newItems.length} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ (ๅ–”๏ฝ€ๆๅ–”๏ฟฝ ${rawTrackingData.length})`;
+        statusEl.innerText = `OCR เสร็จสิ้น! เพิ่ม ${newItems.length} รายการ (รวม ${rawTrackingData.length})`;
         analyzeImportedRanges(rawTrackingData);
 
     } catch (err) {
         console.error(err);
-        alert('ๅ–โฌๅ–”ไฝฎๅคๅ–”ๆ–ท็ซถๅ–ๅค่…‘ๅ–”ๆบนๅคๅ–”ๆ–ท็ฌงๅ–”ใ ่ฆๅ–”ๆ–ท็ฎ–ๅ–”ๆฌ็ซตๅ–”ไพง็ฆๅ–”๏ฟฝ็ฎๅ–”ไพง็ฌๅ–”๏ฝ€่…นๅ–”ๆถ็ฌญๅ–”ไพง็ฌง: ' + err.message);
+        alert('เกิดข้อผิดพลาดในการอ่านรูปภาพ: ' + err.message);
         statusEl.innerText = "Error";
     }
 }
@@ -741,15 +741,15 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 ? startID // Single ID
                 : `${startID} - ${endID}`; // Range
 
-            return `<li>${rangeText} (${m.count} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ)</li>`;
+            return `<li>${rangeText} (${m.count} รายการ)</li>`;
         }).join('');
 
         gapHtml = `
             <div class="result-error" style="margin-top:15px; padding:15px; border:2px solid #ff4444; background:#ffebeb;">
-                <h3 style="margin-top:0; color:#cc0000;">้ฟ็…็ฌ ๅ–”ๆ•็ฆๅ–”ะพ็ฌ€ๅ–”็ง็ฌๅ–โฌๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่็ซถๅ–ๅค่ฆๅ–”โด็ฎๅ–”๏ฟฝ (GAP DETECTED)</h3>
-                <p>ๅ–”๏ฝ€่ตดๅ–”ๆฐ็ฌๅ–”็ง็ฌๅ–”ะพ็ฎๅ–”ไพง็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”ใ ็ฎๅ–”โด็ฎๅ–”ๆ•็ฎๅ–”๏ฟฝ็ฎ‘ๅ–”ๆฌ้ๅ–ๅ —่…‘ๅ–”๏ฟฝ <strong>ๅ–”๏ฟฝ่ฆๅ–”โ‘ง็ฎๅ–”๏ฟฝ ${totalMissing} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ</strong> ๅ–”ๆ–ทๅฏๅ–”ๅ็ฌๅ–”ๆ็ฎ:</p>
+                <h3 style="margin-top:0; color:#cc0000;">⚠️ ตรวจพบเลขพัสดุข้ามไป (GAP DETECTED)</h3>
+                <p>ระบบพบว่าข้อมูลไม่ต่อเนื่อง <strong>หายไป ${totalMissing} รายการ</strong> ดังนี้:</p>
                 <ul style="margin-bottom:0;">${listHtml}</ul>
-                <div style="font-size:0.9rem; color:#666; margin-top:10px;">ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆๅ–”ๆคธๅ…ๅ–ๅ —ๆ–งๅ–”ไพงๆถชๅ–ๅฆ็ฌกๅ–”ๆ ข่…นๅ–”ไฝฎ็ฎ‘ๅ–”็งๅคๅ–ๅ —ๆตฎๅ–”ใ ็ซพๅ–ๅ็ฌๅ–”ๆ•่ฆๅ–”๏ฝ€่ฆๅ–”ๅ็ฌ–ๅ–ๅค่ฆๅ–”ๆฌๅผ—ๅ–ๅ —่ฆๅ–”ๅ็ฎ‘ๅ–”็ง้ๅ–ๅ —่…‘ๅ–”๏ฟฝ็ฎๅ–”ไพง็ซพๅ–”๏ฟฝๅคๅ–”ๅ็ฎ’ๅ–”ใ ็ฎๅ–”๏ฟฝ (ๅ–”๏ฟฝๅ…ๅ–ไฝฎ็ฌ–ๅ–”๏ฟฝ)</div>
+                <div style="font-size:0.9rem; color:#666; margin-top:10px;">รายการที่หายไปถูกเพิ่มลงในตารางด้านล่างเพื่ออ้างอิงแล้ว (สีแดง)</div>
             </div>
         `;
 
@@ -766,8 +766,8 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 <tr style="background-color:#ffebeb; color:#d32f2f; border-bottom:1px solid #ffcdd2;">
                     <td style="padding:10px; font-weight:bold;">
                         <div class="line-flex">
-                            <span>้๏ฟฝ ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆๅ–”ๆคธๅ…ๅ–ๅ —ๆ–งๅ–”ไพงๆถชๅ–ๅฆ็ฌก (Missing)</span>
-                            <span class="mobile-stats" style="color:#d32f2f;">${m.count} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ</span>
+                            <span>❌ รายการที่หายไป (Missing)</span>
+                            <span class="mobile-stats" style="color:#d32f2f;">${m.count} รายการ</span>
                         </div>
                         <span style="font-size:0.9em; font-family:monospace;">${rangeText}</span>
                     </td>
@@ -780,7 +780,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     } else {
         gapHtml = `
             <div class="result-success" style="margin-top:15px; padding:10px; border:1px solid #4caf50; background:#e8f5e9;">
-                <strong>้๏ฟฝ ๅ–”ๅฆ็ฆๅ–”ๆฐ็ฌๅ–ๅคๆๅ–”๏ฟฝ 100% (No Gaps)</strong> - ๅ–โฌๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่็ฎ‘ๅ–”๏ฝ€ๅ…ๅ–”โ‘ง็ซพๅ–”ๆ•็ฎๅ–”๏ฟฝ็ฎ‘ๅ–”ๆฌ้ๅ–ๅ —่…‘ๅ–”ๅ็ซตๅ–”็ผ–็ฌๅ–”๏ฟฝๆตฎๅ–”ๆฐ่…นๅ–”๏ฝ€็ฌ“ๅ–๏ฟฝ
+                <strong>✅ ครบถ้วน 100% (No Gaps)</strong> - เลขพัสดุเรียงต่อเนื่องกันสมบูรณ์
             </div>
         `;
     }
@@ -790,19 +790,19 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     if (discrepancies && discrepancies.length > 0) {
         discrepancyHtml = `
             <div class="result-error" style="margin-top:15px; padding:10px; border:2px solid #ff9800; background:#fff3e0; color:#e65100;">
-                <h4 style="margin:0 0 5px 0;">้ฟ็…็ฌ ๅ–”็ง็ฌๅ–”ๅ•็ฎๅ–”๏ฟฝ้ๅ–”็ผ–็ซพๅ–โฌๅ–”ไฝฎ็ฌ—ๅ–”ๅ —่ฆๅ–”ไฝฎ็ฎๅ–”็ฐๅผ—ๅ–ๅฑถ็ฌๅ–”่ตค็ฎ‘ๅ–”ๅ•็ฎๅ–”๏ฟฝ (Inconsistencies)</h4>
+                <h4 style="margin:0 0 5px 0;">⚠️ พบข้อสังเกตจากไฟล์นำเข้า (Inconsistencies)</h4>
                 <p style="margin:0; font-size:0.95rem;">
-                    ๅ–”็ง็ฌๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—ๅ–”ๆฌ็ฎๅ–”่ตคๆ–งๅ–”ๆฌๅฏๅ–”ไฝฎ็ฌๅ–”ๆ็ฎๅ–”๏ฝ€่ตดๅ–”ๆฐ็ถๅ–ๅ็ฌๅ–ๅฆ็ฌฉๅ–”ใ ็ฎค <strong>ๅ–ๅฆๆตฎๅ–ๅ —้ๅ–”็ผ–ๆตฎๅ–”็งๅฏๅ–”ๆฌ็ฌๅ–ๅฑถ็ซตๅ–”็ผ–็ฌๅ–”๏ฝ€่ฆๅ–”ๅฆ่ฆๅ–”ๆ•่ฆๅ–”โด็ฌ—ๅ–”ไพง็ฆๅ–”ไพง็ซพๅ–”ๅฆ็ฎๅ–”ไพง็ฌๅ–”๏ฝ€ๅคๅ–”ไฝฎ่ฆๅ–”๏ฟฝ</strong> ๅ–”ๅ —่ตๅ–”ๆฌๆๅ–”๏ฟฝ <strong>${discrepancies.length} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ</strong><br>
-                    <small>ๅ–โฌๅ–”ๅจป็ฎๅ–”๏ฟฝ ๅ–ๅ็ฌๅ–ๅฆ็ฌฉๅ–”ใ ็ฎคๅ–”๏ฝ€่ตดๅ–”ๆฐ็ถ ${discrepancies[0].originalWeight} ๅ–ไฝฎ็ฌ—ๅ–ๅ —็ฆๅ–”ไพง็ซธๅ–”๏ฟฝ ${discrepancies[0].price} ๅ–”ๆฐ่ฆๅ–”๏ฟฝ (ๅ–”๏ฝ€่ตดๅ–”ๆฐ็ฌๅ–ๅฆ็ฌ–ๅ–ๅค็ฌกๅ–”๏ฝ€ๅฏๅ–”ๆฐ็ฎ’ๅ–”ไฝฎ็ฎๅ–โฌๅ–”ๆถ็ฎๅ–”๏ฟฝ ${discrepancies[0].weight} ๅ–”๏ฟฝๅฏๅ–”ๆ•็ฎ“ๅ–”ๆฌๆตฎๅ–”็ผ–็ฌ—ๅ–”่็ฎ’ๅ–”ใ ็ฎๅ–”๏ฟฝ)</small>
+                    พบข้อมูลน้ำหนักที่ระบุในไฟล์ <strong>ไม่สัมพันธ์กับราคาตามตารางค่าบริการ</strong> จำนวน <strong>${discrepancies.length} รายการ</strong><br>
+                    <small>เช่น ในไฟล์ระบุ ${discrepancies[0].originalWeight} แต่ราคา ${discrepancies[0].price} บาท (ระบบได้ปรับแก้เป็น ${discrepancies[0].weight} อัตโนมัติแล้ว)</small>
                 </p>
             </div>
         `;
     }
 
     summary.innerHTML = `
-        <strong>้ฆๆณ ๅ–”๏ฟฝ็ฆๅ–”่็ฌกๅ–”ๆบนๅผ—ๅ–”ไฝฎ่ฆๅ–”๏ฝ€ๆๅ–”่็ฎ‘ๅ–”ๅฆ็ฆๅ–”ไพง่ตดๅ–”๏ฟฝ็ฎค (Virtual Optimization)</strong><br>
-        ๅ–”ๅ —่ตๅ–”ๆฌๆๅ–”ๆฌ็ฌๅ–”็ผ–็ฎๅ–”ๅๆ–งๅ–”โด็ฌ–: ${totalItems.toLocaleString()} ๅ–”ๅจปๅคๅ–ๅค็ฌ<br>
-        ๅ–”โ‘ง่…‘ๅ–”ๆ–ท็ฎ‘ๅ–”ๅๅคๅ–”ๆฌ็ฆๅ–”ะพๆตฎ: <span style="font-size:1.2rem; color:#d63384; font-weight:bold;">${grandTotal.toLocaleString()} ๅ–”ๆฐ่ฆๅ–”๏ฟฝ</span>
+        <strong>📊 สรุปผลการวิเคราะห์ (Virtual Optimization)</strong><br>
+        จำนวนทั้งหมด: ${totalItems.toLocaleString()} ชิ้น<br>
+        ยอดเงินรวม: <span style="font-size:1.2rem; color:#d63384; font-weight:bold;">${grandTotal.toLocaleString()} บาท</span>
         ${gapHtml}
         ${discrepancyHtml}
     `;
@@ -810,18 +810,18 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     // Generate Receipt-style Table
     let html = `
         <div style="background:white; padding:20px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.05); font-family:'Courier New', monospace;">
-            <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">ๅ–ๅ็ฌๅ–”๏ฟฝ็ฆๅ–”่็ฌกๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ (Optimized Report)</h4>
+            <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">ใบสรุปรายการ (Optimized Report)</h4>
              <div style="font-size:0.8rem; color:red; text-align:center; margin-bottom:5px;">
-                *ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆๅ–”ๆ ข่…นๅ–”ไฝฎ็ฌ€ๅ–”็ผ–็ฌ–ๅ–โฌๅ–”๏ฝ€ๅ…ๅ–”โ‘ง็ซพๅ–ๅๆ–งๅ–”โด็ฎๅ–”ๆ•่ฆๅ–”โด็ฆๅ–”ไพง็ซธๅ–”ไพง็ฌๅ–ๅค่…‘ๅ–”๏ฟฝ-ๅ–”โด่ฆๅ–”๏ฟฝ (Virtual Mapping)
+                *รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)
             </div>
             
             <table style="width:100%; border-collapse: collapse;">
                 <thead>
                     <tr style="border-bottom:2px solid #000;">
-                        <th style="text-align:left; padding:5px;">ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ (Description)</th>
-                        <th class="col-qty" style="text-align:right; padding:5px; white-space:nowrap;">ๅ–”ๅ —่ตๅ–”ๆฌๆๅ–”๏ฟฝ (Qty)</th>
-                        <th class="col-price" style="text-align:right; padding:5px; white-space:nowrap;">ๅ–”๏ฝ€่ฆๅ–”ๅฆ่ฆ/ๅ–”ๅจปๅคๅ–ๅค็ฌ</th>
-                        <th class="col-total" style="text-align:right; padding:5px; white-space:nowrap;">ๅ–”๏ฝ€ๆๅ–”๏ฟฝ (Total)</th>
+                        <th style="text-align:left; padding:5px;">รายการ (Description)</th>
+                        <th class="col-qty" style="text-align:right; padding:5px; white-space:nowrap;">จำนวน (Qty)</th>
+                        <th class="col-price" style="text-align:right; padding:5px; white-space:nowrap;">ราคา/ชิ้น</th>
+                        <th class="col-total" style="text-align:right; padding:5px; white-space:nowrap;">รวม (Total)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -840,8 +840,8 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 <td style="padding:10px 0; vertical-align:top; width:100%;">
                     <!-- Line 1: Title + Qty + Total (Mobile) -->
                     <div class="line-flex">
-                        <strong>${idx + 1}. EMS ๅ–”๏ฝ€่ฆๅ–”ๅฆ่ฆ ${r.price} ๅ–”ๆฐ่ฆๅ–”๏ฟฝ</strong>
-                        <span class="mobile-stats" style="color:#d63384; font-weight:bold;">${r.count} ๅ–”ๅจปๅคๅ–ๅค็ฌ${displayTotal}</span>
+                        <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong>
+                        <span class="mobile-stats" style="color:#d63384; font-weight:bold;">${r.count} ชิ้น${displayTotal}</span>
                     </div>
                     
                     <!-- Line 2: Range Only (Mobile) -->
@@ -853,7 +853,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                         </span>
                     </div>
 
-                    <small style="color:#666;">ๅ–”ๆฌ็ฎๅ–”่ตคๆ–งๅ–”ๆฌๅฏๅ–”๏ฟฝ (Weight): ${r.weight}</small>
+                    <small style="color:#666;">น้ำหนัก (Weight): ${r.weight}</small>
                 </td>
                 <td class="col-qty" style="text-align:right; vertical-align:top; padding-top:10px;">${r.count}</td>
                 <td class="col-price" style="text-align:right; vertical-align:top; padding-top:10px;">@${r.price}</td>
@@ -868,7 +868,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                         <tr style="border-top:2px solid #000; border-bottom:2px solid #000;">
                             <td colspan="4" style="padding:10px;">
                                 <div class="mobile-grand-total">
-                                    <span style="font-weight:bold;">ๅ–”๏ฝ€ๆๅ–”โด็ฌๅ–”็ผ–็ฎๅ–”ๅ้ๅ–”่็ฎๅ–”๏ฟฝ (Grand Total)</span>
+                                    <span style="font-weight:bold;">รวมทั้งสิ้น (Grand Total)</span>
                                     <span style="font-weight:bold; font-size:1.1rem;">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                                 </div>
                             </td>
@@ -876,7 +876,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                     </tfoot>
                 </table>
             <div style="font-size:0.8rem; color:#999; text-align:center; margin-top:5px; font-style:italic;">
-                (ๅ–”ๆฐ็ฌๅ–”โด้ๅ–”๏ฟฝ็ฌๅ–”็ฒช่…‘: ๅ–”ๅ —่ตๅ–”ๆฌๆๅ–”ๆฌ็ฎ’ๅ–”ใ ่ตดๅ–”โ‘ง่…‘ๅ–”ๆ–ท็ฎ‘ๅ–”ๅๅคๅ–”ๆฌ็ฌ€ๅ–”็ญ็ฎ’ๅ–”๏ฟฝ็ฌ–ๅ–”ๅ็ฌๅ–”ๆ็ฎๅ–”โด็ถๅ–”โด็ซถๅ–”ะพ่ฆๅ–”ๅ•่…‘ๅ–”ๅ็ฆๅ–”ไพงๆถชๅ–”ไฝฎ่ฆๅ–”๏ฟฝ)
+                (บนมือถือ: จำนวนและยอดเงินจะแสดงที่มุมขวาของรายการ)
             </div>
         </div>
     `;
@@ -899,12 +899,12 @@ function saveImportedBatch(isAuto = false) {
     const type = document.getElementById('import-batch-type').value;
 
     if (!name) {
-        alert('ๅ–”ไฝฎ็ฆๅ–”่็ฌ“ๅ–”ไพง็ฆๅ–”็ญ็ฌๅ–”่็ฌๅ–”็ฒช็ฎๅ–”๏ฟฝ็ซตๅ–”ใ ็ถๅ–ๅ —ๆตฎๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ— (Batch Name)');
+        alert('กรุณาระบุชื่อกลุ่มข้อมูล (Batch Name)');
         return;
     }
 
     if (!isAuto) {
-        if (!confirm(`ๅ–”โ‘ง้ๅ–”ๆฌๆถชๅ–”็ผ–็ฌๅ–”ๆฐๅฏๅ–”ๆฌ็ฌๅ–”ๅค็ซตๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ— ${currentImportedBatches.length} ๅ–”ๅจป็ฎๅ–”ะพ็ซพๅ–”๏ฝ€ๆๅ–”โด็ซตๅ–”็ผ–็ฌๅ–โฌๅ–”ๆถ็ฎๅ–”๏ฟฝ 1 ๅ–”ๅจป็ถๅ–”ๆ–ท็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”๏ฟฝ?`)) return;
+        if (!confirm(`ยืนยันบันทึกข้อมูล ${currentImportedBatches.length} ช่วงรวมกันเป็น 1 ชุดข้อมูล?`)) return;
     }
 
     // Save Logic (Optimized)
@@ -940,10 +940,10 @@ function saveImportedBatch(isAuto = false) {
     const newBatchId = typeof result === 'object' ? result.id : null;
 
     if (isAuto) {
-        // alert(`้๏ฟฝ ๅ–”๏ฝ€่ตดๅ–”ๆฐ็ฌๅ–”ๆฐๅฏๅ–”ๆฌ็ฌๅ–”ๅค็ซตๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—ๅ–”๏ฟฝๅฏๅ–”ๆ•็ฎ“ๅ–”ๆฌๆตฎๅ–”็ผ–็ฌ—ๅ–”่็ฎ‘ๅ–”๏ฝ€ๅ…ๅ–”โ‘ง็ฌๅ–”๏ฝ€็ฎๅ–”๏ฟฝๆถช!\n(Optimized ${rangesMeta.length} Groups)`);
+        // alert(`✅ ระบบบันทึกข้อมูลอัตโนมัติเรียบร้อย!\n(Optimized ${rangesMeta.length} Groups)`);
         // Silent or small notification? User wants to SEE it.
     } else {
-        alert(`ๅ–”ๆฐๅฏๅ–”ๆฌ็ฌๅ–”ๅค็ซตๅ–โฌๅ–”๏ฝ€ๅ…ๅ–”โ‘ง็ฌๅ–”๏ฝ€็ฎๅ–”๏ฟฝๆถช!`);
+        alert(`บันทึกเรียบร้อย!`);
     }
 
     // Reset inputs
@@ -984,7 +984,7 @@ function renderImportHistory() {
     const list = Object.values(batches).sort((a, b) => b.timestamp - a.timestamp);
 
     if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ฌกๅ–”๏ฝ€่ตดๅ–”ะพๅฏๅ–”ๆ•ๅคๅ–”ไฝฎ่ฆๅ–”๏ฝ€็ฌๅ–”่ตค็ฎ‘ๅ–”ๅ•็ฎๅ–”๏ฟฝ</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">ไม่พบประวัติการนำเข้า</td></tr>';
         return;
     }
 
@@ -996,7 +996,7 @@ function renderImportHistory() {
         if (isAdmin) {
             deleteBtn = `
                 <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem; margin-left:5px;" 
-                    onclick="deleteHistoryItem('${item.id}', '${item.name}')">้ฆๆฃ้””๏ฟฝ ๅ–”ใ ็ฌ</button>
+                    onclick="deleteHistoryItem('${item.id}', '${item.name}')">🗑️ ลบ</button>
             `;
         }
 
@@ -1009,7 +1009,7 @@ function renderImportHistory() {
             <td>${item.count.toLocaleString()}</td>
             <td>
                 <button class="btn btn-primary" style="padding:4px 8px; font-size:0.8rem;" 
-                    onclick="loadBatchToView('${item.id}')">้ฆๆ”ท ๅ–”ๆ–ท่…น</button>
+                    onclick="loadBatchToView('${item.id}')">🔎 ดู</button>
                 ${deleteBtn}
             </td>
         `;
@@ -1018,7 +1018,7 @@ function renderImportHistory() {
 }
 
 function deleteHistoryItem(batchId, batchName) {
-    if (confirm(`ๅ–”โ‘ง้ๅ–”ๆฌๆถชๅ–”็ผ–็ฌๅ–”ไฝฎ่ฆๅ–”๏ฝ€ๅผ—ๅ–”ๆฐ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”๏ฟฝ (ๅ–”ๅ —่ฆๅ–”ไฝฎ็ฌกๅ–”๏ฝ€่ตดๅ–”ะพๅฏๅ–”ๆ•ๅค Import)?\n\nๅ–”ๅจป็ถๅ–”ๆ–ท็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”๏ฟฝ: ${batchName}`)) {
+    if (confirm(`ยืนยันการลบข้อมูล (จากประวัติ Import)?\n\nชุดข้อมูล: ${batchName}`)) {
         CustomerDB.deleteBatch(batchId);
         // Refresh this table
         renderImportHistory();
@@ -1044,7 +1044,7 @@ function renderSnapshotList() {
     const snapshots = CustomerDB.getSnapshots();
 
     if (snapshots.length === 0) {
-        list.innerHTML = '<li>ๅ–ๅฆๆตฎๅ–ๅ —ๆตฎๅ–”ๆ็ฌ€ๅ–”่็ฌ–ๅ–”โ‘ง็ฎๅ–”๏ฟฝ็ฌๅ–”ไฝฎๅผ—ๅ–”็ผ–็ฌ (No Snapshots)</li>';
+        list.innerHTML = '<li>ไม่มีจุดย้อนกลับ (No Snapshots)</li>';
         return;
     }
 
@@ -1063,20 +1063,20 @@ function renderSnapshotList() {
 }
 
 function restoreFromSnapshot(ts) {
-    if (confirm('ๅ–”โ‘ง้ๅ–”ๆฌๆถชๅ–”็ผ–็ฌๅ–”โ‘ง็ฎๅ–”๏ฟฝ็ฌๅ–โฌๅ–”ะพๅผ—ๅ–”ไพง็ซตๅ–”ใ ๅฏๅ–”ๆฐ็ฎๅ–”ๆถ็ฌ€ๅ–”่็ฌ–ๅ–”ๆฌๅ…ๅ–๏ฟฝ? (ๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—ๅ–”ๆถๅฏๅ–”ๅ —็ฌ€ๅ–”่็ฌๅ–”็ผ–็ฌๅ–”ๅ —่ตดๅ–”๏ฟฝ่ฆๅ–”โ‘ง็ฎๅ–”๏ฟฝ)')) {
+    if (confirm('ยืนยันย้อนเวลากลับไปจุดนี้? (ข้อมูลปัจจุบันจะหายไป)')) {
         if (CustomerDB.restoreSnapshot(ts)) {
-            alert('้๏ฟฝ ๅ–”โ‘ง็ฎๅ–”๏ฟฝ็ฌๅ–โฌๅ–”ะพๅผ—ๅ–”ไพง้ๅ–”่ตค็ฎ‘ๅ–”๏ฝ€็ฎๅ–”๏ฟฝ (Restored)');
+            alert('✅ ย้อนเวลาสำเร็จ (Restored)');
             renderDBTable();
             renderImportHistory(); // if visible
         } else {
-            alert('้๏ฟฝ ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”๏ฟฝ Snapshot ๅ–”ๆฌๅ…ๅ–๏ฟฝ');
+            alert('❌ ไม่พบข้อมูล Snapshot นี้');
         }
     }
 }
 
 // --- Backup & Restore Glue Code ---
 function confirmAndBackup() {
-    if (confirm('ๅ–”ๅฆ็ถๅ–”ๆ’ช็ฌ—ๅ–ๅค่…‘ๅ–”ๅ็ซตๅ–”ไพง็ฆ Export ๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—ๅ–”ๆคธๅฏๅ–ๅค็ซพๅ–”๏ฟฝๆตฎๅ–”ๆ–ท่…‘ๅ–”๏ฟฝ็ซตๅ–”โด่ฆๅ–โฌๅ–”ๆถ็ฎๅ–”ๆฌ็ฎๅ–”็ฐๅผ—ๅ–ๅฑถ็ฎ–ๅ–”ๅจป็ฎๅ–”๏ฟฝ็ฆๅ–”็ฒช่…‘ๅ–ๅฆๆตฎๅ–๏ฟฝ?')) {
+    if (confirm('คุณต้องการ Export ข้อมูลทั้งหมดออกมาเป็นไฟล์ใช่หรือไม่?')) {
         backupData();
     }
 }
@@ -1089,19 +1089,19 @@ function restoreData(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (!confirm('ๅ–”ๅฆ่ตๅ–โฌๅ–”ๆ•้ๅ–”๏ฟฝ็ฌ: ๅ–”ไฝฎ่ฆๅ–”๏ฝ€็ซตๅ–”็็ฎๅ–”ๅฆ้ๅ–”ๆฌ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”ใ ็ฌ€ๅ–”็ญ็ฌๅ–”็ผ–็ฌๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—ๅ–”ๆถๅฏๅ–”ๅ —็ฌ€ๅ–”่็ฌๅ–”็ผ–็ฌๅ–”ๆคธๅฏๅ–ๅค็ซพๅ–”๏ฟฝๆตฎๅ–”ๆ“ปnๅ–”ๅฆ็ถๅ–”ๆ’ช็ฌ—ๅ–ๅค่…‘ๅ–”ๅ็ซตๅ–”ไพง็ฆๅ–”ๆ–ท่ตๅ–โฌๅ–”ๆฌๅคๅ–”ๆฌ็ซตๅ–”ไพง็ฆๅ–”ๆ•็ฎๅ–”๏ฟฝๆ–งๅ–”๏ฝ€้ๅ–”๏ฟฝ็ฎๅ–”โด็ฎ?')) {
+    if (!confirm('คำเตือน: การกู้คืนข้อมูลจะทับข้อมูลปัจจุบันทั้งหมด\nคุณต้องการดำเนินการต่อหรือไม่?')) {
         event.target.value = ''; // Reset
         return;
     }
 
     CustomerDB.importBackup(file)
         .then(() => {
-            alert('้๏ฟฝ ๅ–”ไฝฎ่…นๅ–ๅค็ซธๅ–”็ฒช็ฌๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—ๅ–”๏ฟฝ่ตๅ–โฌๅ–”๏ฝ€็ฎๅ–”๏ฟฝ (Restore Complete)');
+            alert('✅ กู้คืนข้อมูลสำเร็จ (Restore Complete)');
             if (typeof updateDbViews === 'function') updateDbViews();
             else if (typeof renderDBTable === 'function') renderDBTable(); // Refresh UI
         })
         .catch(err => {
-            alert('้๏ฟฝ ๅ–โฌๅ–”ไฝฎๅคๅ–”ๆ–ท็ซถๅ–ๅค่…‘ๅ–”ๆบนๅคๅ–”ๆ–ท็ฌงๅ–”ใ ่ฆๅ–”๏ฟฝ: ' + err.message);
+            alert('❌ เกิดข้อผิดพลาด: ' + err.message);
         })
         .finally(() => {
             event.target.value = ''; // Reset
@@ -1113,7 +1113,7 @@ function loadBatchToView(batchId) {
     const batch = batches[batchId];
 
     if (!batch) {
-        alert('ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”ใ ็ฌๅ–”่็ฌ–ๅ–”ๆฌๅ…ๅ–๏ฟฝ');
+        alert('ไม่พบข้อมูลชุดนี้');
         return;
     }
 
@@ -1129,13 +1129,13 @@ function loadBatchToView(batchId) {
 
         let html = `
             <div class="result-success" style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-                <strong>้ฆๆจ ๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—: ${batch.name}</strong>
-                <button class="btn btn-neutral" onclick="switchTab('import')" style="padding:5px 10px; font-size:0.9rem;">็ฌ๏ฟฝ ๅ–”ไฝฎๅผ—ๅ–”็ผ–็ฌๅ–”๏ฟฝ็ฌๅ–ๅค่ฆๅ–”๏ฟฝๅผ—ๅ–”็ผ–็ซต (New Import)</button>
+                <strong>📂 ข้อมูล: ${batch.name}</strong>
+                <button class="btn btn-neutral" onclick="switchTab('import')" style="padding:5px 10px; font-size:0.9rem;">⬅ กลับหน้าหลัก (New Import)</button>
             </div>
             
             <!-- Receipt View -->
             <div style="background:white; padding:20px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.05); font-family:'Courier New', monospace; max-width:800px; margin:0 auto;">
-                <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">ๅ–ๅ็ฌๅ–”๏ฟฝ็ฆๅ–”่็ฌกๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ (Optimized Report)</h4>
+                <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">ใบสรุปรายการ (Optimized Report)</h4>
                  <div style="margin-bottom:10px; font-size:0.9rem;">
                     <strong>Customer:</strong> ${batch.name}<br>
                     <strong>Type:</strong> ${batch.type}<br>
@@ -1143,14 +1143,14 @@ function loadBatchToView(batchId) {
                     <strong>Date:</strong> ${new Date(batch.timestamp).toLocaleString('th-TH')}
                 </div>
                  <div style="font-size:0.8rem; color:red; text-align:center; margin-bottom:5px;">
-                    *ๅ–”ๅ —ๅฏๅ–”ๆ–ท็ฎ‘ๅ–”๏ฝ€ๅ…ๅ–”โ‘ง็ซพๅ–”ๆ•่ฆๅ–”โด็ฆๅ–”ไพง็ซธๅ–”ไพง็ฌๅ–ๅค่…‘ๅ–”๏ฟฝ-ๅ–”โด่ฆๅ–”๏ฟฝ (Virtual)
+                    *จัดเรียงตามราคาน้อย-มาก (Virtual)
                 </div>
                 <div class="report-list-container">
                     <div class="report-header-desktop">
-                        <div style="width:40%">ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ (Description)</div>
-                        <div style="width:20%; text-align:right">ๅ–”ๅ —่ตๅ–”ๆฌๆๅ–”๏ฟฝ (Qty)</div>
-                        <div style="width:20%; text-align:right">ๅ–”๏ฝ€่ฆๅ–”ๅฆ่ฆ/ๅ–”ๅจปๅคๅ–ๅค็ฌ</div>
-                        <div style="width:20%; text-align:right">ๅ–”๏ฝ€ๆๅ–”๏ฟฝ (Total)</div>
+                        <div style="width:40%">รายการ (Description)</div>
+                        <div style="width:20%; text-align:right">จำนวน (Qty)</div>
+                        <div style="width:20%; text-align:right">ราคา/ชิ้น</div>
+                        <div style="width:20%; text-align:right">รวม (Total)</div>
                     </div>
         `;
 
@@ -1160,21 +1160,21 @@ function loadBatchToView(batchId) {
             html += `
                 <div class="report-card">
                     <div class="report-card-desc">
-                        <strong>${idx + 1}. EMS ๅ–”๏ฝ€่ฆๅ–”ๅฆ่ฆ ${r.price} ๅ–”ๆฐ่ฆๅ–”๏ฟฝ</strong><br>
+                        <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong><br>
                         <span style="color:#0056b3; font-weight:bold;">${r.start === r.end ? r.start : `${r.start} - ${r.end}`}</span><br>
-                        <small>ๅ–”ๆฌ็ฎๅ–”่ตคๆ–งๅ–”ๆฌๅฏๅ–”๏ฟฝ (Weight): ${r.weight}</small>
+                        <small>น้ำหนัก (Weight): ${r.weight}</small>
                     </div>
                     <div class="report-card-scroll">
                         <div class="stat-item">
-                            <span class="stat-label">ๅ–”ๅ —่ตๅ–”ๆฌๆๅ–”๏ฟฝ (Qty)</span>
+                            <span class="stat-label">จำนวน (Qty)</span>
                             <span class="stat-value">${r.count}</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-label">ๅ–”๏ฝ€่ฆๅ–”ๅฆ่ฆ/ๅ–”ๅจปๅคๅ–ๅค็ฌ</span>
+                            <span class="stat-label">ราคา/ชิ้น</span>
                             <span class="stat-value">@${r.price}</span>
                         </div>
                         <div class="stat-item highlight">
-                            <span class="stat-label">ๅ–”๏ฝ€ๆๅ–”๏ฟฝ (Total)</span>
+                            <span class="stat-label">รวม (Total)</span>
                             <span class="stat-value">${(r.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <!-- Spacer for scroll feel -->
@@ -1186,15 +1186,15 @@ function loadBatchToView(batchId) {
 
         html += `
                     <div class="report-footer">
-                        <div class="footer-label">ๅ–”๏ฝ€ๆๅ–”โด็ฌๅ–”็ผ–็ฎๅ–”ๅ้ๅ–”่็ฎๅ–”๏ฟฝ (Grand Total)</div>
+                        <div class="footer-label">รวมทั้งสิ้น (Grand Total)</div>
                         <div class="footer-value">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                     </div>
                 </div>
             </div>
             
             <div style="text-align:center; margin-top:20px;">
-                <button class="btn" onclick="window.print()">้ฆๆฟ้””๏ฟฝ Print / PDF</button>
-                <button class="btn btn-neutral" onclick="switchTab('import')" style="margin-left:10px;">็ฌ๏ฟฝ ๅ–”ไฝฎๅผ—ๅ–”็ผ–็ฌๅ–”๏ฟฝ็ฌๅ–ๅค่ฆๅ–”๏ฟฝๅผ—ๅ–”็ผ–็ซต (New Import)</button>
+                <button class="btn" onclick="window.print()">🖨️ Print / PDF</button>
+                <button class="btn btn-neutral" onclick="switchTab('import')" style="margin-left:10px;">⬅ กลับหน้าหลัก (New Import)</button>
             </div>
         `;
         box.innerHTML = html;
@@ -1237,7 +1237,7 @@ function adminHandleTrackInput(inputEl) {
 function adminOpenThpTrack() {
     let rawInput = document.getElementById('admin-track-input').value.trim();
     if (!rawInput) {
-        alert("ๅ–”ไฝฎ็ฆๅ–”่็ฌ“ๅ–”ไพง็ซตๅ–”๏ฝ€่…‘ๅ–”ไฝฎ็ฎ‘ๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”๏ฟฝ");
+        alert("กรุณากรอกเลขพัสดุ");
         return;
     }
     
@@ -1245,7 +1245,7 @@ function adminOpenThpTrack() {
     const extracted = TrackingUtils.extractTrackingNumbers(rawInput);
     
     if (extracted.length === 0) {
-        alert("ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ฆๅ–”็็ฌกๅ–ไฝฎ็ฌๅ–”ๆฐ็ฎ‘ๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่็ฌๅ–”ๆ็ฎๅ–”ๆ ข่…นๅ–”ไฝฎ็ฌ—ๅ–ๅค่…‘ๅ–”๏ฟฝ (13 ๅ–”๏ฟฝๅผ—ๅ–”็ผ–็ซต)");
+        alert("ไม่พบรูปแบบเลขพัสดุที่ถูกต้อง (13 หลัก)");
         return;
     }
     
@@ -1304,23 +1304,23 @@ async function adminHandleImageOcr(files) {
     resultEl.classList.remove('hidden');
     resultEl.innerHTML = '';
     
-    if (statusEl) statusEl.textContent = `ๅ–”ไฝฎ่ตๅ–”ใ ๅฏๅ–”ๅ็ฎ‘ๅ–”๏ฝ€ๅคๅ–ๅ —ๆตฎๅ–”ๆถ็ฆๅ–”็ญๆตฎๅ–”ะพๅผ—ๅ–”ๆบนๅผ—...`;
+    if (statusEl) statusEl.textContent = `กำลังเริ่มประมวลผล...`;
 
     let combinedText = "";
     let debugProcessedImageUrl = "";
 
     try {
         for (let i = 0; i < files.length; i++) {
-            if (statusEl) statusEl.textContent = `ๅ–”ไฝฎ่ตๅ–”ใ ๅฏๅ–”ๅ็ฎ’ๅ–”โ‘ง็ซตๅ–”ๅ•็ฎๅ–”๏ฟฝ็ซธๅ–”ะพ่ฆๅ–”โด็ฌ€ๅ–”ไพง็ซตๅ–”็ฉ่ฆๅ–”๏ฟฝ ${i + 1}/${files.length}...`;
+            if (statusEl) statusEl.textContent = `กำลังแยกข้อความจากภาพ ${i + 1}/${files.length}...`;
             const file = files[i];
 
             // Image Preprocessing: Grayscale + Thresholding
-            if (statusEl) statusEl.textContent = `ๅ–”ไฝฎ่ตๅ–”ใ ๅฏๅ–”ๅ็ฌกๅ–”๏ฝ€ๅฏๅ–”ๆฐ็ฎ’ๅ–”ๆ•็ฎๅ–”ๅ็ฆๅ–”็็ฌกๅ–”็ฉ่ฆๅ–”๏ฟฝ (Preprocessing)...`;
+            if (statusEl) statusEl.textContent = `กำลังปรับแต่งรูปภาพ (Preprocessing)...`;
             const processedFileUrl = await preprocessImageForOCR(file);
             debugProcessedImageUrl = processedFileUrl; // Save for debug display
 
             // Tesseract OCR
-            if (statusEl) statusEl.textContent = `ๅ–”ไฝฎ่ตๅ–”ใ ๅฏๅ–”ๅ็ฎ’ๅ–”โ‘ง็ซตๅ–”ๅ•็ฎๅ–”๏ฟฝ็ซธๅ–”ะพ่ฆๅ–”โด็ฌ€ๅ–”ไพง็ซตๅ–”็ฉ่ฆๅ–”๏ฟฝ ${i + 1}/${files.length}...`;
+            if (statusEl) statusEl.textContent = `กำลังแยกข้อความจากภาพ ${i + 1}/${files.length}...`;
             const useEngOnly = document.getElementById('admin-ocr-eng-only') && document.getElementById('admin-ocr-eng-only').checked;
             const lang = useEngOnly ? 'eng' : 'tha+eng';
             const worker = typeof Tesseract !== 'undefined' ? await Tesseract.createWorker(lang) : null;
@@ -1335,7 +1335,7 @@ async function adminHandleImageOcr(files) {
             }
         }
 
-        if (statusEl) statusEl.textContent = "ๅ–”ไฝฎ่ตๅ–”ใ ๅฏๅ–”ๅๆๅ–”่็ฎ‘ๅ–”ๅฆ็ฆๅ–”ไพง่ตดๅ–”๏ฟฝ็ฎคๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ— (Analyzing)...";
+        if (statusEl) statusEl.textContent = "กำลังวิเคราะห์ข้อมูล (Analyzing)...";
 
         const lines = combinedText.split('\n');
         let extractedItems = [];
@@ -1363,13 +1363,13 @@ async function adminHandleImageOcr(files) {
         });
 
         if (extractedItems.length === 0) {
-            statusEl.textContent = "ๅ–”ๆถ็ฆๅ–”็ญๆตฎๅ–”ะพๅผ—ๅ–”ๆบนๅผ—ๅ–โฌๅ–”๏ฟฝ็ฆๅ–ๅ็ฌ€ๅ–”๏ฟฝๅคๅ–ๅค็ฌ: ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ฎ‘ๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่็ฎ–ๅ–”ๆฌ็ฌญๅ–”ไพง็ฌง";
-            resultEl.innerHTML = `<em>ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”ใ ็ฌๅ–”ๆ็ฎๅ–”ๆ•็ฆๅ–”ๅ็ซตๅ–”็ผ–็ฌๅ–”๏ฝ€่…นๅ–”ๆถ็ฎ’ๅ–”ๆฐ็ฌๅ–โฌๅ–”ใ ็ซถๅ–ๅฆ็ฌกๅ–”๏ฝ€ไฟฏๅ–”ๆ’ชๅ…ๅ–”โ‘ง็ฎคๅ–ๅฆ็ฌๅ–”๏ฟฝ 13 ๅ–”๏ฟฝๅผ—ๅ–”็ผ–็ซต</em>\n\n[ๅ–”ๅ•็ฎๅ–”๏ฟฝ็ซธๅ–”ะพ่ฆๅ–”โด็ฌ–ๅ–”่็ฌๅ–”ๅ —่ฆๅ–”๏ฟฝ OCR]\n${combinedText}\n<hr><img src="${debugProcessedImageUrl}" style="max-width:100%; border:1px solid #ccc; margin-top:10px;">`;
+            statusEl.textContent = "ประมวลผลเสร็จสิ้น: ไม่พบเลขพัสดุในภาพ";
+            resultEl.innerHTML = `<em>ไม่พบข้อมูลที่ตรงกับรูปแบบเลขไปรษณีย์ไทย 13 หลัก</em>\n\n[ข้อความดิบจาก OCR]\n${combinedText}\n<hr><img src="${debugProcessedImageUrl}" style="max-width:100%; border:1px solid #ccc; margin-top:10px;">`;
             return;
         }
 
         // 2. Output Formatting & Missing Check
-        let outputHtml = `<strong style="color:var(--primary-color);">้ฆๆถ ๅ–”ๆ•็ฆๅ–”ะพ็ฌ€ๅ–”็ง็ฌๅ–”ๆคธๅฏๅ–ๅค็ซพๅ–”๏ฟฝๆตฎๅ–”๏ฟฝ ${extractedItems.length} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ</strong>\n<hr>`;
+        let outputHtml = `<strong style="color:var(--primary-color);">📌 ตรวจพบทั้งหมด ${extractedItems.length} รายการ</strong>\n<hr>`;
         let totalPrice = 0;
         
         // Sort items conceptually if possible, but keep original order for display
@@ -1412,7 +1412,7 @@ async function adminHandleImageOcr(files) {
             }
             if (missingInGrp.length > 0) {
                 missingReport += `<div style="color:var(--error-color); margin-bottom:10px;">
-                    <strong>้ฆๆฏ ๅ–ไฝฎ็ฌ€ๅ–ๅค็ซพๅ–โฌๅ–”ๆ•้ๅ–”๏ฟฝ็ฌ: ๅ–”็ง็ฌๅ–”ๅจป็ฎๅ–”๏ฟฝ็ซพๅ–ๅ•ๆ–งๅ–”ะพ็ฎ (ๅ–โฌๅ–”ใ ็ซถๅ–”ๆคธๅ…ๅ–ๅ —ๆ–งๅ–”ไพงๆถชๅ–ๅฆ็ฌก) ๅ–ๅ็ฌๅ–”ๅจป็ฎๅ–”ะพ็ซพๅ–”๏ฟฝๆตฎๅ–”ะพ็ฌ– ${key}:</strong><br>
+                    <strong>🚨 แจ้งเตือน: พบช่องโหว่ (เลขที่หายไป) ในช่วงหมวด ${key}:</strong><br>
                     ${missingInGrp.join(', ')}
                 </div>`;
             }
@@ -1425,9 +1425,9 @@ async function adminHandleImageOcr(files) {
         // List all with Prices
         outputHtml += `<table style="width:100%; font-size:0.9rem;">
             <tr style="background:#eee;">
-                <th style="padding:5px; text-align:left;">ๅ–”ใ ่ตๅ–”ๆ–ทๅฏๅ–”๏ฟฝ</th>
-                <th style="padding:5px; text-align:left;">ๅ–โฌๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”๏ฟฝ</th>
-                <th style="padding:5px; text-align:right;">ๅ–”๏ฝ€่ฆๅ–”ๅฆ่ฆ (ๅ–”ๆฐ่ฆๅ–”๏ฟฝ)</th>
+                <th style="padding:5px; text-align:left;">ลำดับ</th>
+                <th style="padding:5px; text-align:left;">เลขพัสดุ</th>
+                <th style="padding:5px; text-align:right;">ราคา (บาท)</th>
             </tr>
         `;
         
@@ -1443,7 +1443,7 @@ async function adminHandleImageOcr(files) {
         
         outputHtml += `
             <tr style="background:#fce8e6; font-weight:bold;">
-                <td colspan="2" style="padding:10px; text-align:right;">ๅ–”โ‘ง่…‘ๅ–”ๆ–ท็ฆๅ–”ะพๆตฎๅ–”ๆคธๅฏๅ–ๅค็ซพๅ–”๏ฟฝๆตฎๅ–”๏ฟฝ (Total):</td>
+                <td colspan="2" style="padding:10px; text-align:right;">ยอดรวมทั้งหมด (Total):</td>
                 <td style="padding:10px; text-align:right;">${totalPrice.toFixed(2)}</td>
             </tr>
         </table>`;
@@ -1455,13 +1455,13 @@ async function adminHandleImageOcr(files) {
                  <pre style="font-size:0.75rem; white-space:pre-wrap; margin:0;">${combinedText}</pre>
             </div>
             <div style="margin-top:10px;">
-                <strong style="color:#666; font-size:0.8rem;">[DEBUG] ๅ–”็ฉ่ฆๅ–”็ง็ฌๅ–”ๆ็ฎๅ–”ๆถ็ฆๅ–”็ผ–็ฌๅ–ไฝฎ้ๅ–”ๅ็ฎ’ๅ–”ใ ็ฎๅ–”๏ฟฝ:</strong><br>
+                <strong style="color:#666; font-size:0.8rem;">[DEBUG] ภาพที่ปรับแสงแล้ว:</strong><br>
                 <img src="${debugProcessedImageUrl}" style="max-width:100%; border:1px solid #ccc; margin-top:5px;">
             </div>
         `;
 
         resultEl.innerHTML = outputHtml;
-        statusEl.textContent = "ๅ–”ๆถ็ฆๅ–”็ญๆตฎๅ–”ะพๅผ—ๅ–”ๆบนๅผ—ๅ–โฌๅ–”๏ฟฝ็ฆๅ–ๅ็ฌ€ๅ–”๏ฟฝๅคๅ–ๅค็ฌ (Done)";
+        statusEl.textContent = "ประมวลผลเสร็จสิ้น (Done)";
 
     } catch (err) {
         console.error(err);
@@ -1483,7 +1483,7 @@ function adminCrossReference() {
 function copyCrossRefAll() {
     const inputArea = document.getElementById('admin-crossref-input');
     if (!inputArea || !inputArea.value.trim()) {
-        alert('ๅ–ๅฆๆตฎๅ–ๅ —ๆตฎๅ–”ๆ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”ใ ็ฎ–ๅ–”๏ฟฝ็ฎๅ–”ๅฆๅฏๅ–”ๆ–ทๅผ—ๅ–”๏ฟฝ็ซตๅ–”ๅฆ็ฆๅ–”็ผ–็ฌ');
+        alert('ไม่มีข้อมูลให้คัดลอกครับ');
         return;
     }
     
@@ -1496,19 +1496,19 @@ function copyCrossRefAll() {
             const btn = document.querySelector('button[onclick="copyCrossRefAll()"]');
             if (btn) {
                 const originalText = btn.innerHTML;
-                btn.innerHTML = `้๏ฟฝ ๅ–”ๅฆๅฏๅ–”ๆ–ทๅผ—ๅ–”๏ฟฝ็ซต ${extracted.length} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆๅ–ไฝฎๅผ—ๅ–ๅคๆ`;
+                btn.innerHTML = `✅ คัดลอก ${extracted.length} รายการแล้ว`;
                 btn.classList.add('btn-success');
                 setTimeout(() => {
                     btn.innerHTML = originalText;
                     btn.classList.remove('btn-success');
                 }, 1500);
             }
-            alert(`ๅ–”ๅฆๅฏๅ–”ๆ–ทๅผ—ๅ–”๏ฟฝ็ซตๅ–โฌๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่้ๅ–”่ตค็ฎ‘ๅ–”๏ฝ€็ฎๅ–”๏ฟฝ ${extracted.length} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ`);
+            alert(`คัดลอกเลขพัสดุสำเร็จ ${extracted.length} รายการ`);
         }).catch(err => {
-            alert('ๅ–ๅฆๆตฎๅ–ๅ —้ๅ–”ไพงๆตฎๅ–”ไพง็ฆๅ–”ๆ ข็ซธๅ–”็ผ–็ฌ–ๅ–”ใ ่…‘ๅ–”ไฝฎ็ฎๅ–”ๆ–ท็ฎ: ' + err);
+            alert('ไม่สามารถคัดลอกได้: ' + err);
         });
     } else {
-        alert('ๅ–”ๅฆ็ฎๅ–”ๆฌๆ–งๅ–”ไพง็ฎๅ–”โด็ฎๅ–”็ง็ฌๅ–”๏ฝ€่…นๅ–”ๆถ็ฎ’ๅ–”ๆฐ็ฌๅ–โฌๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่็ฌๅ–”ๆ็ฎๅ–”ๆ ข่…นๅ–”ไฝฎ็ฌ—ๅ–ๅค่…‘ๅ–”ๅ็ฎ‘ๅ–”็ง้ๅ–ๅ —่…‘ๅ–”ๅฆๅฏๅ–”ๆ–ทๅผ—ๅ–”๏ฟฝ็ซตๅ–”ๅฆ็ฆๅ–”็ผ–็ฌ');
+        alert('ค้นหาไม่พบรูปแบบเลขพัสดุที่ถูกต้องเพื่อคัดลอกครับ');
     }
 }
 
@@ -1519,7 +1519,7 @@ async function adminCrossRefImage(files) {
     const resultEl = document.getElementById('admin-crossref-result');
     resultEl.classList.add('hidden');
     
-    if (statusEl) statusEl.textContent = `ๅ–”ไฝฎ่ตๅ–”ใ ๅฏๅ–”ๅ้ๅ–ไฝฎ็ซตๅ–”ๆฌ็ฆๅ–”็็ฌกๅ–”็ฉ่ฆๅ–”็ง็ฌ–ๅ–ๅคๆๅ–”๏ฟฝ OCR...`;
+    if (statusEl) statusEl.textContent = `กำลังสแกนรูปภาพด้วย OCR...`;
 
     try {
         const worker = typeof Tesseract !== 'undefined' ? await Tesseract.createWorker('eng') : null; // 'eng' is faster for just numbers
@@ -1535,7 +1535,7 @@ async function adminCrossRefImage(files) {
                  
                  _performCrossRef(extracted);
             } else {
-                 if (statusEl) statusEl.textContent = `ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ฎ‘ๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่็ฎ–ๅ–”ๆฌ็ฆๅ–”็็ฌกๅ–”็ฉ่ฆๅ–”็€;
+                 if (statusEl) statusEl.textContent = `ไม่พบเลขพัสดุในรูปภาพ`;
             }
         }
     } catch(err) {
@@ -1551,56 +1551,60 @@ function _performCrossRef(trackingArray) {
     const resultEl = document.getElementById('admin-crossref-result');
     
     if (!trackingArray || trackingArray.length === 0) {
-        statusEl.textContent = "ๅ–”ไฝฎ็ฆๅ–”่็ฌ“ๅ–”ไพงๆๅ–”ไพง็ซพๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ— ๅ–”๏ฟฝ็ฆๅ–”็ฒช่…‘ ๏ฟฝ    resultEl.innerHTML = html;
-    resultEl.classList.remove('hidden');
+        statusEl.textContent = "กรุณาวางข้อมูล หรือ อัปโหลดรูปภาพที่มีเลขพัสดุก่อน";
+        resultEl.classList.add('hidden');
+        return;
+    }
+
+    statusEl.textContent = `กำลังเทียบข้อมูล ${trackingArray.length} รายการ กับฐานข้อมูลลูกค้า...`;
     
-    statusEl.innerHTML = `\u0e15\u0e23\u0e27\u0e08\u0e1e\u0e1a\u0e2a\u0e31\u0e07\u0e01\u0e31\u0e14\u0e15\u0e23\u0e07\u0e01\u0e31\u0e19 <strong style="color:green;">${foundCount}</strong> \u0e08\u0e32\u0e01\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14 ${trackingArray.length} \u0e23\u0e32\u0e22\u0e01\u0e32\u0e23`;
-}
-ไฝฎ็ฎๅ–”๏ฟฝ็ฌๅ–”๏ฟฝ็ฌๅ–ๅค่ฆ ${Math.abs(item.offset)})</span>`;
-            if (item.offset > 0) label = `<span style="color:#1976d2; font-size:0.75rem;">(ๅ–”ๆ ขๅฏๅ–”ๆ–ท็ฎๅ–”๏ฟฝ ${item.offset})</span>`;
+    const lookup = CustomerDB.getLookup();
+    const batches = CustomerDB.getBatches();
+    
+    let html = `
+        <table style="width:100%; font-size:0.9rem;">
+            <thead>
+                <tr style="background:#eee;">
+                    <th>ลำดับ</th>
+                    <th>เลขพัสดุ</th>
+                    <th>สังกัดบริษัทในระบบ (Company / Name)</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
 
-            html += `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding: 5px 14px 5px 28px; background:${seqBg}; border-bottom: 1px solid #f0f0f0; flex-wrap:wrap; gap:4px;">
-                    <div>
-                        <span style="color:#aaa; margin-right:4px;">้ซ๏ฟฝ</span>
-                        <span style="font-family:monospace; color: #555;">${item.number}</span>
-                        <span style="margin-left:6px;">${label}</span>
-                        <span style="margin-left:8px; font-size:0.85rem;">${companyName}</span>
-                    </div>
-                    <div style="display:flex; gap:4px;">
-                        <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9; padding:2px 5px; font-size:0.78rem;">้ฆๆ•</a>
-                        <button class="badge badge-neutral" style="border:1px solid #ccc; cursor:pointer; padding:2px 5px; font-size:0.78rem;" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('ๅ–”ๅฆๅฏๅ–”ๆ–ทๅผ—ๅ–”๏ฟฝ็ซต ${item.number} ๅ–ไฝฎๅผ—ๅ–ๅคๆ'))">้ฆๆต</button>
-                    </div>
-                </div>
-            `;
-        });
+    let foundCount = 0;
 
-        html += `</div></div>`;
-    });
+    trackingArray.forEach((track, idx) => {
+        // Find DB info for the primary tracking number
+        let dbInfoMain = lookup[track];
+        
+        // Define the items to show in order (e.g. -2, -1, 0, +1)
+        let displayList = [];
+        
+        if (track.length === 13 && typeof TrackingUtils !== 'undefined') {
+            displayList = TrackingUtils.generateTrackingRange(track, 2, 1);
+        } else {
+            // fallback if not a full tracking number
+            displayList = [{ number: track, offset: 0, isCenter: true }];
+        }
 
-    // Dummy forEach needed to close the old loop - replaced above
-    // Close dummy
-    const closeLoop = () => {};
-    closeLoop();
-
-    {
-        // Old table footer replacement
-        const isMain = false;
-        let companyName = '';
-        let rowStyle = '';
-        let item = {};
-        let dbInfo = {};
-        let indexCol = '';
-        let trackDisplay = '';
-        const isMain2 = (item.offset === 0);
+        // Loop through the chronological list and render rows for this group
+        displayList.forEach((item, innerIdx) => {
+            let dbInfo = lookup[item.number];
+            let companyName = '<span style="color:#ccc; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
+            let rowStyle = '';
+            
+            // Is this the main requested tracking number?
+            const isMain = (item.offset === 0);
             
             if (isMain) {
                 // Style for the main number user entered
-                companyName = '<span style="color:#999; font-style:italic;">ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”๏ฟฝ (Not Found)</span>';
+                companyName = '<span style="color:#999; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
                 if (dbInfoMain) {
                     companyName = `<strong style="color:var(--primary-color);">${dbInfoMain.name}</strong>`;
                     if(batches[dbInfoMain.batchId] && batches[dbInfoMain.batchId].requestDate) {
-                         companyName += ` <small style="color:#28a745;">(ๅ–”ๅ•่…‘ๅ–โฌๅ–”ใ ็ซถ: ${new Date(batches[dbInfoMain.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
+                         companyName += ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[dbInfoMain.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
                     }
                     rowStyle = 'background-color:#f8fff9;'; 
                     foundCount++;
@@ -1611,7 +1615,7 @@ function _performCrossRef(trackingArray) {
                 if (dbInfo) {
                     companyName = `<strong style="color:var(--primary-color);">${dbInfo.name}</strong>`;
                     if(batches[dbInfo.batchId] && batches[dbInfo.batchId].requestDate) {
-                         companyName += ` <small style="color:#28a745;">(ๅ–”ๅ•่…‘ๅ–โฌๅ–”ใ ็ซถ: ${new Date(batches[dbInfo.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
+                         companyName += ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[dbInfo.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
                     }
                     rowStyle = 'background-color:#f0fbf2; color: #444;'; 
                 }
@@ -1623,17 +1627,17 @@ function _performCrossRef(trackingArray) {
             let indexCol = '';
             
             if (!isMain) {
-                if (item.offset < 0) label = `(ๅ–”ไฝฎ็ฎๅ–”๏ฟฝ็ฌๅ–”๏ฟฝ็ฌๅ–ๅค่ฆ ${Math.abs(item.offset)})`;
-                if (item.offset > 0) label = `(ๅ–”ๆ ขๅฏๅ–”ๆ–ท็ฎๅ–”๏ฟฝ ${item.offset})`;
-                trackDisplay = `<span style="font-family:monospace; margin-left:15px;">้ซ๏ฟฝ ${item.number} ${label}</span>`;
+                if (item.offset < 0) label = `(ก่อนหน้า ${Math.abs(item.offset)})`;
+                if (item.offset > 0) label = `(ถัดไป ${item.offset})`;
+                trackDisplay = `<span style="font-family:monospace; margin-left:15px;">↳ ${item.number} ${label}</span>`;
             } else {
                 indexCol = (idx + 1).toString();
             }
 
             const actionsHtml = `
                 <div class="status-actions" style="margin-top:${isMain ? '5px' : '2px'}; margin-bottom: 5px; ${isMain ? '' : 'font-size: 0.8em; opacity: 0.8;'}">
-                    <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9; ${isMain ? '' : 'padding: 2px 4px;'}" title="Official Deep Link">้ฆๆ• Official</a>
-                    <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer; ${isMain ? '' : 'padding: 2px 4px;'}" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('ๅ–”ๅฆๅฏๅ–”ๆ–ทๅผ—ๅ–”๏ฟฝ็ซต ${item.number} ๅ–ไฝฎๅผ—ๅ–ๅคๆ'))" title="Copy ID">้ฆๆต Copy</button>
+                    <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9; ${isMain ? '' : 'padding: 2px 4px;'}" title="Official Deep Link">🔗 Official</a>
+                    <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer; ${isMain ? '' : 'padding: 2px 4px;'}" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('คัดลอก ${item.number} แล้ว'))" title="Copy ID">📋 Copy</button>
                 </div>
             `;
 
@@ -1656,7 +1660,7 @@ function _performCrossRef(trackingArray) {
     resultEl.innerHTML = html;
     resultEl.classList.remove('hidden');
     
-    statusEl.innerHTML = `ๅ–”ๆ•็ฆๅ–”ะพ็ฌ€ๅ–”็ง็ฌๅ–”๏ฟฝๅฏๅ–”ๅ็ซตๅ–”็ผ–็ฌ–ๅ–”ๆ•็ฆๅ–”ๅ็ซตๅ–”็ผ–็ฌ <strong style="color:green;">${foundCount}</strong> ๅ–”ๅ —่ฆๅ–”ไฝฎ็ฌๅ–”็ผ–็ฎๅ–”ๅๆ–งๅ–”โด็ฌ– ${trackingArray.length} ๅ–”๏ฝ€่ฆๅ–”โ‘ง็ซตๅ–”ไพง็ฆ`;
+    statusEl.innerHTML = `ตรวจพบสังกัดตรงกัน <strong style="color:green;">${foundCount}</strong> จากทั้งหมด ${trackingArray.length} รายการ`;
 }
 
 // --- Authentication & Isolation System ---
@@ -1698,9 +1702,9 @@ function checkAuth() {
             const uploadDesc = document.getElementById('upload-desc-display');
             const uploadInput = document.getElementById('import-upload');
 
-            if (uploadIcon) uploadIcon.innerText = "้ฆๆจ / ้ฆๆ‘ฒ";
-            if (uploadTitle) uploadTitle.innerText = "ๅ–ไฝฎ็ฌ—ๅ–”็ญ็ฎ‘ๅ–”็ง้ๅ–ๅ —่…‘ๅ–โฌๅ–”ใ ้ๅ–”๏ฟฝ็ซตๅ–ๅฆ็ฌฉๅ–”ใ ็ฎค Excel ๅ–”๏ฟฝ็ฆๅ–”็ฒช่…‘ ๅ–”๏ฝ€่…นๅ–”ๆถ็ฌญๅ–”ไพง็ฌง";
-            if (uploadDesc) uploadDesc.innerText = "ๅ–”๏ฝ€่…‘ๅ–”ๅ็ฆๅ–”็ผ–็ฌ .xlsx, .xls ๅ–ไฝฎๅผ—ๅ–”๏ฟฝ ๅ–”๏ฝ€่…นๅ–”ๆถ็ฌญๅ–”ไพง็ฌง (OCR)";
+            if (uploadIcon) uploadIcon.innerText = "📂 / 📷";
+            if (uploadTitle) uploadTitle.innerText = "แตะเพื่อเลือกไฟล์ Excel หรือ รูปภาพ";
+            if (uploadDesc) uploadDesc.innerText = "รองรับ .xlsx, .xls และ รูปภาพ (OCR)";
             if (uploadInput) uploadInput.accept = ".xlsx, .xls, image/*";
 
         } else {
@@ -1732,7 +1736,7 @@ function checkAuth() {
                 `;
                 userHeader.innerHTML = `
                     <div style="display:flex; justify-content:center; align-items:center;">
-                        <span style="font-size:1rem;">้ฆๆ‘ ๅ–”๏ฝ€่ตดๅ–”ๆฐ็ฌๅ–”ๆฌ่ตๅ–โฌๅ–”ๅ•็ฎๅ–”ไพง็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”ใ ็ฌงๅ–”็ผ–้ๅ–”ๆ–ท็ถ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
+                        <span style="font-size:1rem;">📥 ระบบนำเข้าข้อมูลพัสดุ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
                     </div>
                 `;
                 const main = document.querySelector('main');
@@ -1741,7 +1745,7 @@ function checkAuth() {
 
             const saveBtn = document.querySelector('button[onclick="saveImportedBatch()"]');
             if (saveBtn) {
-                saveBtn.innerHTML = `้ฆๆ‘ ๅ–”๏ฟฝ็ฆๅ–”่็ฌกๅ–ไฝฎๅผ—ๅ–”็ญ้ๅ–ๅ —็ซพๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ— (Submit Report)`;
+                saveBtn.innerHTML = `📤 สรุปและส่งข้อมูล (Submit Report)`;
                 saveBtn.classList.remove('btn-primary');
                 saveBtn.style.backgroundColor = '#28a745';
                 saveBtn.style.color = 'white';
@@ -1756,7 +1760,7 @@ function checkAuth() {
 }
 
 // ==========================================
-// SECTION: EXCEPTION LOG (ๅ–”ๆ•็ซตๅ–”๏ฟฝๅผ—ๅ–ๅ —็ฌ)
+// SECTION: EXCEPTION LOG (ตกหล่น)
 // ==========================================
 
 function renderExceptionTable() {
@@ -1772,7 +1776,7 @@ function renderExceptionTable() {
     const exceptions = ExceptionManager.getAll();
     
     if (exceptions.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">ๅ–”โ‘งๅฏๅ–”ๅ็ฎๅ–”โด็ฎๅ–”โดๅ…ๅ–”ๅ•็ฎๅ–”๏ฟฝๆตฎๅ–”็ๅผ—ๅ–”ๆถ็ฆๅ–”็ญๆๅ–”็ผ–็ฌ—ๅ–”่็ซตๅ–”ไพง็ฆๅ–”ๆ•็ซตๅ–”๏ฟฝๅผ—ๅ–ๅ —็ฌ</p>';
+        container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">ยังไม่มีข้อมูลประวัติการตกหล่น</p>';
         return;
     }
 
@@ -1782,16 +1786,16 @@ function renderExceptionTable() {
     let html = `
         <div id="exception-export-target" style="background:white; padding:15px; border-radius:8px;">
             <div style="margin-bottom:10px; border-bottom:2px solid #333; padding-bottom:10px;">
-                <strong style="font-size:1.1rem;">à¸£à¸²à¸¢à¸à¸²à¸à¸à¸¶à¹à¸à¸à¸²à¸à¸à¸µà¹à¹à¸¡à¹à¸¡à¸µà¸ªà¸à¸²à¸à¸°à¸£à¸±à¸à¸à¸²à¸</strong>
+                <strong style="font-size:1.1rem;">รายงานขึ้นงานที่ไม่มีสถานะรับฝาก</strong>
             </div>
             <table style="width:100%; font-size:0.9rem; border-collapse: collapse;">
                 <thead>
                     <tr style="background:#f1f1f1;">
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;">ๅ–”ใ ่ตๅ–”ๆ–ทๅฏๅ–”๏ฟฝ</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">ๅ–โฌๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”๏ฟฝ</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">ๅ–”ๅจป้ๅ–ๅ —่…‘ๅ–”ๆฐ็ฆๅ–”่ไฟฏๅ–”็ผ–็ฌ/ๅ–”๏ฟฝๅฏๅ–”ๅ็ซตๅ–”็ผ–็ฌ– (ๅ–”ๆ ข็ฎๅ–”ไพงๆตฎๅ–”๏ฟฝ)</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">ๅ–โฌๅ–”๏ฟฝ็ฌ—ๅ–”่็ฌขๅ–”๏ฟฝ / ๅ–”๏ฟฝ็ฌๅ–”ไพง็ฌๅ–”๏ฟฝ</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;" data-html2canvas-ignore>ๅ–”ๅ —ๅฏๅ–”ๆ–ท็ซตๅ–”ไพง็ฆ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;">ลำดับ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เลขพัสดุ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">ชื่อบริษัท/สังกัด (ถ้ามี)</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เหตุผล / สถานะ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;" data-html2canvas-ignore>จัดการ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1806,7 +1810,7 @@ function renderExceptionTable() {
                 <td style="padding:10px 8px;">${item.companyName}</td>
                 <td style="padding:10px 8px; color:#d32f2f;">${item.reason}</td>
                 <td style="padding:10px 8px; text-align:center;" data-html2canvas-ignore>
-                    <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteException('${item.id}')">ๅ–”ใ ็ฌ</button>
+                    <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteException('${item.id}')">ลบ</button>
                 </td>
             </tr>
         `;
@@ -1817,7 +1821,7 @@ function renderExceptionTable() {
             </table>
         </div>
         <div style="margin-top:10px; text-align:right;">
-             <button class="btn btn-neutral" onclick="clearAllExceptions()">้ฆๆฃ้””๏ฟฝ ๅ–”ใ ็ฎๅ–”ไพง็ซพๅ–”ๆถ็ฆๅ–”็ญๆๅ–”็ผ–็ฌ—ๅ–”่็ฌๅ–”็ผ–็ฎๅ–”ๅๆ–งๅ–”โด็ฌ–</button>
+             <button class="btn btn-neutral" onclick="clearAllExceptions()">🗑️ ล้างประวัติทั้งหมด</button>
         </div>
     `;
 
@@ -1832,13 +1836,13 @@ function addExceptionEntry() {
     const reason = reasonInput.value.trim();
     
     if (!trackNum || trackNum.length !== 13) {
-        alert('ๅ–”ไฝฎ็ฆๅ–”่็ฌ“ๅ–”ไพง็ซตๅ–”๏ฝ€่…‘ๅ–”ไฝฎ็ฎ‘ๅ–”ใ ็ซถๅ–”็งๅฏๅ–”๏ฟฝ็ฌ–ๅ–”่็ฎ–ๅ–”๏ฟฝ็ฎๅ–”ๅฆ็ฆๅ–”๏ฟฝ 13 ๅ–”๏ฟฝๅผ—ๅ–”็ผ–็ซต');
+        alert('กรุณากรอกเลขพัสดุให้ครบ 13 หลัก');
         trackInput.focus();
         return;
     }
     
     if (!reason) {
-        alert('ๅ–”ไฝฎ็ฆๅ–”่็ฌ“ๅ–”ไพง็ฆๅ–”็ญ็ฌๅ–”่็ฎ‘ๅ–”๏ฟฝ็ฌ—ๅ–”่็ฌขๅ–”ใ ็ฌๅ–”ๆ็ฎๅ–”ๆ•็ซตๅ–”๏ฟฝๅผ—ๅ–ๅ —็ฌ');
+        alert('กรุณาระบุเหตุผลที่ตกหล่น');
         reasonInput.focus();
         return;
     }
@@ -1863,7 +1867,7 @@ function addExceptionEntry() {
 }
 
 function deleteException(id) {
-    if(confirm('ๅ–”โ‘ง่…‘ๅ–”ๆ–ทๅผ—ๅ–”ๆฐ็ฆๅ–”ไพงๆถชๅ–”ไฝฎ่ฆๅ–”๏ฝ€็ฌๅ–”ๆ็ฎๅ–ๅ็ฌๅ–ๅ —ๆ–งๅ–”๏ฝ€้ๅ–”๏ฟฝ็ฎๅ–”โด็ฎ?')) {
+    if(confirm('ยอดลบรายการนี้ใช่หรือไม่?')) {
         ExceptionManager.remove(id);
         renderExceptionTable();
     }
@@ -1878,12 +1882,12 @@ function clearAllExceptions() {
 function exportExceptionImage() {
     const targetNode = document.getElementById('exception-export-target');
     if (!targetNode) {
-        alert('ๅ–ๅฆๆตฎๅ–ๅ —็ฌงๅ–”ๆฐ็ซถๅ–ๅค่…‘ๅ–”โด่…นๅ–”ใ ็ฌๅ–”ๆ็ฎๅ–”ๅ —่ตดๅ–”๏ฟฝ็ฆๅ–ๅค่ฆๅ–”ๅ็ฆๅ–”็็ฌกๅ–”็ฉ่ฆๅ–”๏ฟฝ ๅ–”ไฝฎ็ฆๅ–”่็ฌ“ๅ–”ไพง็ฎ‘ๅ–”็งๅคๅ–ๅ —ๆตฎๅ–”ๆถ็ฆๅ–”็ญๆๅ–”็ผ–็ฌ—ๅ–”่็ซตๅ–ๅ —่…‘ๅ–”ๆฌ็ซธๅ–”๏ฝ€ๅฏๅ–”๏ฟฝ');
+        alert('ไม่พบข้อมูลที่จะสร้างรูปภาพ กรุณาเพิ่มประวัติก่อนครับ');
         return;
     }
     
     if(typeof html2canvas === 'undefined') {
-        alert('ๅ–”๏ฝ€่ตดๅ–”ๆฐ็ฌๅ–”ไฝฎ่ตๅ–”ใ ๅฏๅ–”ๅ็ฎ“ๅ–”๏ฟฝๅผ—ๅ–”ๆ–ท็ฎ‘ๅ–”ๅฆ็ฆๅ–”็ฒช็ฎๅ–”๏ฟฝ็ซพๅ–”โด้ๅ–”๏ฟฝ้ๅ–”๏ฝ€็ฎๅ–”ไพง็ซพๅ–”็ฉ่ฆๅ–”๏ฟฝ ๅ–”๏ฟฝ็ฆๅ–”็ฒช่…‘ๅ–ๅ•ๆ–งๅ–”ใ ็ฌ–ๅ–ๅฆๆตฎๅ–ๅ —้ๅ–”่ตค็ฎ‘ๅ–”๏ฝ€็ฎๅ–”๏ฟฝ ๅ–”ไฝฎ็ฆๅ–”่็ฌ“ๅ–”ไพงๅผ—ๅ–”๏ฟฝ็ซพๅ–ๅๆ–งๅ–”โด็ฎ (ๅ–”ๆ•็ฎๅ–”๏ฟฝ็ซพๅ–”ๆ•็ฎๅ–”๏ฟฝ็ฎ‘ๅ–”ๆฌ็ฎๅ–”๏ฟฝ)');
+        alert('ระบบกำลังโหลดเครื่องมือสร้างภาพ หรือโหลดไม่สำเร็จ กรุณาลองใหม่ (ต้องต่อเน็ต)');
         return;
     }
     
@@ -1903,7 +1907,7 @@ function exportExceptionImage() {
         targetNode.style.background = originalBackground;
         targetNode.style.padding = originalPadding;
         
-        // Trigger Download as JPEG for smaller file size (LINE-friendly)
+        // Trigger Download
         const imgData = canvas.toDataURL('image/jpeg', 0.85);
         const link = document.createElement('a');
         link.download = `Exception_Report_${new Date().toISOString().slice(0,10)}.jpg`;
@@ -1915,7 +1919,7 @@ function exportExceptionImage() {
         targetNode.style.background = originalBackground;
         targetNode.style.padding = originalPadding;
         console.error('Error generating image:', err);
-        alert('ๅ–โฌๅ–”ไฝฎๅคๅ–”ๆ–ท็ซถๅ–ๅค่…‘ๅ–”ๆบนๅคๅ–”ๆ–ท็ฌงๅ–”ใ ่ฆๅ–”ๆ–ท็ฎ–ๅ–”ๆฌ็ซตๅ–”ไพง็ฆๅ–”๏ฟฝ็ฆๅ–ๅค่ฆๅ–”ๅ็ฌญๅ–”ไพง็ฌง: ' + err.message);
+        alert('เกิดข้อผิดพลาดในการสร้างภาพ: ' + err.message);
     });
 }
 
@@ -1927,6 +1931,4 @@ checkAuth = function() {
         renderExceptionTable();
     }
 };
-
-
 
