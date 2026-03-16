@@ -1209,8 +1209,16 @@ function loadBatchToView(batchId) {
 
 function adminHandleTrackInput(inputEl) {
     // Basic cleanup but allow spaces and commas for multiple items
-    let val = inputEl.value;
-    val = val.toUpperCase().replace(/[^A-Z0-9\s,]/g, '');
+    let val = inputEl.value.toUpperCase().replace(/[^A-Z0-9\s,]/g, '');
+    
+    // Auto Formatter: If user pastes a giant string without commas, we can add them to look nice.
+    if (val.length >= 26 && !val.includes(',')) {
+        const extracted = TrackingUtils.extractTrackingNumbers(val);
+        if (extracted.length > 1) {
+            val = extracted.join(', ');
+        }
+    }
+    
     inputEl.value = val;
 }
 
