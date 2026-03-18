@@ -1576,11 +1576,10 @@ function _performCrossRef(trackingArray) {
     let foundCount = 0;
 
     trackingArray.forEach((track, idx) => {
-        // Find DB info for the primary tracking number
+        // ... (existing logic for dbInfoMain, displayList) ...
         let dbInfoMain = lookup[track];
         let isProbableMain = false;
 
-        // NEW: If not found exactly, check if it belongs to a known "Book" (240 numbers)
         if (!dbInfoMain && track.length === 13 && typeof CustomerDB.findBookMatch === 'function') {
             const bookMatch = CustomerDB.findBookMatch(track);
             if (bookMatch) {
@@ -1589,49 +1588,40 @@ function _performCrossRef(trackingArray) {
             }
         }
         
-        // Define the items to show in order (e.g. -2, -1, 0, +1)
         let displayList = [];
-        
         if (track.length === 13 && typeof TrackingUtils !== 'undefined') {
             displayList = TrackingUtils.generateTrackingRange(track, 2, 1);
         } else {
-            // fallback if not a full tracking number
             displayList = [{ number: track, offset: 0, isCenter: true }];
         }
 
-        // Loop through the chronological list and render rows for this group
+        // Start Group Container
+        html += `<tbody style="border: 1px solid #ddd; border-bottom: 3px solid #ccc; background: white;">`;
+
         displayList.forEach((item, innerIdx) => {
             let dbInfo = lookup[item.number];
             let companyName = '<span style="color:#ccc; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
             let rowStyle = '';
-            
-            // Is this the main requested tracking number?
             const isMain = (item.offset === 0);
             
             if (isMain) {
-                // Style for the main number user entered
                 companyName = '<span style="color:#999; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
-                
                 if (dbInfoMain) {
                     if (isProbableMain) {
-                        // Probable Match (Book-level)
                         companyName = `💡 คาดว่าเป็นของ: <strong style="color:#e65100;">${dbInfoMain.name}</strong> <small style="color:#ef6c00;">(อ้างจากเล่ม)</small>`;
-                        rowStyle = 'background-color:#fff3e0; border-left: 5px solid #fb8c00; box-shadow: inset 0 0 10px rgba(251,140,0,0.05);'; 
+                        rowStyle = 'background-color:#fff3e0; border-left: 5px solid #fb8c00;'; 
                     } else {
-                        // Exact Match (Found in DB)
                         companyName = `<strong style="color:var(--primary-color); underline">${dbInfoMain.name}</strong>`;
                         if(batches[dbInfoMain.batchId] && batches[dbInfoMain.batchId].requestDate) {
                              companyName += ` <small style="color:#2e7d32; font-weight:bold;"> (ขอเลข: ${new Date(batches[dbInfoMain.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
                         }
-                        rowStyle = 'background-color:#f1f8e9; border-left: 5px solid #43a047; box-shadow: inset 0 0 10px rgba(67,160,71,0.05);'; 
+                        rowStyle = 'background-color:#f1f8e9; border-left: 5px solid #43a047;'; 
                         foundCount++;
                     }
                 } else {
-                    // Not found at all
                     rowStyle = 'background-color: #fffde7; border-left: 5px solid #fbc02d;'; 
                 }
             } else {
-                // Style for the surrounding sequence numbers
                 rowStyle = 'background-color:#fafafa; color: #888; border-left: 3px solid #eee;'; 
                 if (dbInfo) {
                     companyName = `<strong style="color:#666;">${dbInfo.name}</strong>`;
@@ -1642,11 +1632,9 @@ function _performCrossRef(trackingArray) {
                 }
             }
 
-            // UI Label and Formatting Difference
             let label = '';
             let trackDisplay = `<span style="font-family:monospace; font-weight:bold; font-size: 1.1em;">${item.number}</span>`;
             let indexCol = '';
-            
             if (!isMain) {
                 if (item.offset < 0) label = `(ก่อนหน้า ${Math.abs(item.offset)})`;
                 if (item.offset > 0) label = `(ถัดไป ${item.offset})`;
@@ -1662,20 +1650,23 @@ function _performCrossRef(trackingArray) {
                 </div>
             `;
 
-            const groupBorder = (isMain && idx > 0) ? '3px solid #bbb' : (isMain ? '1px solid #ddd' : 'none');
-
             html += `
                 <tr style="${rowStyle}">
-                    <td style="text-align:center; vertical-align: top; padding-top: 15px; border-top: ${groupBorder};">${indexCol}</td>
-                    <td style="vertical-align: top; padding-top: ${isMain ? '15px' : '5px'}; padding-bottom: ${isMain ? '5px' : '5px'}; border-top: ${groupBorder};">
+                    <td style="text-align:center; vertical-align: top; padding-top: 15px; border-top: 1px solid #eee;">${indexCol}</td>
+                    <td style="vertical-align: top; padding-top: ${isMain ? '15px' : '5px'}; padding-bottom: ${isMain ? '5px' : '5px'}; border-top: 1px solid #eee;">
                         ${trackDisplay}
                         <br>
                         <div style="${isMain ? '' : 'margin-left: 15px;'}">${actionsHtml}</div>
                     </td>
-                    <td style="vertical-align: top; padding-top: ${isMain ? '15px' : '5px'}; border-top: ${groupBorder};">${companyName}</td>
+                    <td style="vertical-align: top; padding-top: ${isMain ? '15px' : '5px'}; border-top: 1px solid #eee;">${companyName}</td>
                 </tr>
             `;
         });
+
+        // Close Group Container and add spacer row
+        html += `
+            <tr style="height: 15px; background: transparent;"><td colspan="3" style="border:none;"></td></tr>
+        </tbody>`;
     });
 
     html += `</tbody></table>`;
