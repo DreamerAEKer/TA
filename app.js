@@ -1578,6 +1578,16 @@ function _performCrossRef(trackingArray) {
     trackingArray.forEach((track, idx) => {
         // Find DB info for the primary tracking number
         let dbInfoMain = lookup[track];
+        let isProbableMain = false;
+
+        // NEW: If not found exactly, check if it belongs to a known "Book" (240 numbers)
+        if (!dbInfoMain && track.length === 13 && typeof CustomerDB.findBookMatch === 'function') {
+            const bookMatch = CustomerDB.findBookMatch(track);
+            if (bookMatch) {
+                dbInfoMain = bookMatch;
+                isProbableMain = true;
+            }
+        }
         
         // Define the items to show in order (e.g. -2, -1, 0, +1)
         let displayList = [];
@@ -1601,15 +1611,24 @@ function _performCrossRef(trackingArray) {
             if (isMain) {
                 // Style for the main number user entered
                 companyName = '<span style="color:#999; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
-                // Premium Highlight (Yellowish if not found, Greenish if found)
-                rowStyle = 'background-color: #fffde7; border-left: 5px solid #fbc02d;'; 
+                
                 if (dbInfoMain) {
-                    companyName = `<strong style="color:var(--primary-color); underline">${dbInfoMain.name}</strong>`;
-                    if(batches[dbInfoMain.batchId] && batches[dbInfoMain.batchId].requestDate) {
-                         companyName += ` <small style="color:#2e7d32; font-weight:bold;"> (ขอเลข: ${new Date(batches[dbInfoMain.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
+                    if (isProbableMain) {
+                        // Probable Match (Book-level)
+                        companyName = `💡 คาดว่าเป็นของ: <strong style="color:#e65100;">${dbInfoMain.name}</strong> <small style="color:#ef6c00;">(อ้างจากเล่ม)</small>`;
+                        rowStyle = 'background-color:#fff3e0; border-left: 5px solid #fb8c00; box-shadow: inset 0 0 10px rgba(251,140,0,0.05);'; 
+                    } else {
+                        // Exact Match (Found in DB)
+                        companyName = `<strong style="color:var(--primary-color); underline">${dbInfoMain.name}</strong>`;
+                        if(batches[dbInfoMain.batchId] && batches[dbInfoMain.batchId].requestDate) {
+                             companyName += ` <small style="color:#2e7d32; font-weight:bold;"> (ขอเลข: ${new Date(batches[dbInfoMain.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
+                        }
+                        rowStyle = 'background-color:#f1f8e9; border-left: 5px solid #43a047; box-shadow: inset 0 0 10px rgba(67,160,71,0.05);'; 
+                        foundCount++;
                     }
-                    rowStyle = 'background-color:#f1f8e9; border-left: 5px solid #43a047; box-shadow: inset 0 0 10px rgba(67,160,71,0.05);'; 
-                    foundCount++;
+                } else {
+                    // Not found at all
+                    rowStyle = 'background-color: #fffde7; border-left: 5px solid #fbc02d;'; 
                 }
             } else {
                 // Style for the surrounding sequence numbers

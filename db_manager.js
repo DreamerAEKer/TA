@@ -256,6 +256,61 @@ const CustomerDB = {
 
         return results;
     },
+
+    // เล่มที่ (Book) Analysis: 1 book = 240 items
+    findBookMatch: (trackingNumber) => {
+        const lookup = CustomerDB.getLookup();
+        
+        // Parse input: standard XX 12345678 9 TH
+        const regex = /^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/;
+        const match = trackingNumber.toUpperCase().match(regex);
+        if (!match) return null;
+
+        const [full, prefix, bodyStr, cd, suffix] = match;
+        const body = parseInt(bodyStr);
+        if (isNaN(body)) return null;
+
+        // ตรรกะเล่มพัสดุ: เริ่มที่ ((เล่ม-1)*240)+1 จบที่ เล่ม*240
+        const bookStart = Math.floor((body - 1) / 240) * 240 + 1;
+        const bookEnd = bookStart + 239;
+        
+        // ฟังก์ชันช่วยหา Check Digit (ใช้ของ TrackingUtils ถ้ามี)
+        const getCD = (bStr) => {
+            if (typeof TrackingUtils !== 'undefined' && TrackingUtils.calculateS10CheckDigit) {
+                return TrackingUtils.calculateS10CheckDigit(bStr);
+            }
+            // Fallback: S10 weights [8, 6, 4, 2, 3, 5, 9, 7]
+            const weights = [8, 6, 4, 2, 3, 5, 9, 7];
+            let sum = 0;
+            for (let i = 0; i < 8; i++) sum += parseInt(bStr[i]) * weights[i];
+            const rem = sum % 11;
+            let d = 11 - rem;
+            if (d === 10) return 0;
+            if (d === 11) return 5;
+            return d;
+        };
+
+        // สแกนเฉพาะตัวเลขที่อยู่ในเล่มเดียวกัน (สูงสุด 240 ครั้ง)
+        for (let i = bookStart; i <= bookEnd; i++) {
+            if (i === body) continue; // เลขเดียวกันข้ามไป
+            
+            const bStr = i.toString().padStart(8, '0');
+            if (bStr.length > 8) continue;
+
+            const checkDigit = getCD(bStr);
+            const key = `${prefix}${bStr}${checkDigit}${suffix}`;
+            
+            if (lookup[key]) {
+                return {
+                    ...lookup[key],
+                    refNumber: key,
+                    method: 'book'
+                };
+            }
+        }
+        
+        return null;
+    },
     // --- SNAPSHOT SYSTEM (Auto Backup) ---
     getSnapshots: () => {
         const raw = localStorage.getItem('thp_snapshots_v1');
