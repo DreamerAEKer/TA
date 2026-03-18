@@ -1601,23 +1601,25 @@ function _performCrossRef(trackingArray) {
             if (isMain) {
                 // Style for the main number user entered
                 companyName = '<span style="color:#999; font-style:italic;">ไม่พบข้อมูล (Not Found)</span>';
+                // Premium Highlight (Yellowish if not found, Greenish if found)
+                rowStyle = 'background-color: #fffde7; border-left: 5px solid #fbc02d;'; 
                 if (dbInfoMain) {
-                    companyName = `<strong style="color:var(--primary-color);">${dbInfoMain.name}</strong>`;
+                    companyName = `<strong style="color:var(--primary-color); underline">${dbInfoMain.name}</strong>`;
                     if(batches[dbInfoMain.batchId] && batches[dbInfoMain.batchId].requestDate) {
-                         companyName += ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[dbInfoMain.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
+                         companyName += ` <small style="color:#2e7d32; font-weight:bold;"> (ขอเลข: ${new Date(batches[dbInfoMain.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
                     }
-                    rowStyle = 'background-color:#f8fff9;'; 
+                    rowStyle = 'background-color:#f1f8e9; border-left: 5px solid #43a047; box-shadow: inset 0 0 10px rgba(67,160,71,0.05);'; 
                     foundCount++;
                 }
             } else {
                 // Style for the surrounding sequence numbers
-                rowStyle = 'background-color:#fafafa; color: #888;'; 
+                rowStyle = 'background-color:#fafafa; color: #888; border-left: 3px solid #eee;'; 
                 if (dbInfo) {
-                    companyName = `<strong style="color:var(--primary-color);">${dbInfo.name}</strong>`;
+                    companyName = `<strong style="color:#666;">${dbInfo.name}</strong>`;
                     if(batches[dbInfo.batchId] && batches[dbInfo.batchId].requestDate) {
-                         companyName += ` <small style="color:#28a745;">(ขอเลข: ${new Date(batches[dbInfo.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
+                         companyName += ` <small style="color:#999;">(ขอเลข: ${new Date(batches[dbInfo.batchId].requestDate).toLocaleDateString('th-TH')})</small>`;
                     }
-                    rowStyle = 'background-color:#f0fbf2; color: #444;'; 
+                    rowStyle = 'background-color:#f5fcf6; color: #555; border-left: 3px solid #c8e6c9;'; 
                 }
             }
 

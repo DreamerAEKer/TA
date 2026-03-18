@@ -99,7 +99,8 @@ function generateTrackingRange(centerNumber, countBefore, countAfter) {
 
         results.push({
             number: validNumber,
-            isCenter: (i === startNumObj)
+            isCenter: (i === startNumObj),
+            offset: i - startNumObj
         });
     }
 
