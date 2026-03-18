@@ -65,13 +65,7 @@ body {
     gap: 5px;
     margin: 20px 0;
     border-bottom: 2px solid var(--border-color);
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-}
-
-.tabs::-webkit-scrollbar {
-    display: none;
+    flex-wrap: wrap; /* Allow wrapping to 2nd line instead of scrolling */
 }
 
 .tab-btn {
