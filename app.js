@@ -1662,15 +1662,17 @@ function _performCrossRef(trackingArray) {
                 </div>
             `;
 
+            const groupBorder = (isMain && idx > 0) ? '3px solid #bbb' : (isMain ? '1px solid #ddd' : 'none');
+
             html += `
                 <tr style="${rowStyle}">
-                    <td style="text-align:center; vertical-align: top; padding-top: 15px; border-top: ${isMain ? '1px solid #ddd' : 'none'};">${indexCol}</td>
-                    <td style="vertical-align: top; padding-top: ${isMain ? '15px' : '5px'}; padding-bottom: ${isMain ? '5px' : '5px'}; border-top: ${isMain ? '1px solid #ddd' : 'none'};">
+                    <td style="text-align:center; vertical-align: top; padding-top: 15px; border-top: ${groupBorder};">${indexCol}</td>
+                    <td style="vertical-align: top; padding-top: ${isMain ? '15px' : '5px'}; padding-bottom: ${isMain ? '5px' : '5px'}; border-top: ${groupBorder};">
                         ${trackDisplay}
                         <br>
                         <div style="${isMain ? '' : 'margin-left: 15px;'}">${actionsHtml}</div>
                     </td>
-                    <td style="vertical-align: top; padding-top: ${isMain ? '15px' : '5px'}; border-top: ${isMain ? '1px solid #ddd' : 'none'};">${companyName}</td>
+                    <td style="vertical-align: top; padding-top: ${isMain ? '15px' : '5px'}; border-top: ${groupBorder};">${companyName}</td>
                 </tr>
             `;
         });
