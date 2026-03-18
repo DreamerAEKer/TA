@@ -62,21 +62,29 @@ body {
 /* Tabs */
 .tabs {
     display: flex;
-    gap: 10px;
+    gap: 5px;
     margin: 20px 0;
     border-bottom: 2px solid var(--border-color);
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .tab-btn {
     background: none;
     border: none;
-    padding: 12px 20px;
+    padding: 12px 15px;
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
     color: #666;
     border-bottom: 3px solid transparent;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .tab-btn:hover {
