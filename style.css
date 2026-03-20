@@ -677,7 +677,6 @@ table th {
         align-items: baseline;
         width: 100%;
     }
-
     .mobile-grand-total {
         display: flex;
         justify-content: space-between;
@@ -685,3 +684,30 @@ table th {
         padding-right: 15px;
     }
 }
+
+/* --- User Access Control (Non-Admin) --- */
+body.user-mode .tabs {
+    display: none !important; /* Force hide tabs for normal users */
+}
+
+body.user-mode .navbar {
+    display: none !important; /* Hide original navbar */
+}
+
+/* Hide specific admin-only buttons within global sections if needed */
+body.user-mode .btn-history,
+body.user-mode .btn-export,
+body.user-mode button[onclick="toggleImportHistory()"],
+body.user-mode button[onclick="confirmAndBackup()"] {
+    display: none !important;
+}
+
+#user-mode-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    border-radius: 0 0 20px 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}

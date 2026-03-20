@@ -1703,6 +1703,9 @@ function checkAuth() {
 
         if (isAdmin) {
             // ADMIN MODE
+            document.body.classList.add('admin-mode');
+            document.body.classList.remove('user-mode');
+            
             if (header) header.style.display = 'block';
             if (tabNav) tabNav.style.display = 'flex';
 
@@ -1723,31 +1726,32 @@ function checkAuth() {
 
         } else {
             // USER MODE
+            document.body.classList.add('user-mode');
+            document.body.classList.remove('admin-mode');
+            
+            // Note: CSS will handle hiding .navbar and .tabs via body.user-mode
             if (header) header.style.display = 'none';
             if (tabNav) tabNav.style.display = 'none';
 
+            // Show ONLY Import Tab
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
             const tabImport = document.getElementById('tab-import');
             if (tabImport) tabImport.classList.add('active');
+
+            // Find and activate the Import tab button (even if hidden, for internal state)
+            const btns = document.getElementsByClassName('tab-btn');
+            for (let btn of btns) {
+                if (btn.getAttribute('onclick')?.includes('import')) {
+                    btn.classList.add('active');
+                }
+            }
 
             let userHeader = document.getElementById('user-mode-header');
             if (!userHeader) {
                 userHeader = document.createElement('div');
                 userHeader.id = 'user-mode-header';
-                userHeader.style.cssText = `
-                    background: var(--primary-color); 
-                    color: white; 
-                    padding: 15px 20px; 
-                    text-align: center; 
-                    font-size: 1.2rem; 
-                    font-weight: bold;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-                    margin-bottom: 25px;
-                    border-radius: 0 0 16px 16px;
-                    position: sticky;
-                    top: 0;
-                    z-index: 1000;
-                `;
                 userHeader.innerHTML = `
                     <div style="display:flex; justify-content:center; align-items:center;">
                         <span style="font-size:1rem;">📥 ระบบนำเข้าข้อมูลพัสดุ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
