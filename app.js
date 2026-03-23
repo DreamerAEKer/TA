@@ -183,50 +183,7 @@ function unifiedQuickCheck() {
     }
 }
 
-function unifiedFindGaps() {
-    if (lastGeneratedRange.length === 0) {
-        alert('กรุณาสร้างเลขรัน (Range) ก่อนทำการเช็คของตกหล่น');
-        return;
-    }
-
-    const actualText = document.getElementById('smart-gap-actual').value.trim();
-    if (!actualText) {
-        alert('กรุณาวางรายการที่สแกนได้จริง');
-        return;
-    }
-
-    const regex = /[A-Z]{2}\d{9}[A-Z]{2}/ig;
-    const matches = actualText.match(regex) || [];
-    const actualSet = new Set(matches.map(m => m.toUpperCase()));
-
-    const missing = lastGeneratedRange.filter(id => !actualSet.has(id));
-    const resultArea = document.getElementById('smart-unified-results');
-
-    if (missing.length === 0) {
-        alert('✅ ยินดีด้วย! ไม่พบรายการตกหล่น ครบถ้วนตามช่วงที่สร้าง');
-    } else {
-        let html = `
-            <div style="padding:15px; background:#ffebee; border-bottom:1px solid #ffcdd2; position:sticky; top:0; z-index:5;">
-                <strong style="color:#c62828;">⚠️ พบรายการหายไป ${missing.length} รายการ</strong>
-                <p style="font-size:0.8rem; margin:5px 0 0 0;">รายการที่หายไปแสดงอยู่ด้านล่าง</p>
-            </div>
-            <table>
-                <tbody>
-        `;
-        missing.forEach((id, idx) => {
-            html += `<tr><td style="width:40px;">${idx+1}</td><td style="color:#c62828; font-family:monospace;">${TrackingUtils.formatTrackingNumber(id)}</td></tr>`;
-        });
-        html += `</tbody></table>`;
-        resultArea.innerHTML = html;
-    }
-}
-
-function copyUnifiedResults() {
-    const ids = Array.from(document.querySelectorAll('.unified-id-cell')).map(el => el.innerText.replace(/\s/g, '')).join('\n');
-    navigator.clipboard.writeText(ids).then(() => alert('คัดลอกรายการทั้งหมดลง Clipboard แล้ว'));
-}
-
-// Consolidated into unifiedFindGaps()
+// Gap analysis features removed per user request
 // --- Universal Import Logic (Excel & Image/OCR) ---
 
 let currentImportedBatches = []; // To store analyzed data before saving
@@ -1588,7 +1545,7 @@ function checkAuth() {
             if (header) header.style.display = 'block';
             if (tabNav) tabNav.style.display = 'flex';
 
-            if (!document.querySelector('.tab-btn.active')) switchTab('check');
+            if (!document.querySelector('.tab-btn.active')) switchTab('smart');
 
             const snapSec = document.getElementById('snapshot-section');
             if (snapSec) snapSec.classList.remove('hidden');

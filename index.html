@@ -55,7 +55,6 @@
             <!-- Unified Smart Workspace contains Check, Range, and Gap tools -->
             <button class="tab-btn" id="btn-tab-customer" onclick="switchTab('customer')">ฐานข้อมูลลูกค้า (Customer DB)</button>
             <button class="tab-btn" id="btn-tab-import" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
-            <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin')" style="color:#d32f2f;">⚙️ เครื่องมือแอดมิน (Admin Tools)</button>
         </div>
 
         <!-- SECTION 0: Unified Smart Workspace (New) -->
@@ -103,16 +102,62 @@
                         </div>
                     </div>
 
-                    <!-- Tool 3: Gap Check (Integrated) -->
+                    <!-- Tool 3: Cross Reference DB (Moved from Admin) -->
+                    <div class="workspace-card">
+                        <div class="workspace-header">
+                            <i class="icon">🏢</i>
+                            <h3 class="workspace-title">3. ระบบตรวจสอบสังกัดบริษัท (Cross-Reference DB)</h3>
+                        </div>
+                        <p style="font-size:0.9rem; color:#666; margin-bottom:10px;">วางข้อมูลชุดเลขพัสดุ (หรือรูปภาพ) แล้วกดตรวจสอบ เพื่อค้นหาว่าเลขแต่ละตัวเป็นของบริษัทไหนในระบบ</p>
+                        
+                        <textarea id="admin-crossref-input" rows="6" placeholder="วางเลขพัสดุที่นี่..." style="margin-bottom:10px; width:100%; border-radius:4px; border:1px solid #ccc; padding:10px;"></textarea>
+                        
+                        <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap:wrap;">
+                            <button class="btn btn-primary" onclick="adminCrossReference()">ค้นหาสังกัดบริษัท</button>
+                            <input type="file" id="admin-crossref-file" accept="image/*" style="display:none" onchange="adminCrossRefImage(this.files)">
+                            <button class="btn btn-neutral" onclick="document.getElementById('admin-crossref-file').click()">📸 อัปโหลดรูปเพื่อสแกนเลข</button>
+                            <button class="btn btn-success" onclick="copyCrossRefAll()" style="background-color: #28a745; border-color: #28a745; color: white;">📋 คัดลอกเลขทั้งหมด</button>
+                        </div>
+
+                        <div id="admin-crossref-status" style="font-weight:bold; color:#0056b3; margin-top:5px;"></div>
+                        <div id="admin-crossref-result" class="hidden" style="margin-top:10px; overflow-x:auto;">
+                            <!-- Results Table -->
+                        </div>
+                    </div>
+
+                    <!-- Tool 4: Exception Log (Moved from Admin) -->
                     <div class="workspace-card">
                         <div class="workspace-header">
                             <i class="icon">⚠️</i>
-                            <h3 class="workspace-title">เช็ครายการตกหล่น (Gap Analysis)</h3>
+                            <h3 class="workspace-title">4. รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</h3>
+                            <button class="btn btn-primary" onclick="exportExceptionImage()" style="background-color:#0288d1; border-color:#0288d1; color:white; margin-left:auto; font-size:0.8rem; padding:4px 8px;">📸 สร้างรูปภาพแจ้งหัวหน้า</button>
                         </div>
-                        <p class="text-muted" style="margin-bottom: 10px; font-size: 0.8rem;">วางรายการที่สแกนได้เพื่อหาเลขที่หายไปจากช่วงที่สร้าง</p>
-                        <textarea id="smart-gap-actual" rows="4" placeholder="วางรายการเลขพัสดุ..."></textarea>
-                        <div class="mt-4">
-                            <button class="btn btn-danger" onclick="unifiedFindGaps()" style="width: 100%;">ค้นหาเลขที่หายไป</button>
+                        <p style="font-size:0.9rem; color:#666; margin-bottom:10px;">บันทึกเลขพัสดุที่ไม่สามารถหาข้อมูลพบหรือมีปัญหา พร้อมระบุสาเหตุ เพื่อเก็บเป็นประวัติและส่งรายงานผ่านไลน์</p>
+                        
+                        <div style="display:flex; gap:10px; margin-bottom:15px; align-items:flex-end; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:200px;">
+                                <label style="font-size:0.8rem; display:block; margin-bottom:5px;">เลขพัสดุ (Tracking Number)</label>
+                                <input type="text" id="exception-track-input" placeholder="เช่น EQ123456785TH" style="text-transform:uppercase; width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                            </div>
+                            <div style="flex:2; min-width:200px;">
+                                <label style="font-size:0.8rem; display:block; margin-bottom:5px;">เหตุผล (Reason)</label>
+                                <input type="text" id="exception-reason-input" placeholder="เช่น ของยังไม่มาส่ง, จ่าหน้าไม่ชัดเจน..." list="exception-reason-list" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                                <datalist id="exception-reason-list">
+                                    <option value="บันทึกข้อมูลไม่ตรงตามจริง">
+                                    <option value="ไม่ได้บันทึกข้อมูลในระบบ New CA">
+                                    <option value="ของยังไม่มาส่งที่ ปณ.">
+                                    <option value="รอแก้จ่าหน้า">
+                                    <option value="สลับของกับบริษัทอื่น">
+                                    <option value="ชำรุด/กล่องแตก">
+                                </datalist>
+                            </div>
+                            <div style="flex:0.5; min-width:100px;">
+                                <button class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; height:40px; padding:0;">➕ บันทึก</button>
+                            </div>
+                        </div>
+
+                        <div id="exception-table-container">
+                            <!-- Table injected via app.js -->
                         </div>
                     </div>
                 </div>
@@ -461,99 +506,7 @@
             </div>
         </section>
 
-        <!-- SECTION 6: Admin Tools -->
-        <section id="tab-admin" class="tab-content">
-            <div class="card">
-                <h2>⚙️ เครื่องมือแอดมิน (Admin Tools)</h2>
-                
-                <!-- Tool 1: Single Check -->
-                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
-                    <h3 style="color:var(--primary-color);">1. ระบบเช็คเลข & สถานะ (Track & Check Digit)</h3>
-                    <div style="display: flex; gap: 10px; align-items: center; max-width: 600px;">
-                        <input type="text" id="admin-track-input" placeholder="กรอกเลขพัสดุ... เช่น EQ123456785TH" style="flex:1;" oninput="adminHandleTrackInput(this)">
-                        <button class="btn btn-primary" onclick="adminOpenThpTrack()">🔍 เช็คสถานะ</button>
-                    </div>
-                </div>
-
-                <!-- Tool 2: Image OCR Receipt -->
-                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
-                    <h3 style="color:var(--primary-color);">2. ดึงข้อมูลจากใบเสร็จ (Receipt OCR & Missing Check)</h3>
-                    <p style="font-size:0.9rem; color:#666;">ประมวลผลรูปใบเสร็จที่มีเลขพัสดุและราคา ระบบจะไล่อ่านข้อมูล ถอดรหัสราคา และหาช่วงเลขที่ขาดหายให้อัตโนมัติ</p>
-                    
-                    <div style="margin-bottom:10px;">
-                        <label style="font-size:0.85rem; display:flex; gap:5px; align-items:center; cursor:pointer;">
-                            <input type="checkbox" id="admin-ocr-eng-only" checked>
-                            📝 โหมดอ่านตาราง/ตัวเลข (แนะนำสำหรับใบสรุปที่มีตัวเลขเป็นหลัก)
-                        </label>
-                    </div>
-
-                    <div class="upload-area" onclick="document.getElementById('admin-ocr-upload').click()">
-                        <span class="upload-icon">📄</span>
-                        <p>คลิกเพื่อเลือกภาพใบเสร็จ (Receipt Image)</p>
-                        <input type="file" id="admin-ocr-upload" accept="image/*" multiple style="display:none" onchange="adminHandleImageOcr(this.files)">
-                    </div>
-                    <div id="admin-ocr-status" style="margin-top:10px; font-weight:bold; color:#0056b3;"></div>
-                    <div id="admin-ocr-result" class="hidden" style="margin-top:10px; padding:15px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px; font-family:monospace; max-height:400px; overflow-y:auto; white-space:pre-wrap;"></div>
-                </div>
-
-                <!-- Tool 3: Cross Reference DB -->
-                <div style="margin-bottom: 10px;">
-                    <h3 style="color:var(--primary-color);">3. ระบบตรวจสอบสังกัดบริษัท (Cross-Reference DB)</h3>
-                    <p style="font-size:0.9rem; color:#666;">วางข้อมูลชุดเลขพัสดุ (หรือรูปภาพ) แล้วกดตรวจสอบ เพื่อค้นหาว่าเลขแต่ละตัวเป็นของบริษัทไหนในระบบ</p>
-                    
-                    <textarea id="admin-crossref-input" rows="6" placeholder="วางเลขพัสดุที่นี่..." style="margin-bottom:10px;"></textarea>
-                    
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <button class="btn btn-primary" onclick="adminCrossReference()">ค้นหาสังกัดบริษัท</button>
-                        <input type="file" id="admin-crossref-file" accept="image/*" style="display:none" onchange="adminCrossRefImage(this.files)">
-                        <button class="btn btn-neutral" onclick="document.getElementById('admin-crossref-file').click()">📸 อัปโหลดรูปเพื่อสแกนเลข</button>
-                        <button class="btn btn-success" onclick="copyCrossRefAll()" style="background-color: #28a745; border-color: #28a745; color: white;">📋 คัดลอกเลขทั้งหมด</button>
-                    </div>
-
-                    <div id="admin-crossref-status" style="font-weight:bold; color:#0056b3;"></div>
-                    <div id="admin-crossref-result" class="hidden" style="margin-top:10px; overflow-x:auto;">
-                        <!-- Results Table -->
-                    </div>
-                </div>
-
-                <!-- Tool 4: Exception Log (ไม่มีสถานะรับฝาก) -->
-                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3 style="color:#d32f2f;">4. รายงานขึ้นงานที่ไม่มีสถานะรับฝาก</h3>
-                        <button class="btn btn-primary" onclick="exportExceptionImage()" style="background-color:#0288d1; border-color:#0288d1; color:white;">📸 สร้างรูปภาพแจ้งหัวหน้า</button>
-                    </div>
-                    <p style="font-size:0.9rem; color:#666;">บันทึกเลขพัสดุที่ไม่สามารถหาข้อมูลพบหรือมีปัญหา พร้อมระบุสาเหตุ เพื่อเก็บเป็นประวัติและส่งรายงานผ่านไลน์</p>
-                    
-                    <div style="display:flex; gap:10px; margin-bottom:15px; align-items:flex-end;">
-                        <div style="flex:1;">
-                            <label style="font-size:0.8rem;">เลขพัสดุ (Tracking Number)</label>
-                            <input type="text" id="exception-track-input" placeholder="เช่น EQ123456785TH" style="text-transform:uppercase;">
-                        </div>
-                        <div style="flex:2;">
-                            <label style="font-size:0.8rem;">เหตุผล (Reason)</label>
-                            <input type="text" id="exception-reason-input" placeholder="เช่น ของยังไม่มาส่ง, จ่าหน้าไม่ชัดเจน..." list="exception-reason-list">
-                            <datalist id="exception-reason-list">
-                                <option value="บันทึกข้อมูลไม่ตรงตามจริง">
-                                <option value="ไม่ได้บันทึกข้อมูลในระบบ New CA">
-                                <option value="ของยังไม่มาส่งที่ ปณ.">
-                                <option value="รอแก้จ่าหน้า">
-                                <option value="สลับของกับบริษัทอื่น">
-                                <option value="ชำรุด/กล่องแตก">
-                            </datalist>
-                        </div>
-                        <div style="flex:0.5;">
-                            <button class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; height:40px;">➕ บันทึก</button>
-                        </div>
-                    </div>
-
-                    <div id="exception-table-container">
-                        <!-- Table injected via app.js -->
-                    </div>
-                </div>
-
-            </div>
-        </section>
-
+        <!-- SECTION 6: Admin Tools (Collapsed/Removed as requested) -->
     </main>
 
     <div
