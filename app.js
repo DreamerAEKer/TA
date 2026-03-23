@@ -10,11 +10,18 @@ function switchTab(tabId) {
 
     // Show target
     document.getElementById(`tab-${tabId}`).classList.add('active');
-    // Activate button (simple search based on onclick attribute for now)
-    const btns = document.getElementsByClassName('tab-btn');
-    for (let btn of btns) {
-        if (btn.getAttribute('onclick').includes(tabId)) {
-            btn.classList.add('active');
+    
+    // Activate button using specialized ID or fallback
+    const btn = document.getElementById(`btn-tab-${tabId}`);
+    if (btn) {
+        btn.classList.add('active');
+    } else {
+        // Fallback for any legacy buttons
+        const btns = document.getElementsByClassName('tab-btn');
+        for (let b of btns) {
+            if (b.getAttribute('onclick')?.includes(tabId)) {
+                b.classList.add('active');
+            }
         }
     }
 }
@@ -23,37 +30,49 @@ function switchTab(tabId) {
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
 
-    // 1. Check Single Input -> Enter Key
-    document.getElementById('input-check-single')?.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') checkSingleNumber();
-    });
-
-
-    // 2. Range Gen Inputs -> Enter Key
-    const rangeInputs = ['input-range-center', 'input-range-prev', 'input-range-next'];
-    rangeInputs.forEach(id => {
-        document.getElementById(id).addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') generateRange();
-        });
-    });
-
-    // 3. Gap Analysis Inputs -> Enter Key
-    const gapInputs = ['gap-start', 'gap-end', 'gap-actual-list'];
-    gapInputs.forEach(id => {
-        document.getElementById(id).addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) { // Shift+Enter for new line in Verify area
-                if (id !== 'gap-actual-list') findGaps(); // Don't auto-submit actual list on simple enter as it's multiline
-            }
-        });
-    });
-
-    // Check Admin rights for UI adjustments
+    // --- Old tools consolidated into Smart Workspace ---
+    // Event listeners removed for input-check-single, rangeInputs, gapInputs as UI is merged.
     checkAdminUI();
+
+    // 4. Smart Workspace Inputs -> Enter Key
+    document.getElementById('smart-range-center')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') unifiedGenerateRange();
+    });
+    document.getElementById('smart-check-input')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') unifiedQuickCheck();
+    });
 });
 
 function checkAdminUI() {
     const urlParams = new URLSearchParams(window.location.search);
     const isAdmin = urlParams.has('admin');
+
+    const mainTabs = document.getElementById('main-tabs');
+    const userHeader = document.getElementById('user-mode-header');
+    const navbar = document.querySelector('.navbar');
+
+    if (isAdmin) {
+        // Admin View
+        document.body.classList.remove('user-mode');
+        if (mainTabs) mainTabs.classList.remove('hidden');
+        if (userHeader) userHeader.classList.add('hidden');
+        if (navbar) navbar.style.display = 'block';
+        
+        switchTab('smart'); // Default to Unified Workspace for Admin
+    } else {
+        // Subordinate View (Locked to Import)
+        document.body.classList.add('user-mode');
+        if (mainTabs) mainTabs.classList.add('hidden');
+        if (userHeader) userHeader.classList.remove('hidden');
+        if (navbar) navbar.style.display = 'none';
+        
+        // Hide all tabs except Import section
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-import').classList.add('active');
+        
+        // Ensure container is slim for mobile-first feel
+        document.querySelector('main.container').classList.add('user-container');
+    }
 
     const uploadIcon = document.getElementById('upload-icon-display');
     const uploadTitle = document.getElementById('upload-title-display');
@@ -77,275 +96,137 @@ function checkAdminUI() {
     }
 }
 
-// 1. Single Check Logic
-function checkSingleNumber() {
-    const inputField = document.getElementById('input-check-single');
-    let input = inputField.value.trim();
-    const resultBox = document.getElementById('result-check-single');
+// Consolidated into unifiedQuickCheck() and unifiedGenerateRange()
 
-    if (!input) return;
+// --- Unified Workspace Logic (Smart Tracking) ---
+let lastGeneratedRange = [];
 
-    const validation = TrackingUtils.validateTrackingNumber(input);
-    resultBox.classList.remove('hidden', 'result-success', 'result-error');
-
-    if (validation.isValid) {
-        // DB Lookup
-        const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(input) : null;
-        let ownerHtml = '';
-        if (owner) {
-            ownerHtml = `
-                <div style="margin-top:10px; padding:10px; background:#e3f2fd; border-radius:4px; border:1px solid #bbdefb;">
-                    <strong>👤 ข้อมูลลูกค้า (Customer Info)</strong><br>
-                    Name: ${owner.name}<br>
-                    Type: <span class="badge ${owner.type === 'Credit' ? 'badge-primary' : 'badge-neutral'}">${owner.type}</span>
-                    ${owner.contract ? ` | Contract: ${owner.contract}` : ''}
-                </div>
-            `;
-        }
-
-        // Check Similar
-        const similars = typeof CustomerDB !== 'undefined' ? CustomerDB.findSimilarByBody(input) : [];
-        let similarHtml = '';
-        if (similars.length > 0) {
-            const similarList = similars.map(s => `<li>${s.number} (${s.info.name})</li>`).join('');
-            similarHtml = `
-                <div class="result-warning" style="margin-top:10px;">
-                    <strong>⚠️ แจ้งเตือน: พบรายการคล้ายกัน (Different Prefix)</strong><br>
-                    พบเลขที่มีตัวเลขเหมือนกันแต่อักษรหน้าต่างกันในฐานข้อมูล:
-                    <ul style="margin:5px 0; padding-left:20px;">${similarList}</ul>
-                </div>
-            `;
-        }
-
-        resultBox.classList.add('result-success');
-        resultBox.innerHTML = `
-            <strong>✅ ถูกต้อง (Valid)</strong><br>Tracking Number: ${TrackingUtils.formatTrackingNumber(input)}
-            ${ownerHtml}
-            ${similarHtml}
-        `;
-    } else {
-        if (validation.suggestion) {
-            // Auto-fix
-            const oldInput = input;
-            const fixedInput = validation.suggestion;
-            inputField.value = fixedInput;
-
-            resultBox.innerHTML = `
-                 <div class="result-warning">
-                     ⚠️ Check Digit ไม่ถูกต้อง (ใส่มา ${oldInput}) ระบบค้นหาด้วยเลขที่ถูกต้องให้แล้ว
-                 </div>
-                 <div class="result-box result-success" style="margin-top:0;">
-                     <strong>✅ ถูกต้อง (Valid)</strong><br>Tracking Number: ${TrackingUtils.formatTrackingNumber(fixedInput)}
-                 </div>
-             `;
-        } else {
-            resultBox.classList.add('result-error');
-            let html = `<strong>❌ ไม่ถูกต้อง (Invalid)</strong><br>Reason: ${validation.error}`;
-            resultBox.innerHTML = html;
-        }
-    }
-}
-
-// 2. Range Generator Logic
-function generateRange() {
-    const centerInput = document.getElementById('input-range-center');
+function unifiedGenerateRange() {
+    const centerInput = document.getElementById('smart-range-center');
     let center = centerInput.value.trim();
-    const prev = parseInt(document.getElementById('input-range-prev').value) || 0;
-    const next = parseInt(document.getElementById('input-range-next').value) || 0;
-    const box = document.getElementById('result-range-box');
+    const prev = parseInt(document.getElementById('smart-range-prev').value) || 0;
+    const next = parseInt(document.getElementById('smart-range-next').value) || 0;
+    const resultArea = document.getElementById('smart-unified-results');
+    const summaryArea = document.getElementById('smart-result-summary');
 
     if (!center) {
         alert('กรุณาระบุเลขตั้งต้น');
         return;
     }
 
-    const startValidation = TrackingUtils.validateTrackingNumber(center);
-    let warningHtml = '';
-
-    if (!startValidation.isValid) {
-        if (startValidation.suggestion) {
-            // Auto-correct
-            warningHtml = `
-                <div class="result-warning">
-                    ⚠️ เลขตั้งต้นผิด (${center}) ระบบใช้เลขที่ถูกต้อง <strong>${startValidation.suggestion}</strong> แทน
-                </div>
-             `;
-            center = startValidation.suggestion;
-            centerInput.value = center;
-        } else {
-            alert('เลขตั้งต้นไม่ถูกต้อง: ' + startValidation.error);
-            return;
-        }
+    const validation = TrackingUtils.validateTrackingNumber(center);
+    if (!validation.isValid && validation.suggestion) {
+        center = validation.suggestion;
+        centerInput.value = center;
+    } else if (!validation.isValid) {
+        alert('เลขไม่ถูกต้อง: ' + validation.error);
+        return;
     }
 
     const list = TrackingUtils.generateTrackingRange(center, prev, next);
+    lastGeneratedRange = list.map(item => item.number);
+    
+    summaryArea.innerHTML = `<span class="badge badge-primary">${list.length} รายการ</span>`;
 
-    // Parse Reference List if available
-    const refText = document.getElementById('range-reference-list').value.trim();
-    let refSet = new Set();
-    const hasReference = refText.length > 0;
-
-    if (hasReference) {
-        const regex = /([A-Z]{2}\d{9}[A-Z]{2})/ig;
-        const matches = refText.match(regex);
-        if (matches) {
-            matches.forEach(m => refSet.add(m.toUpperCase()));
-        }
-    }
-
-    box.classList.remove('hidden');
-
-    let html = warningHtml + `
-        <div style="margin-bottom:10px;">
-            <strong>รายการทั้งหมด: ${list.length} รายการ</strong>
-            <button class="btn" style="padding:4px 8px; font-size:0.8rem; margin-left:10px;" onclick="copyRangeResults()">Copy All</button>
+    let html = `
+        <div style="padding:10px; background:#fff; border-bottom:1px solid #eee; position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; align-items:center;">
+            <small>สร้างจาก: ${center}</small>
+            <button class="btn" style="padding:4px 8px; font-size:0.75rem;" onclick="copyUnifiedResults()">📋 Copy All</button>
         </div>
-        <div class="table-responsive">
         <table>
             <thead>
                 <tr>
-                    <th>#</th>
-                    <th>Tracking Number</th>
-                    <th>Status (Simulation)</th>
+                    <th style="width:40px;">#</th>
+                    <th>เลขพัสดุ</th>
+                    <th>สังกัด / สถานะ</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
     list.forEach((item, index) => {
-        const rowClass = item.isCenter ? 'style="background-color:#fff3cd; font-weight:bold;"' : '';
-        let statusHtml = '';
+        const rowStyle = item.isCenter ? 'style="background:#fff9c4; font-weight:bold;"' : '';
         const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(item.number) : null;
-        let ownerHtml = '';
-
+        let ownerHtml = '-';
         if (owner) {
-            ownerHtml = `<br><small style="color:#0056b3;">👤 ${owner.name} (${owner.type})</small>`;
-        } else {
-            // Check similar if no direct owner
-            const similars = typeof CustomerDB !== 'undefined' ? CustomerDB.findSimilarByBody(item.number) : [];
-            if (similars.length > 0) {
-                const simTitle = similars.map(s => `${s.number} (${s.info.name})`).join(', ');
-                ownerHtml = `<br><small style="color:#856404; cursor:help;" title="พบ : ${simTitle}">⚠️ คล้ายกับ ${similars[0].number}...</small>`;
-            }
-        }
-
-        if (hasReference) {
-            if (refSet.has(item.number)) {
-                statusHtml = `<span class="badge badge-success">ใส่ของลงถุง (Items Posted)</span>`;
-            } else {
-                statusHtml = `<span class="badge badge-error">ไม่พบข้อมูล (Not Found)</span>`;
-            }
-        } else {
-            // Default with link
-            statusHtml = `
-                <div class="status-actions">
-                    <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9;" title="ตรวจสอบพัสดุ (External Link)">📌 สถานะ</a>
-                    <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer;" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('คัดลอก ${item.number} แล้ว'))" title="Copy ID">📋 Copy</button>
-                </div>
-            `;
+            ownerHtml = `<span style="color:#0d47a1; font-size:0.8rem;">👤 ${owner.name}</span>`;
         }
 
         html += `
-                <tr ${rowClass}>
+            <tr ${rowStyle}>
                 <td>${index + 1}</td>
-                <td class="tracking-id">${TrackingUtils.formatTrackingNumber(item.number)}${ownerHtml}</td>
-                <td>${statusHtml}</td>
+                <td class="unified-id-cell" style="font-family:monospace; font-size:0.95rem;">${TrackingUtils.formatTrackingNumber(item.number)}</td>
+                <td>${ownerHtml}</td>
             </tr>
-                `;
+        `;
     });
 
-    html += `</tbody></table></div>`;
-    box.innerHTML = html;
+    html += `</tbody></table>`;
+    resultArea.innerHTML = html;
 }
 
-function copyRangeResults() {
-    const ids = Array.from(document.querySelectorAll('.tracking-id')).map(el => el.innerText).join('\n');
-    navigator.clipboard.writeText(ids).then(() => alert('Copied to clipboard!'));
+function unifiedQuickCheck() {
+    const input = document.getElementById('smart-check-input').value.trim();
+    const resultBox = document.getElementById('smart-check-result');
+    if (!input) return;
+
+    const validation = TrackingUtils.validateTrackingNumber(input);
+    resultBox.classList.remove('hidden', 'result-success', 'result-error');
+
+    if (validation.isValid) {
+        const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(input) : null;
+        resultBox.classList.add('result-success');
+        resultBox.innerHTML = `<strong>✅ ถูกต้อง:</strong> ${TrackingUtils.formatTrackingNumber(input)}${owner ? `<br><small>สังกัด: ${owner.name}</small>` : ''}`;
+    } else {
+        resultBox.classList.add('result-error');
+        resultBox.innerHTML = `<strong>❌ ผิดพลาด:</strong> ${validation.error}`;
+    }
 }
 
-// 3. Gap Analysis Logic
-function findGaps() {
-    const startObjStr = document.getElementById('gap-start').value.trim();
-    const endObjStr = document.getElementById('gap-end').value.trim();
-    const actualText = document.getElementById('gap-actual-list').value.trim();
-    const box = document.getElementById('result-gap-box');
-
-    if (!startObjStr || !endObjStr) {
-        alert('กรุณาระบุเลขเริ่มต้นและสิ้นสุด');
+function unifiedFindGaps() {
+    if (lastGeneratedRange.length === 0) {
+        alert('กรุณาสร้างเลขรัน (Range) ก่อนทำการเช็คของตกหล่น');
         return;
     }
 
-    // Parse Start/End to get range
-    const regex = /^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/;
-    const startMatch = startObjStr.toUpperCase().match(regex);
-    const endMatch = endObjStr.toUpperCase().match(regex);
-
-    if (!startMatch || !endMatch) {
-        alert('รูปแบบเลขเริ่มต้นหรือสิ้นสุดไม่ถูกต้อง');
+    const actualText = document.getElementById('smart-gap-actual').value.trim();
+    if (!actualText) {
+        alert('กรุณาวางรายการที่สแกนได้จริง');
         return;
     }
 
-    const startVal = parseInt(startMatch[2]);
-    const endVal = parseInt(endMatch[2]);
-    const prefix = startMatch[1];
-    const suffix = startMatch[4];
+    const regex = /[A-Z]{2}\d{9}[A-Z]{2}/ig;
+    const matches = actualText.match(regex) || [];
+    const actualSet = new Set(matches.map(m => m.toUpperCase()));
 
-    if (prefix !== endMatch[1] || suffix !== endMatch[4]) {
-        alert('Prefix หรือ Suffix ไม่ตรงกันระหว่างเริ่มและจบ');
-        return;
-    }
+    const missing = lastGeneratedRange.filter(id => !actualSet.has(id));
+    const resultArea = document.getElementById('smart-unified-results');
 
-    if (endVal < startVal) {
-        alert('เลขสิ้นสุดต้องมากกว่าเลขเริ่มต้น');
-        return;
-    }
-
-    if ((endVal - startVal) > 1000) {
-        if (!confirm('ช่วงข้อมูลกว้างกว่า 1,000 รายการ อาจใช้เวลาคำนวณนาน ยืนยันทำต่อ?')) return;
-    }
-
-    // Build Expected Set
-    const rangeList = TrackingUtils.generateTrackingRange(startObjStr, 0, (endVal - startVal));
-    const expectedMap = new Map(); // body -> fullString
-
-    rangeList.forEach(item => {
-        const body = item.number.substring(2, 10); // Extract 8 digits
-        expectedMap.set(body, item.number);
-    });
-
-    // Parse Actual List
-    const rawActual = actualText.split(/[\s,]+/);
-    const actualSet = new Set();
-
-    rawActual.forEach(raw => {
-        const m = raw.toUpperCase().match(regex);
-        if (m) {
-            actualSet.add(m[2]); // Add body digits
-        }
-    });
-
-    // diff
-    const missing = [];
-    expectedMap.forEach((fullStr, body) => {
-        if (!actualSet.has(body)) {
-            missing.push(fullStr);
-        }
-    });
-
-    box.classList.remove('hidden');
     if (missing.length === 0) {
-        box.innerHTML = `<div class="result-success" style="padding:10px;">✅ ครบถ้วน! ไม่พบรายการตกหล่น</div>`;
+        alert('✅ ยินดีด้วย! ไม่พบรายการตกหล่น ครบถ้วนตามช่วงที่สร้าง');
     } else {
         let html = `
-                <div class="result-error" style="padding:10px; margin-bottom:10px;">
-                    <strong>⚠️ พบรายการหายไป ${missing.length} รายการ</strong>
+            <div style="padding:15px; background:#ffebee; border-bottom:1px solid #ffcdd2; position:sticky; top:0; z-index:5;">
+                <strong style="color:#c62828;">⚠️ พบรายการหายไป ${missing.length} รายการ</strong>
+                <p style="font-size:0.8rem; margin:5px 0 0 0;">รายการที่หายไปแสดงอยู่ด้านล่าง</p>
             </div>
-                <textarea style="height:150px;">${missing.join('\n')}</textarea>
-            `;
-        box.innerHTML = html;
+            <table>
+                <tbody>
+        `;
+        missing.forEach((id, idx) => {
+            html += `<tr><td style="width:40px;">${idx+1}</td><td style="color:#c62828; font-family:monospace;">${TrackingUtils.formatTrackingNumber(id)}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        resultArea.innerHTML = html;
     }
 }
 
+function copyUnifiedResults() {
+    const ids = Array.from(document.querySelectorAll('.unified-id-cell')).map(el => el.innerText.replace(/\s/g, '')).join('\n');
+    navigator.clipboard.writeText(ids).then(() => alert('คัดลอกรายการทั้งหมดลง Clipboard แล้ว'));
+}
+
+// Consolidated into unifiedFindGaps()
 // --- Universal Import Logic (Excel & Image/OCR) ---
 
 let currentImportedBatches = []; // To store analyzed data before saving
@@ -1772,6 +1653,205 @@ function checkAuth() {
         }
     } catch (e) {
         console.error('Error in checkAuth:', e);
+    }
+}
+
+// ==========================================
+// SECTION: ADMIN TOOLS
+// ==========================================
+
+function adminHandleTrackInput(el) {
+    el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 13);
+}
+
+function adminOpenThpTrack() {
+    const input = document.getElementById('admin-track-input').value.trim();
+    if (!input || input.length !== 13) {
+        alert('กรุณากรอกเลขพัสดุให้ครบ 13 หลัก');
+        return;
+    }
+    window.open(`https://track.thailandpost.co.th/?trackNumber=${input}&lang=th`, '_blank');
+}
+
+async function adminHandleImageOcr(files) {
+    if (!files || files.length === 0) return;
+    const statusEl = document.getElementById('admin-ocr-status');
+    const resultBox = document.getElementById('admin-ocr-result');
+    
+    statusEl.innerText = `Preparing OCR for ${files.length} images...`;
+    resultBox.classList.add('hidden');
+    
+    const useEngOnly = document.getElementById('admin-ocr-eng-only')?.checked;
+    const lang = useEngOnly ? 'eng' : 'tha+eng';
+    
+    let combinedText = "";
+    try {
+        for (let i = 0; i < files.length; i++) {
+            statusEl.innerText = `OCR Scanning Image ${i + 1}/${files.length}...`;
+            const worker = await Tesseract.createWorker(lang);
+            const { data: { text } } = await worker.recognize(files[i]);
+            await worker.terminate();
+            combinedText += "\n" + text;
+        }
+        
+        statusEl.innerText = "Analyzing extracted data...";
+        
+        // Extract numbers and prices
+        const tableItems = TrackingUtils.extractHandwrittenTable(combinedText);
+        
+        if(tableItems.length === 0) {
+            statusEl.innerText = "ไม่พบข้อมูลที่น่าจะเป็นเลขพัสดุ/ราคาในภาพ";
+            return;
+        }
+        
+        // Formulate output string
+        let outputStr = `พบข้อมูล ${tableItems.length} รายการ:\n\n`;
+        tableItems.forEach((item, idx) => {
+             outputStr += `${idx+1}. ${item.number} -> ราคา: ${item.price} บ. (นน. ${item.weight})\n`;
+        });
+        
+        // Check missing if sequence
+        const numbersOnly = tableItems.map(t => t.number).sort((a,b) => a.localeCompare(b));
+        const parse = (str) => {
+            const m = str.match(/([A-Z]{2})(\d{8})(\d)([A-Z]{2})/);
+            return m ? { full: str, prefix: m[1], body: parseInt(m[2]), check: m[3], suffix: m[4] } : null;
+        };
+        
+        if (numbersOnly.length > 1) {
+             let missing = [];
+             let prev = parse(numbersOnly[0]);
+             for(let i=1; i<numbersOnly.length; i++){
+                  const curr = parse(numbersOnly[i]);
+                  if(prev && curr && prev.prefix === curr.prefix && prev.suffix === curr.suffix) {
+                       const diff = curr.body - prev.body;
+                       if (diff > 1) {
+                           for(let m = prev.body + 1; m < curr.body; m++) {
+                               let bodyStr = m.toString().padStart(8,'0');
+                               let cd = TrackingUtils.calculateS10CheckDigit ? TrackingUtils.calculateS10CheckDigit(bodyStr) : 'X';
+                               missing.push(`${curr.prefix}${bodyStr}${cd}${curr.suffix}`);
+                           }
+                       }
+                  }
+                  prev = curr;
+             }
+             if (missing.length > 0) {
+                 outputStr += `\n⚠️ แจ้งเตือน: พบรายการที่หายไปในลำดับ (Gaps) ${missing.length} รายการ:\n`;
+                 missing.forEach(m => outputStr += `- ${m}\n`);
+             } else {
+                 outputStr += `\n✅ ลำดับเลขต่อเนื่องกันดี ไม่พบรายการตกหล่น`;
+             }
+        }
+        
+        resultBox.innerText = outputStr;
+        resultBox.classList.remove('hidden');
+        statusEl.innerText = "OCR และการวิเคราะห์เสร็จสิ้น!";
+        
+        document.getElementById('admin-ocr-upload').value = '';
+        
+    } catch(err) {
+        console.error(err);
+        statusEl.innerText = "Error: " + err.message;
+    }
+}
+
+function adminCrossReference() {
+    const inputStr = document.getElementById('admin-crossref-input').value.trim();
+    if (!inputStr) {
+        alert('กรุณาวางเลขพัสดุ');
+        return;
+    }
+    
+    const regex = /[A-Z]{2}\d{9}[A-Z]{2}/ig;
+    const matches = inputStr.match(regex);
+    if (!matches || matches.length === 0) {
+         document.getElementById('admin-crossref-status').innerText = 'ไม่พบรูปแบบเลขพัสดุ 13 หลัก';
+         return;
+    }
+    
+    renderCrossReference(matches);
+}
+
+async function adminCrossRefImage(files) {
+    if (!files || files.length === 0) return;
+    const statusEl = document.getElementById('admin-crossref-status');
+    statusEl.innerText = `Scanning Image for Cross Reference...`;
+    
+    try {
+        const worker = await Tesseract.createWorker('eng');
+        const { data: { text } } = await worker.recognize(files[0]);
+        await worker.terminate();
+        
+        const regex = /[A-Z]{2}\d{9}[A-Z]{2}/ig;
+        const matches = text.match(regex);
+        if(!matches || matches.length === 0) {
+            statusEl.innerText = 'ไม่พบเลขพัสดุในรูปนี้';
+            return;
+        }
+        renderCrossReference(matches);
+    } catch(e) {
+        statusEl.innerText = 'Error: ' + e.message;
+    }
+    document.getElementById('admin-crossref-file').value = '';
+}
+
+function renderCrossReference(trackArray) {
+    const uniqueTracks = [...new Set(trackArray.map(t => t.toUpperCase()))];
+    const statusEl = document.getElementById('admin-crossref-status');
+    const resultBox = document.getElementById('admin-crossref-result');
+    
+    let html = `
+        <table style="width:100%; text-align:left; border-collapse: collapse;">
+            <thead>
+                <tr style="background:#f1f1f1;">
+                    <th style="padding:8px; border-bottom:1px solid #ccc;">#</th>
+                    <th style="padding:8px; border-bottom:1px solid #ccc;">เลขพัสดุ</th>
+                    <th style="padding:8px; border-bottom:1px solid #ccc;">สังกัด (Customer)</th>
+                    <th style="padding:8px; border-bottom:1px solid #ccc;">ประเภท</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    let foundCount = 0;
+    
+    uniqueTracks.forEach((track, index) => {
+        let ownerName = '- ไม่พบในระบบ -';
+        let ownerType = '-';
+        let rowColor = '';
+        
+        if (typeof CustomerDB !== 'undefined') {
+             const owner = CustomerDB.get(track);
+             if (owner) {
+                 ownerName = `👤 ${owner.name}`;
+                 ownerType = owner.type;
+                 rowColor = 'background:#e3f2fd;';
+                 foundCount++;
+             }
+        }
+        
+        html += `
+            <tr style="border-bottom:1px solid #ddd; ${rowColor}">
+                <td style="padding:8px;">${index+1}</td>
+                <td class="crossref-id" style="padding:8px; font-family:monospace; font-weight:bold;">${TrackingUtils.formatTrackingNumber(track)}</td>
+                <td style="padding:8px;">${ownerName}</td>
+                <td style="padding:8px;">${ownerType}</td>
+            </tr>
+        `;
+    });
+    
+    html += `</tbody></table>`;
+    
+    resultBox.innerHTML = html;
+    resultBox.classList.remove('hidden');
+    statusEl.innerText = `ตรวจสอบสำเร็จ ${uniqueTracks.length} หมายเลข (พบประวัติ ${foundCount} รายการ)`;
+}
+
+function copyCrossRefAll() {
+    const ids = Array.from(document.querySelectorAll('.crossref-id')).map(el => el.innerText.replace(/\\s/g, '')).join('\\n');
+    if(ids) {
+        navigator.clipboard.writeText(ids).then(() => alert('คัดลอกรายการทั้งหมดลง Clipboard แล้ว'));
+    } else {
+        alert('ไม่มีข้อมูลให้คัดลอก');
     }
 }
 

@@ -41,110 +41,101 @@
         </div>
     </header>
 
-    <!-- Login Modal -->
-    <!-- Login Modal Removed (Replaced by URL Auth) -->
-    <!-- Login Modal Removed (Replaced by URL Auth) -->
+    <!-- Subordinate Header (Hidden by default) -->
+    <div id="user-mode-header" class="hidden">
+        <span class="logo-main">TRACK</span>
+        <span class="title-sub">ระบบนำเข้าข้อมูลพัสดุ (Import Data Entry)</span>
+    </div>
 
     <main class="container">
 
         <!-- Tab Navigation -->
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('check')">ตรวจสอบ & แก้ไข (Check & Fix)</button>
-            <button class="tab-btn" onclick="switchTab('range')">สร้างเลขรัน (Range Gen)</button>
-            <button class="tab-btn" onclick="switchTab('gap')">เช็คของตกหล่น (Missing Items)</button>
-            <button class="tab-btn" onclick="switchTab('customer')">ฐานข้อมูลลูกค้า (Customer DB)</button>
-            <button class="tab-btn" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
-            <button class="tab-btn" onclick="switchTab('admin')" style="color:#d32f2f;">⚙️ เครื่องมือแอดมิน (Admin Tools)</button>
+        <div class="tabs" id="main-tabs">
+            <button class="tab-btn active" id="btn-tab-smart" onclick="switchTab('smart')">🔥 พื้นที่ทำงานรวม (Smart Tracking)</button>
+            <!-- Unified Smart Workspace contains Check, Range, and Gap tools -->
+            <button class="tab-btn" id="btn-tab-customer" onclick="switchTab('customer')">ฐานข้อมูลลูกค้า (Customer DB)</button>
+            <button class="tab-btn" id="btn-tab-import" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
+            <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin')" style="color:#d32f2f;">⚙️ เครื่องมือแอดมิน (Admin Tools)</button>
         </div>
 
-        <!-- SECTION 1: Check & Fix -->
-        <section id="tab-check" class="tab-content active">
-            <div class="card">
-                <h2>ตรวจสอบความถูกต้อง (Single Check)</h2>
-                <div class="form-group">
-                    <label>ระบุเลขพัสดุ (เช่น EB123456785TH)</label>
-                    <div class="input-group">
-                        <input type="text" id="input-check-single" placeholder="XX000000000TH" maxlength="13">
-                        <button class="btn btn-primary" onclick="checkSingleNumber()">ตรวจสอบ</button>
+        <!-- SECTION 0: Unified Smart Workspace (New) -->
+        <section id="tab-smart" class="tab-content active">
+            <div class="unified-workspace">
+                <!-- Left Side: Controls -->
+                <div class="unified-main">
+                    <!-- Tool 1: Range Generator (Integrated) -->
+                    <div class="workspace-card">
+                        <div class="workspace-header">
+                            <i class="icon">🔢</i>
+                            <h3 class="workspace-title">สร้างเลขรัน (Range Generator)</h3>
+                        </div>
+                        <div class="grid-form">
+                            <div class="form-group">
+                                <label>เลขตั้งต้น (Center ID)</label>
+                                <input type="text" id="smart-range-center" placeholder="XX000000000XX">
+                            </div>
+                            <div class="form-group" style="display: flex; gap: 10px;">
+                                <div style="flex:1">
+                                    <label>ย้อนหลัง</label>
+                                    <input type="number" id="smart-range-prev" value="0" min="0">
+                                </div>
+                                <div style="flex:1">
+                                    <label>ถัดไป</label>
+                                    <input type="number" id="smart-range-next" value="0" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button class="btn btn-primary" onclick="unifiedGenerateRange()" style="width: 100%;">🚀 เริ่มสร้างรายการ</button>
+                        </div>
+                    </div>
+
+                    <!-- Tool 2: Single Check (Integrated) -->
+                    <div class="workspace-card">
+                        <div class="workspace-header">
+                            <i class="icon">🔍</i>
+                            <h3 class="workspace-title">ตรวจสอบเลข (Quick Check)</h3>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="smart-check-input" placeholder="กรอกเลขเพื่อเช็ค..." maxlength="13">
+                            <button class="btn btn-primary" onclick="unifiedQuickCheck()">ตรวจ</button>
+                        </div>
+                        <div id="smart-check-result" class="result-box hidden" style="margin-top: 10px; font-size: 0.9rem;"></div>
+                    </div>
+
+                    <!-- Tool 3: Gap Check (Integrated) -->
+                    <div class="workspace-card">
+                        <div class="workspace-header">
+                            <i class="icon">⚠️</i>
+                            <h3 class="workspace-title">เช็ครายการตกหล่น (Gap Analysis)</h3>
+                        </div>
+                        <p class="text-muted" style="margin-bottom: 10px; font-size: 0.8rem;">วางรายการที่สแกนได้เพื่อหาเลขที่หายไปจากช่วงที่สร้าง</p>
+                        <textarea id="smart-gap-actual" rows="4" placeholder="วางรายการเลขพัสดุ..."></textarea>
+                        <div class="mt-4">
+                            <button class="btn btn-danger" onclick="unifiedFindGaps()" style="width: 100%;">ค้นหาเลขที่หายไป</button>
+                        </div>
                     </div>
                 </div>
-                <div id="result-check-single" class="result-box hidden">
-                    <!-- Dynamic Result -->
+
+                <!-- Right Side: Results -->
+                <div class="unified-side">
+                    <div class="workspace-card" style="height: 100%; display: flex; flex-direction: column;">
+                        <div class="workspace-header">
+                            <i class="icon">📊</i>
+                            <h3 class="workspace-title">ผลลัพธ์ (Results)</h3>
+                            <div id="smart-result-summary" style="margin-left: auto; font-size: 0.9rem; font-weight: bold;"></div>
+                        </div>
+                        <div id="smart-unified-results" class="unified-result-area" style="flex: 1;">
+                            <div style="padding: 40px; text-align: center; color: #999;">
+                                <p>ยังไม่มีข้อมูลผลลัพธ์<br>กรุณากด "เริ่มสร้างรายการ" เพื่อดูข้อมูล</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- SECTION 2: Range Generator -->
-        <section id="tab-range" class="tab-content">
-            <div class="card">
-                <div id="range-generator-ui">
-                    <h2>สร้างเลขรัน (Range Generator)</h2>
-                    <div class="grid-form">
-                        <div class="form-group">
-                            <label>เลขตั้งต้น (Center ID)</label>
-                            <input type="text" id="input-range-center" placeholder="XX000000000XX">
-                        </div>
-                        <div class="form-group">
-                            <label>ย้อนหลัง (Previous N)</label>
-                            <input type="number" id="input-range-prev" placeholder="0" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label>ถัดไป (Next N)</label>
-                            <input type="number" id="input-range-next" placeholder="0" min="0">
-                        </div>
-                    </div>
-
-                    <div class="form-group mt-4">
-                        <label>เทียบกับรายการที่มี (Reference / Scanned IDs) <small class="text-muted">(Optional:
-                                แปะรายการเพื่อเช็คสถานะ)</small></label>
-                        <textarea id="range-reference-list" rows="3"
-                            placeholder="แปะรายการเลขพัสดุที่มีที่นี่... ระบบจะแสดงสถานะ 'รับเข้าระบบ' ให้"></textarea>
-                    </div>
-
-                    <div class="mt-4">
-                        <button class="btn btn-primary" onclick="generateRange()">เริ่มสร้างรายการ</button>
-                    </div>
-                </div>
-
-                <div id="result-range-box" class="result-list hidden mt-4">
-                    <!-- Table result -->
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 3: Gap Analysis -->
-        <section id="tab-gap" class="tab-content">
-            <div class="card">
-                <h2>เช็ครายการตกหล่น (Gap Analysis)</h2>
-                <p class="text-muted">ตรวจสอบว่าเลขไหนหายไปจาก Sequence ที่ควรจะเป็น</p>
-
-                <div class="grid-form">
-                    <div class="form-group">
-                        <label>เลขเริ่มต้น (Start)</label>
-                        <input type="text" id="gap-start" placeholder="XX000000000XX">
-                    </div>
-                    <div class="form-group">
-                        <label>เลขสิ้นสุด (End)</label>
-                        <input type="text" id="gap-end" placeholder="XX000000000XX">
-                    </div>
-                </div>
-
-                <div class="form-group mt-4">
-                    <label>รายการที่สแกนได้จริง (วางรายการที่นี่)</label>
-                    <textarea id="gap-actual-list" rows="6" placeholder="EB123456000TH
-EB123456001TH
-..."></textarea>
-                </div>
-
-                <div class="mt-4">
-                    <button class="btn btn-danger" onclick="findGaps()">ค้นหาเลขที่หายไป</button>
-                </div>
-
-                <div id="result-gap-box" class="result-alert hidden mt-4">
-                    <!-- Gap Results -->
-                </div>
-            </div>
-        </section>
+        <!-- Consolidated Sections 1-3 removed as they are part of SECTION 0 Smart Workspace -->
 
         <!-- SECTION 4: Customer Database -->
         <section id="tab-customer" class="tab-content">
