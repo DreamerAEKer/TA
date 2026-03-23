@@ -962,10 +962,9 @@ function loadBatchToView(batchId) {
         return;
     }
 
-    // Reuse Range Tab to display
-    switchTab('range');
-    const box = document.getElementById('result-range-box');
-    box.classList.remove('hidden');
+    // Redirect to Smart Workspace to display
+    switchTab('smart');
+    const box = document.getElementById('smart-unified-results');
 
     // CHECK IF WE HAVE RECEIPT METADATA (ranges)
     if (batch.ranges && Array.isArray(batch.ranges)) {
@@ -975,7 +974,7 @@ function loadBatchToView(batchId) {
         let html = `
             <div class="result-success" style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                 <strong>📂 ข้อมูล: ${batch.name}</strong>
-                <button class="btn btn-neutral" onclick="switchTab('import')" style="padding:5px 10px; font-size:0.9rem;">⬅ กลับหน้าหลัก (New Import)</button>
+                <button class="btn btn-neutral" onclick="switchTab('customer')" style="padding:5px 10px; font-size:0.9rem;">⬅ กลับหน้าหลัก (Back to DB)</button>
             </div>
             
             <!-- Receipt View -->
@@ -1039,7 +1038,7 @@ function loadBatchToView(batchId) {
             
             <div style="text-align:center; margin-top:20px;">
                 <button class="btn" onclick="window.print()">🖨️ Print / PDF</button>
-                <button class="btn btn-neutral" onclick="switchTab('import')" style="margin-left:10px;">⬅ กลับหน้าหลัก (New Import)</button>
+                <button class="btn btn-neutral" onclick="switchTab('customer')" style="margin-left:10px;">⬅ กลับหน้าหลัก (Back to DB)</button>
             </div>
         `;
         box.innerHTML = html;
