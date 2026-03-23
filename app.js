@@ -149,14 +149,23 @@ function unifiedGenerateRange() {
         const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(item.number) : null;
         let ownerHtml = '-';
         if (owner) {
-            ownerHtml = `<span style="color:#0d47a1; font-size:0.8rem;">👤 ${owner.name}</span>`;
+            ownerHtml = `<span style="color:#0d47a1; font-size:0.8rem; display:block; margin-bottom:4px;">👤 ${owner.name}</span>`;
         }
+
+        let displayIndex = item.isCenter ? '<span style="color:#999; font-weight:bold;">-</span>' : Math.abs(item.offset);
+        let indexStyle = item.offset < 0 ? 'color:#28a745;' : (item.offset > 0 ? 'color:#d32f2f;' : '');
 
         html += `
             <tr ${rowStyle}>
-                <td>${index + 1}</td>
+                <td style="${indexStyle} font-weight:bold;">${displayIndex}</td>
                 <td class="unified-id-cell" style="font-family:monospace; font-size:0.95rem;">${TrackingUtils.formatTrackingNumber(item.number)}</td>
-                <td>${ownerHtml}</td>
+                <td>
+                    ${ownerHtml}
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn btn-neutral" style="padding:2px 6px; font-size:0.7rem; background:#f8f9fa; border:1px solid #ddd;" onclick="navigator.clipboard.writeText('${item.number}').then(()=>alert('คัดลอก ${item.number} ลง Clipboard แล้ว!'))">📋 คัดลอก</button>
+                        <button class="btn btn-primary" style="padding:2px 6px; font-size:0.7rem;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th', '_blank')">🔍 เช็คสถานะ</button>
+                    </div>
+                </td>
             </tr>
         `;
     });
