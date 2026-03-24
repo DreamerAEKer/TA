@@ -195,6 +195,10 @@ function unifiedGenerateRangeNew(center, centerInput) {
 
     html += `</tbody></table>`;
     resultArea.innerHTML = html;
+    lastGeneratedRange = list.map(item => item.number);
+    // Show copy-all bar
+    const copyBar = document.getElementById('smart-copy-all-bar');
+    if (copyBar) copyBar.classList.remove('hidden');
 }
 
 function unifiedSingleCheckNew(input, inputEl) {
@@ -254,20 +258,28 @@ function unifiedSingleCheckNew(input, inputEl) {
                 <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center;">
                     ${row2Html}
                 </div>
+
+                <!-- Row 3: Copy per item -->
+                <div style="padding: 12px 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                    <span style="font-size:0.95rem; font-family:monospace; color:#333; word-break:break-all;">${validTarget}</span>
+                    <button class="btn btn-neutral" style="padding:5px 12px; font-size:0.85rem; background:#fff; border:1px solid #ccc; white-space:nowrap;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>{ this.textContent='✅ คัดลอกแล้ว!'; setTimeout(()=>this.textContent='📋 สำเนาเลข', 1500); })">📋 สำเนาเลข</button>
+                </div>
                 
-                <!-- Row 3: Online Status -->
+                <!-- Row 4: Online Status -->
                 <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; flex-direction:column; gap: 10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                         <span style="font-size:1.05rem;">🌐 สถานะไปรษณีย์ไทย: <span id="online-status-text-${input}" style="color:#f57c00; font-weight:bold;">รอการตรวจสอบ...</span></span>
-                        <div style="display:flex; gap:10px;">
-                            <button class="btn btn-neutral" style="padding:6px 12px; font-size:0.9rem; background:#f8f9fa; border:1px solid #ddd;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>alert('คัดลอก ${validTarget} เรียบร้อย!'))">📋 สำเนาเลข</button>
-                            <button class="btn btn-success" style="padding:6px 12px; font-size:0.9rem;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 เปิดเว็บ Track&Trace</button>
-                        </div>
+                        <button class="btn btn-success" style="padding:6px 12px; font-size:0.9rem;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 เปิดเว็บ Track&Trace</button>
                     </div>
                 </div>
             </div>
         </div>
     `;
+
+    // Show copy-all bar (for single item too)
+    lastGeneratedRange = [validTarget];
+    const copyBar = document.getElementById('smart-copy-all-bar');
+    if (copyBar) copyBar.classList.remove('hidden');
 
     // Attempt to fetch online status
     checkOnlineStatusMock(validTarget);
@@ -304,6 +316,79 @@ async function checkOnlineStatusMock(trackNumber) {
         // Fallback due to CORS or API Block
         statusTextEl.innerHTML = `ไม่สามารถดึงข้อมูลอัตโนมัติได้ <span style="font-size:0.8rem; color:#666; font-weight:normal; display:inline-block; margin-top:4px;">(ติดระบบป้องกัน CORS ของไปรษณีย์ กรุณากดปุ่มเปิดเว็บเบราว์เซอร์ด้านขวา) ⚠️</span>`;
         statusTextEl.style.color = "#d32f2f";
+    }
+}
+
+// Copy all numbers from lastGeneratedRange
+function copyAllUnifiedNumbers() {
+    if (!lastGeneratedRange || lastGeneratedRange.length === 0) {
+        alert('ไม่มีข้อมูลเลขใเค๊อพ');
+        return;
+    }
+    const text = lastGeneratedRange.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        alert(`คัดลอก ${lastGeneratedRange.length} รายการเรียบร้อยแล้ว!`);
+    });
+}
+
+// OCR upload handler inside the Track & Trace section
+async function handleTrackOcrUpload(files) {
+    if (!files || files.length === 0) return;
+    const statusEl = document.getElementById('track-ocr-status');
+    statusEl.textContent = `กำลังสแกน ${files.length} รูป...`;
+
+    let combinedText = '';
+    try {
+        for (let i = 0; i < files.length; i++) {
+            statusEl.textContent = `OCR รูป ${i + 1}/${files.length}...`;
+            const worker = await Tesseract.createWorker('tha+eng');
+            const { data: { text } } = await worker.recognize(files[i]);
+            await worker.terminate();
+            combinedText += '\n' + text;
+        }
+
+        const numbers = TrackingUtils.extractTrackingNumbers(combinedText);
+        if (numbers.length === 0) {
+            statusEl.textContent = '⚠️ ไม่พบเลขในภาพ';
+            return;
+        }
+
+        if (numbers.length === 1) {
+            // Single number -> put in main input and search
+            document.getElementById('smart-main-input').value = numbers[0];
+            statusEl.textContent = `✅ พบเลข: ${numbers[0]} กำลังค้นหา...`;
+            unifiedMainSearch();
+        } else {
+            // Multiple numbers -> show results list
+            lastGeneratedRange = numbers;
+            const resultArea = document.getElementById('smart-unified-results');
+            const summaryArea = document.getElementById('smart-result-summary');
+            summaryArea.innerHTML = `<span class="badge badge-primary">${numbers.length} รายการ (OCR)</span>`;
+
+            let html = `<div style="padding:10px; background:#fff; border-bottom:1px solid #eee; position:sticky; top:0; z-index:5;"><small>สแกนจากรูป ${files.length} รูป พบ ${numbers.length} เลข</small></div><table><thead><tr><th>#</th><th>เลขพัสดุ</th><th>สถานะ</th></tr></thead><tbody>`;
+            numbers.forEach((num, i) => {
+                const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(num) : null;
+                html += `<tr>
+                    <td>${i + 1}</td>
+                    <td style="font-family:monospace;">${TrackingUtils.formatTrackingNumber(num)}</td>
+                    <td>
+                        ${owner ? `<span style="color:#0d47a1; font-size:0.8rem;">👤 ${owner.name}</span>` : ''}
+                        <div style="display:flex; gap:5px; margin-top:4px;">
+                            <button class="btn btn-neutral" style="padding:2px 6px; font-size:0.7rem;" onclick="navigator.clipboard.writeText('${num}').then(()=>alert('คัดลอก ${num} แล้ว!'))">📋 คัดลอก</button>
+                            <button class="btn btn-primary" style="padding:2px 6px; font-size:0.7rem;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${num}', '_blank')">🔍 เช็ค</button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            resultArea.innerHTML = html;
+            const copyBar = document.getElementById('smart-copy-all-bar');
+            if (copyBar) copyBar.classList.remove('hidden');
+        }
+        statusEl.textContent = `✅ เสร็จ พบ ${numbers.length} เลข`;
+    } catch (err) {
+        console.error(err);
+        statusEl.textContent = '❌ เกิดข้อผิดพลาด: ' + err.message;
     }
 }
 

@@ -68,9 +68,18 @@
                             <i class="icon">🔍</i>
                             <h3 class="workspace-title">ตรวจสอบสถานะ (Track & Trace)</h3>
                         </div>
-                        <div class="input-group" style="margin-bottom: 15px;">
+                        <div class="input-group" style="margin-bottom: 10px;">
                             <input type="text" id="smart-main-input" placeholder="กรอกเลขพัสดุ (เช่น XX123456789TH)" maxlength="13" style="text-transform:uppercase;">
                             <button class="btn btn-primary" onclick="unifiedMainSearch()">ค้นหา</button>
+                        </div>
+
+                        <!-- Image Upload for OCR inside Track & Trace -->
+                        <div style="margin-bottom: 12px;">
+                            <input type="file" id="track-ocr-upload" accept="image/*" multiple style="display:none" onchange="handleTrackOcrUpload(this.files)">
+                            <button class="btn btn-neutral" onclick="document.getElementById('track-ocr-upload').click()" style="font-size:0.85rem; padding:6px 12px; border:1px solid #ccc; display:flex; align-items:center; gap:6px;">
+                                📸 อัปโหลดรูปเพื่อสแกนเลข (OCR)
+                            </button>
+                            <span id="track-ocr-status" style="font-size:0.8rem; color:var(--primary-color); margin-top:5px; display:block;"></span>
                         </div>
 
                         <!-- Checkbox for Range Enable -->
@@ -100,28 +109,6 @@
                         </div>
                     </div>
 
-                    <!-- Tool 3: Cross Reference DB (Moved from Admin) -->
-                    <div class="workspace-card">
-                        <div class="workspace-header">
-                            <i class="icon">🏢</i>
-                            <h3 class="workspace-title">3. ระบบตรวจสอบสังกัดบริษัท (Cross-Reference DB)</h3>
-                        </div>
-                        <p style="font-size:0.9rem; color:#666; margin-bottom:10px;">วางข้อมูลชุดเลขพัสดุ (หรือรูปภาพ) แล้วกดตรวจสอบ เพื่อค้นหาว่าเลขแต่ละตัวเป็นของบริษัทไหนในระบบ</p>
-                        
-                        <textarea id="admin-crossref-input" rows="6" placeholder="วางเลขพัสดุที่นี่..." style="margin-bottom:10px; width:100%; border-radius:4px; border:1px solid #ccc; padding:10px;"></textarea>
-                        
-                        <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap:wrap;">
-                            <button class="btn btn-primary" onclick="adminCrossReference()">ค้นหาสังกัดบริษัท</button>
-                            <input type="file" id="admin-crossref-file" accept="image/*" style="display:none" onchange="adminCrossRefImage(this.files)">
-                            <button class="btn btn-neutral" onclick="document.getElementById('admin-crossref-file').click()">📸 อัปโหลดรูปเพื่อสแกนเลข</button>
-                            <button class="btn btn-success" onclick="copyCrossRefAll()" style="background-color: #28a745; border-color: #28a745; color: white;">📋 คัดลอกเลขทั้งหมด</button>
-                        </div>
-
-                        <div id="admin-crossref-status" style="font-weight:bold; color:#0056b3; margin-top:5px;"></div>
-                        <div id="admin-crossref-result" class="hidden" style="margin-top:10px; overflow-x:auto;">
-                            <!-- Results Table -->
-                        </div>
-                    </div>
 
                     <!-- Tool 4: Exception Log (Moved from Admin) -->
                     <div class="workspace-card">
@@ -170,8 +157,12 @@
                         </div>
                         <div id="smart-unified-results" class="unified-result-area" style="flex: 1;">
                             <div style="padding: 40px; text-align: center; color: #999;">
-                                <p>ยังไม่มีข้อมูลผลลัพธ์<br>กรุณากด "เริ่มสร้างรายการ" เพื่อดูข้อมูล</p>
+                                <p>ยังไม่มีข้อมูลผลลัพธ์<br>กรุณากรอกเลขแล้วกด "ค้นหา"</p>
                             </div>
+                        </div>
+                        <!-- Copy All button (shown only when results exist) -->
+                        <div id="smart-copy-all-bar" class="hidden" style="padding: 10px; border-top: 1px solid #eee; background:#fff;">
+                            <button class="btn btn-success" onclick="copyAllUnifiedNumbers()" style="width:100%; font-size:0.9rem;">📋 คัดลอกเลขทั้งหมด</button>
                         </div>
                     </div>
                 </div>
