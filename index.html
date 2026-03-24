@@ -262,22 +262,26 @@
                                 สร้างแบบเป็นชุด (Batch Mode)
                             </label>
                             <div id="smart-range-box" class="hidden"
-                                style="margin-top:5px; padding-left:10px; border-left:3px solid #ccc;">
-                                <div style="display:flex; align-items:center; gap:5px;">
-                                    <label style="font-size:0.8rem; margin-right:5px;">คำนวณจาก:</label>
-                                    <input type="number" id="smart-box" placeholder="กล่อง" min="0" 
-                                        style="width:60px;" oninput="calculateSmartQtyFromHelpers()">
-                                    <span style="font-size:0.8rem; color:#666;">ซอง/กล่อง</span>
-                                    
-                                    <input type="number" id="smart-book" placeholder="เล่ม" min="0" 
-                                        style="width:60px; margin-left:5px;" oninput="calculateSmartQtyFromHelpers()">
-                                    <span style="font-size:0.8rem; color:#666;">เล่ม</span>
-                                </div>
-                                <div style="display:flex; align-items:center; gap:10px; margin-top:5px;">
-                                    <label style="font-size:0.8rem; font-weight:bold;">รวม (Quantity):</label>
-                                    <input type="number" id="smart-qty" placeholder="เช่น 50" min="1"
-                                        style="width:100px; font-weight:bold; color:var(--primary-color);">
-                                    <span style="font-size:0.8rem; color:#666;">รายการ</span>
+                                style="margin-top:8px; padding:10px 12px; border-left:3px solid #ccc; background:#fafafa; border-radius:0 6px 6px 0;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; align-items:end;">
+                                    <div>
+                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px; white-space:nowrap;">📦 กล่อง</label>
+                                        <input type="number" id="smart-box" placeholder="0" min="0"
+                                            style="width:100%; box-sizing:border-box; text-align:center;" oninput="calculateSmartQtyFromHelpers()">
+                                        <span style="font-size:0.72rem; color:#999; display:block; text-align:center; margin-top:2px;">ซอง/กล่อง</span>
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px; white-space:nowrap;">📚 เล่ม</label>
+                                        <input type="number" id="smart-book" placeholder="0" min="0"
+                                            style="width:100%; box-sizing:border-box; text-align:center;" oninput="calculateSmartQtyFromHelpers()">
+                                        <span style="font-size:0.72rem; color:#999; display:block; text-align:center; margin-top:2px;">เล่ม (×240)</span>
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.78rem; font-weight:bold; color:var(--primary-color); display:block; margin-bottom:3px; white-space:nowrap;">✅ รวม</label>
+                                        <input type="number" id="smart-qty" placeholder="50" min="1"
+                                            style="width:100%; box-sizing:border-box; text-align:center; font-weight:bold; color:var(--primary-color); border-color:var(--primary-color);">
+                                        <span style="font-size:0.72rem; color:#999; display:block; text-align:center; margin-top:2px;">รายการ</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
