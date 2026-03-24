@@ -35,11 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAdminUI();
 
     // 4. Smart Workspace Inputs -> Enter Key
-    document.getElementById('smart-range-center')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') unifiedGenerateRange();
-    });
-    document.getElementById('smart-check-input')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') unifiedQuickCheck();
+    document.getElementById('smart-main-input')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') unifiedMainSearch();
     });
 });
 
@@ -101,18 +98,44 @@ function checkAdminUI() {
 // --- Unified Workspace Logic (Smart Tracking) ---
 let lastGeneratedRange = [];
 
-function unifiedGenerateRange() {
-    const centerInput = document.getElementById('smart-range-center');
-    let center = centerInput.value.trim();
+function toggleMainRangeInputs() {
+    const toggle = document.getElementById('smart-main-range-toggle');
+    const options = document.getElementById('smart-main-range-options');
+    const bigBtn = document.getElementById('smart-main-range-btn-container');
+    
+    if (toggle.checked) {
+        options.classList.remove('hidden');
+        if(bigBtn) bigBtn.style.display = 'block';
+    } else {
+        options.classList.add('hidden');
+        if(bigBtn) bigBtn.style.display = 'none';
+        document.getElementById('smart-range-prev').value = '0';
+        document.getElementById('smart-range-next').value = '0';
+    }
+}
+
+async function unifiedMainSearch() {
+    const inputEl = document.getElementById('smart-main-input');
+    let input = inputEl.value.trim().toUpperCase();
+    const isRange = document.getElementById('smart-main-range-toggle')?.checked;
+    
+    if (!input) {
+        alert('กรุณากรอกเลขพัสดุ');
+        return;
+    }
+    
+    if (isRange) {
+        unifiedGenerateRangeNew(input, inputEl);
+    } else {
+        unifiedSingleCheckNew(input, inputEl);
+    }
+}
+
+function unifiedGenerateRangeNew(center, centerInput) {
     const prev = parseInt(document.getElementById('smart-range-prev').value) || 0;
     const next = parseInt(document.getElementById('smart-range-next').value) || 0;
     const resultArea = document.getElementById('smart-unified-results');
     const summaryArea = document.getElementById('smart-result-summary');
-
-    if (!center) {
-        alert('กรุณาระบุเลขตั้งต้น');
-        return;
-    }
 
     const validation = TrackingUtils.validateTrackingNumber(center);
     if (!validation.isValid && validation.suggestion) {
@@ -174,21 +197,113 @@ function unifiedGenerateRange() {
     resultArea.innerHTML = html;
 }
 
-function unifiedQuickCheck() {
-    const input = document.getElementById('smart-check-input').value.trim();
-    const resultBox = document.getElementById('smart-check-result');
-    if (!input) return;
-
+function unifiedSingleCheckNew(input, inputEl) {
+    const resultArea = document.getElementById('smart-unified-results');
+    const summaryArea = document.getElementById('smart-result-summary');
+    
+    summaryArea.innerHTML = `<span class="badge badge-primary">ผลลัพธ์ 1 รายการ</span>`;
+    
     const validation = TrackingUtils.validateTrackingNumber(input);
-    resultBox.classList.remove('hidden', 'result-success', 'result-error');
-
+    const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(input) : null;
+    
+    // Row 1 Logic
+    let row1Html = '';
+    let validTarget = input;
     if (validation.isValid) {
-        const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(input) : null;
-        resultBox.classList.add('result-success');
-        resultBox.innerHTML = `<strong>✅ ถูกต้อง:</strong> ${TrackingUtils.formatTrackingNumber(input)}${owner ? `<br><small>สังกัด: ${owner.name}</small>` : ''}`;
+        row1Html = `<span style="color:#28a745; font-size:1.1rem;">✅ <strong>โครงสร้างเลขถูกต้อง</strong> (Check Digit Valid)</span>`;
     } else {
-        resultBox.classList.add('result-error');
-        resultBox.innerHTML = `<strong>❌ ผิดพลาด:</strong> ${validation.error}`;
+        if (validation.suggestion) {
+            row1Html = `
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <span style="color:#d32f2f; font-weight:bold; font-size:1.1rem;">❌ โครงสร้างเลขผิด: ${validation.error}</span>
+                    <div style="background:#e8f5e9; padding:8px 12px; border-left:4px solid #28a745; border-radius:4px;">
+                        <span style="color:#28a745; font-weight:bold;">👉 เลขที่ถูกต้องน่าจะเป็น: ${validation.suggestion}</span>
+                        <button class="btn btn-primary" style="margin-left:10px; padding:4px 8px; font-size:0.8rem;" onclick="document.getElementById('smart-main-input').value='${validation.suggestion}'; unifiedMainSearch();">ใช้เลขนี้แทน</button>
+                    </div>
+                </div>`;
+            validTarget = validation.suggestion;
+        } else {
+            row1Html = `<span style="color:#d32f2f; font-weight:bold; font-size:1.1rem;">❌ โครงสร้างเลขผิด: ${validation.error}</span>`;
+        }
+    }
+
+    // Row 2 Logic
+    let row2Html = '';
+    if (owner) {
+        // Safe access if timestamp exists
+        const dateStr = owner.timestamp ? `(บันทึกเมื่อ ${new Date(owner.timestamp).toLocaleDateString('th-TH')})` : '';
+        row2Html = `<span style="color:#0056b3; font-size:1.05rem;">🏢 พบในฐานข้อมูลของคุณ: <strong>${owner.name}</strong> <span style="font-size:0.85rem; color:#666;">${dateStr}</span></span>`;
+    } else {
+        row2Html = `<span style="color:#666;">⚪ ไม่พบประวัติผู้ส่งในฐานข้อมูลของเครื่องคุณ</span>`;
+    }
+
+    // Prepare UI Container
+    resultArea.innerHTML = `
+        <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <h4 style="margin: 0 0 15px 0; font-size: 1.2rem; display:flex; justify-content:space-between; align-items:center;">
+                <span>ผลการตรวจสอบ: <span style="font-family:monospace; color:#0d47a1; background:#f0f7ff; padding:2px 6px; border-radius:4px;">${TrackingUtils.formatTrackingNumber(input)}</span></span>
+            </h4>
+            
+            <div style="display:flex; flex-direction:column; gap: 15px;">
+                <!-- Row 1: Check Digit -->
+                <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center;">
+                    ${row1Html}
+                </div>
+                
+                <!-- Row 2: Customer DB -->
+                <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center;">
+                    ${row2Html}
+                </div>
+                
+                <!-- Row 3: Online Status -->
+                <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; flex-direction:column; gap: 10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <span style="font-size:1.05rem;">🌐 สถานะไปรษณีย์ไทย: <span id="online-status-text-${input}" style="color:#f57c00; font-weight:bold;">รอการตรวจสอบ...</span></span>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn btn-neutral" style="padding:6px 12px; font-size:0.9rem; background:#f8f9fa; border:1px solid #ddd;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>alert('คัดลอก ${validTarget} เรียบร้อย!'))">📋 สำเนาเลข</button>
+                            <button class="btn btn-success" style="padding:6px 12px; font-size:0.9rem;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 เปิดเว็บ Track&Trace</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Attempt to fetch online status
+    checkOnlineStatusMock(validTarget);
+}
+
+async function checkOnlineStatusMock(trackNumber) {
+    const statusTextEl = document.getElementById(`online-status-text-${trackNumber}`);
+    if (!statusTextEl) return;
+    
+    statusTextEl.innerText = "กำลังดึงข้อมูล...";
+    statusTextEl.style.color = "#0056b3";
+
+    try {
+        // Simulate network delay to try to fetch
+        await new Promise(r => setTimeout(r, 800));
+        
+        // This fetch is guaranteed to fail due to CORS in standard browsers without a proxy,
+        // but we write the logic to show the user what would happen.
+        // If they ever run it via extension/proxy, it might work!
+        const res = await fetch(`https://trackapi.thailandpost.co.th/post/api/v1/track?trackNumber=${trackNumber}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+             // Assuming typical status response
+            statusTextEl.innerText = "ดึงข้อมูลสำเร็จ (อัปเดตล่าสุด)";
+            statusTextEl.style.color = "#28a745";
+        } else {
+             throw new Error("HTTP " + res.status);
+        }
+    } catch (e) {
+        // Fallback due to CORS or API Block
+        statusTextEl.innerHTML = `ไม่สามารถดึงข้อมูลอัตโนมัติได้ <span style="font-size:0.8rem; color:#666; font-weight:normal; display:inline-block; margin-top:4px;">(ติดระบบป้องกัน CORS ของไปรษณีย์ กรุณากดปุ่มเปิดเว็บเบราว์เซอร์ด้านขวา) ⚠️</span>`;
+        statusTextEl.style.color = "#d32f2f";
     }
 }
 
