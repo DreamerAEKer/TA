@@ -132,8 +132,14 @@ async function unifiedMainSearch() {
 }
 
 function unifiedGenerateRangeNew(center, centerInput) {
+    const qty = parseInt(document.getElementById('smart-range-qty')?.value) || 0;
     const prev = parseInt(document.getElementById('smart-range-prev').value) || 0;
     const next = parseInt(document.getElementById('smart-range-next').value) || 0;
+    // qty adds equally to both sides if prev and next are both 0
+    const effectivePrev = (prev === 0 && next === 0 && qty > 0) ? Math.floor(qty / 2) : prev;
+    const effectiveNext = (prev === 0 && next === 0 && qty > 0) ? (qty - Math.floor(qty / 2)) : next;
+    const finalPrev = Math.max(effectivePrev, prev);
+    const finalNext = Math.max(effectiveNext, next);
     const resultArea = document.getElementById('smart-unified-results');
     const summaryArea = document.getElementById('smart-result-summary');
 
@@ -146,7 +152,7 @@ function unifiedGenerateRangeNew(center, centerInput) {
         return;
     }
 
-    const list = TrackingUtils.generateTrackingRange(center, prev, next);
+    const list = TrackingUtils.generateTrackingRange(center, finalPrev, finalNext);
     lastGeneratedRange = list.map(item => item.number);
     
     summaryArea.innerHTML = `<span class="badge badge-primary">${list.length} รายการ</span>`;
@@ -262,14 +268,9 @@ function unifiedSingleCheckNew(input, inputEl) {
                 <!-- Row 3: Copy per item -->
                 <div style="padding: 12px 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
                     <span style="font-size:0.95rem; font-family:monospace; color:#333; word-break:break-all;">${validTarget}</span>
-                    <button class="btn btn-neutral" style="padding:5px 12px; font-size:0.85rem; background:#fff; border:1px solid #ccc; white-space:nowrap;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>{ this.textContent='✅ คัดลอกแล้ว!'; setTimeout(()=>this.textContent='📋 สำเนาเลข', 1500); })">📋 สำเนาเลข</button>
-                </div>
-                
-                <!-- Row 4: Online Status -->
-                <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; flex-direction:column; gap: 10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                        <span style="font-size:1.05rem;">🌐 สถานะไปรษณีย์ไทย: <span id="online-status-text-${input}" style="color:#f57c00; font-weight:bold;">รอการตรวจสอบ...</span></span>
-                        <button class="btn btn-success" style="padding:6px 12px; font-size:0.9rem;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 เปิดเว็บ Track&Trace</button>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn btn-neutral" style="padding:5px 12px; font-size:0.85rem; background:#fff; border:1px solid #ccc; white-space:nowrap;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>{ this.textContent='\u2705 \u0e04\u0e31\u0e14\u0e25\u0e2d\u0e01\u0e41\u0e25\u0e49\u0e27!'; setTimeout(()=>this.textContent='\ud83d\udccb \u0e2a\u0e33\u0e40\u0e19\u0e32\u0e40\u0e25\u0e02', 1500); })">📋 สำเนาเลข</button>
+                        <button class="btn btn-success" style="padding:5px 12px; font-size:0.85rem; white-space:nowrap;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 เปิดเว็บ Track&Trace</button>
                     </div>
                 </div>
             </div>
@@ -280,43 +281,6 @@ function unifiedSingleCheckNew(input, inputEl) {
     lastGeneratedRange = [validTarget];
     const copyBar = document.getElementById('smart-copy-all-bar');
     if (copyBar) copyBar.classList.remove('hidden');
-
-    // Attempt to fetch online status
-    checkOnlineStatusMock(validTarget);
-}
-
-async function checkOnlineStatusMock(trackNumber) {
-    const statusTextEl = document.getElementById(`online-status-text-${trackNumber}`);
-    if (!statusTextEl) return;
-    
-    statusTextEl.innerText = "กำลังดึงข้อมูล...";
-    statusTextEl.style.color = "#0056b3";
-
-    try {
-        // Simulate network delay to try to fetch
-        await new Promise(r => setTimeout(r, 800));
-        
-        // This fetch is guaranteed to fail due to CORS in standard browsers without a proxy,
-        // but we write the logic to show the user what would happen.
-        // If they ever run it via extension/proxy, it might work!
-        const res = await fetch(`https://trackapi.thailandpost.co.th/post/api/v1/track?trackNumber=${trackNumber}`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-             // Assuming typical status response
-            statusTextEl.innerText = "ดึงข้อมูลสำเร็จ (อัปเดตล่าสุด)";
-            statusTextEl.style.color = "#28a745";
-        } else {
-             throw new Error("HTTP " + res.status);
-        }
-    } catch (e) {
-        // Fallback due to CORS or API Block
-        statusTextEl.innerHTML = `ไม่สามารถดึงข้อมูลอัตโนมัติได้ <span style="font-size:0.8rem; color:#666; font-weight:normal; display:inline-block; margin-top:4px;">(ติดระบบป้องกัน CORS ของไปรษณีย์ กรุณากดปุ่มเปิดเว็บเบราว์เซอร์ด้านขวา) ⚠️</span>`;
-        statusTextEl.style.color = "#d32f2f";
-    }
 }
 
 // Copy all numbers from lastGeneratedRange
