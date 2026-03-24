@@ -256,6 +256,9 @@ table th {
     font-weight: 700;
     border-bottom: 2px solid #c5cdd8;
     letter-spacing: 0.02em;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 
