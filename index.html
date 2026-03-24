@@ -201,6 +201,8 @@
                             style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:4px;">
                             <option value="Credit">รายเดือน (Credit)</option>
                             <option value="Cash">เงินสด/Drop Off (Cash)</option>
+                            <option value="CustomerA">ลูกค้า A</option>
+                            <option value="Agency">หน่วยงาน</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -228,6 +230,29 @@
                                     style="display:none" onchange="handleImageSelection(this.files)">
                                 <span id="smart-ocr-status"
                                     style="font-size:0.8rem; color:var(--primary-color); margin-left:10px;"></span>
+                            </div>
+                        </div>
+
+                        <div style="background:#fff; padding:10px 15px; border-radius:6px; margin-bottom:15px; border:1px dashed #64b5f6; display:flex; gap:15px; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:200px;">
+                                <label style="font-size:0.75rem; color:#1565c0; font-weight:bold; display:flex; justify-content:space-between;">
+                                    <span>🔍 หาเล่มจากเลขพัสดุ 1 ตัว</span>
+                                    <span style="color:#888; font-weight:normal; font-size:0.7rem;">(Auto-Detect Book)</span>
+                                </label>
+                                <div style="display:flex; gap:5px; margin-top:3px;">
+                                    <input type="text" id="magic-single" placeholder="วางเลขที่นี่ (เช่น EQ183240125TH)" style="font-size:0.8rem; padding:6px; flex:1; text-transform:uppercase;" maxlength="13" onchange="applyMagicSingle(this.value)">
+                                    <button type="button" class="btn btn-neutral" onclick="applyMagicSingle(document.getElementById('magic-single').value)" style="padding:0 8px; font-size:0.8rem; border:1px solid #ccc; height:32px;">ดึงข้อมูล</button>
+                                </div>
+                            </div>
+                            <div style="flex:1; min-width:200px;">
+                                <label style="font-size:0.75rem; color:#1565c0; font-weight:bold; display:flex; justify-content:space-between;">
+                                    <span>📦 คำนวณหาจากรหัสเล่มกล่อง</span>
+                                    <span style="color:#888; font-weight:normal; font-size:0.7rem;">(Generate from Book No.)</span>
+                                </label>
+                                <div style="display:flex; gap:5px; margin-top:3px;">
+                                    <input type="number" id="magic-bookno" placeholder="ระบุเล่มที่ (เช่น 76351)" style="font-size:0.8rem; padding:6px; flex:1;" onchange="applyMagicBookNo(this.value)">
+                                    <button type="button" class="btn btn-neutral" onclick="applyMagicBookNo(document.getElementById('magic-bookno').value)" style="padding:0 8px; font-size:0.8rem; border:1px solid #ccc; height:32px;">คำนวณ</button>
+                                </div>
                             </div>
                         </div>
 
@@ -319,52 +344,6 @@
                                 </div>
                             </div>
                         </div>
-                        </div>
-                    </div>
-
-                    <!-- Book Calculator UI -->
-                    <div class="smart-input-container" style="background:#e8f5e9; padding:15px; border-radius:8px; border:1px solid #a5d6a7; margin-bottom:10px; margin-top:10px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                            <strong style="color:#2e7d32;">📘 เครื่องมือคำนวณเลขจากเล่ม (Book Calculator)</strong>
-                        </div>
-                        
-                        <div style="display:flex; gap:15px; flex-wrap:wrap; align-items:flex-start;">
-                            <!-- Mode 1: Auto Detect -->
-                            <div style="flex:1; min-width:250px; background:white; padding:10px; border-radius:6px; border:1px solid #ccc;">
-                                <label style="font-size:0.8rem; font-weight:bold; color:#555;">🔍 ค้นหาทั้งเล่มจากเลข 1 ตัว</label>
-                                <p style="font-size:0.75rem; color:#888; margin:5px 0 10px 0;">ใส่เลขพัสดุใดก็ได้ในเล่ม ระบบจะดึงข้อมูล 240 รายการในเล่ม</p>
-                                <div style="display:flex; gap:5px;">
-                                    <input type="text" id="book-calc-single-input" placeholder="เช่น EQ183240125TH" style="text-transform:uppercase; flex:1;" maxlength="13">
-                                    <button class="btn btn-success" onclick="calculateBookFromSingle()" style="padding:0 15px; font-size:0.8rem; min-height:42px;">ออกชุดเลข</button>
-                                </div>
-                            </div>
-
-                            <!-- Mode 2: Generate from Book No -->
-                            <div style="flex:1; min-width:350px; background:white; padding:10px; border-radius:6px; border:1px solid #ccc;">
-                                <label style="font-size:0.8rem; font-weight:bold; color:#555;">📦 สร้างจากพื้นที่เล่ม (อ้างอิงเล่มหน้ากล่อง)</label>
-                                <p style="font-size:0.75rem; color:#888; margin:5px 0 10px 0;">ใส่หมวดเลข, เล่มที่เริ่ม, และจำนวนเล่ม เพื่อสร้างชุดเลข</p>
-                                <div style="display:flex; gap:5px; align-items:flex-end;">
-                                    <div style="flex:0.8; min-width:50px;">
-                                        <label style="font-size:0.7rem; display:block; text-align:center;">Prefix</label>
-                                        <input type="text" id="book-calc-prefix" placeholder="EQ" maxlength="2" style="text-transform:uppercase; text-align:center;">
-                                    </div>
-                                    <div style="flex:1.2; min-width:60px;">
-                                        <label style="font-size:0.7rem; display:block; text-align:center;">เล่มที่เริ่ม</label>
-                                        <input type="number" id="book-calc-bookno" placeholder="76351" style="text-align:center;">
-                                    </div>
-                                    <div style="flex:1; min-width:60px;">
-                                        <label style="font-size:0.7rem; display:block; text-align:center;">จำนวนเล่ม</label>
-                                        <input type="number" id="book-calc-qty" placeholder="50" style="text-align:center;">
-                                    </div>
-                                    <div style="flex:0.8; min-width:50px;">
-                                        <label style="font-size:0.7rem; display:block; text-align:center;">Suffix</label>
-                                        <input type="text" id="book-calc-suffix" value="TH" maxlength="2" style="text-align:center;">
-                                    </div>
-                                    <div style="flex:1; min-width:70px;">
-                                        <button class="btn btn-primary" onclick="calculateBookFromBookNo()" style="padding:0; width:100%; font-size:0.8rem; min-height:42px;">ออกชุดเลข</button>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -530,6 +509,8 @@
                                 style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:4px;">
                                 <option value="Cash" selected>เงินสด (Cash)</option>
                                 <option value="Credit">รายเดือน (Credit)</option>
+                                <option value="CustomerA">ลูกค้า A</option>
+                                <option value="Agency">หน่วยงาน</option>
                             </select>
                         </div>
                         <div style="display:flex; gap:10px; margin-top:15px;">

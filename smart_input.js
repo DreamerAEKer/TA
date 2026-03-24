@@ -431,36 +431,13 @@ function calculateSmartQtyFromHelpers() {
 }
 
 // ==========================================
-// Book Calculator Logic
+// Book Calculator / Magic Tools Logic
 // ==========================================
 
-function sendToManualEdit(itemsArray) {
-    if(!itemsArray || itemsArray.length === 0) return;
+window.applyMagicSingle = function(inputVal) {
+    const input = inputVal.trim().toUpperCase();
+    if(!input) return;
     
-    // Validate Customer Name first to be safe
-    const dbNameInput = document.getElementById('db-name');
-    const name = dbNameInput ? dbNameInput.value.trim() : '';
-    if (!name) {
-        alert('คำเตือน: กรุณากรอก "ชื่อลูกค้า / บริษัท" ด้วย เพื่อที่เวลาบันทึกจะได้ไม่ลืมครับ');
-        if(dbNameInput) dbNameInput.focus();
-    }
-
-    // Switch to edit section
-    const editSec = document.getElementById('db-edit-section');
-    if(editSec) editSec.classList.remove('hidden');
-    
-    // Set textarea value
-    const ta = document.getElementById('db-tracking-list');
-    if(ta) {
-        ta.value = itemsArray.join('\n');
-        
-        // Auto scroll to it
-        ta.scrollIntoView({behavior: 'smooth', block: 'center'});
-    }
-}
-
-window.calculateBookFromSingle = function() {
-    const input = document.getElementById('book-calc-single-input').value.trim().toUpperCase();
     const regex = /^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/;
     const match = input.match(regex);
     
@@ -472,59 +449,68 @@ window.calculateBookFromSingle = function() {
     const [, prefix, bodyStr, checkD, suffix] = match;
     const bodyNum = parseInt(bodyStr, 10);
     
-    // 1 book = 240 items
     const bookStart = Math.floor((bodyNum - 1) / 240) * 240 + 1;
+    const startStr = bookStart.toString().padStart(8, '0');
     
-    let items = [];
-    for(let i = 0; i < 240; i++) {
-        let currentNumStr = (bookStart + i).toString().padStart(8, '0');
-        let cd = TrackingUtils.calculateS10CheckDigit(currentNumStr);
-        if(cd !== null) {
-            items.push(`${prefix}${currentNumStr}${cd}${suffix}`);
-        }
+    // Auto fill inputs
+    document.getElementById('smart-prefix').value = prefix;
+    document.getElementById('smart-block1').value = startStr.substring(0, 4);
+    document.getElementById('smart-block2').value = startStr.substring(4, 8);
+    document.getElementById('smart-suffix').value = suffix;
+    
+    // Check Batch Mode and set to 1 book
+    const rangeEnable = document.getElementById('smart-range-enable');
+    if(!rangeEnable.checked) {
+        rangeEnable.checked = true;
+        toggleSmartRange();
     }
+    document.getElementById('smart-box').value = '';
+    document.getElementById('smart-book').value = '1';
     
-    alert(`พบเจอเล่มที่ครอบคลุมเลขนี้แล้ว!\nเล่มดังกล่าวมีทั้งหมด 240 รายการ\nเริ่มตั้งแต่ ${items[0]} ถึง ${items[items.length-1]}`);
-    sendToManualEdit(items);
-    document.getElementById('book-calc-single-input').value = '';
+    // Trigger tick and recalculate Qty
+    calculateSmartCheckDigit();
+    calculateSmartQtyFromHelpers();
+    
+    // Clear input
+    document.getElementById('magic-single').value = '';
+    
+    const sampleCd = TrackingUtils.calculateS10CheckDigit(startStr);
+    alert(`ดึงข้อมูลเล่มสมบูรณ์ ชี้เป้าแม่นยำ!\nเริ่มตั้งต้นที่: ${prefix}${startStr}${sampleCd !== null ? sampleCd : '-'}${suffix}\nระบบได้ตั้งค่าจำนวน "1 เล่ม" ค้างไว้ให้แล้ว สามารถกดบันทึกข้อมูลได้เลยครับ`);
 };
 
-window.calculateBookFromBookNo = function() {
-    const prefix = document.getElementById('book-calc-prefix').value.trim().toUpperCase();
-    const bookNoStr = document.getElementById('book-calc-bookno').value.trim();
-    const qtyStr = document.getElementById('book-calc-qty').value.trim();
-    const suffix = document.getElementById('book-calc-suffix').value.trim().toUpperCase();
-    
-    if(prefix.length !== 2) { alert("กรุณาระบุ Prefix 2 หลัก"); return; }
-    if(suffix.length !== 2) { alert("กรุณาระบุ Suffix 2 หลัก"); return; }
-    if(!bookNoStr || isNaN(bookNoStr)) { alert("กรุณาระบุเลขที่เล่มเริ่มต้น"); return; }
-    if(!qtyStr || isNaN(qtyStr)) { alert("กรุณาระบุจำนวนเล่ม"); return; }
-    
+window.applyMagicBookNo = function(bookNoStr) {
     const bookNo = parseInt(bookNoStr, 10);
-    const qty = parseInt(qtyStr, 10);
-    
-    if(bookNo < 1 || qty < 1) {
-        alert("เลขเล่ม และจำนวนเล่ม ต้องมากกว่า 0"); return;
+    if(isNaN(bookNo) || bookNo < 1) {
+        if(bookNoStr.trim() !== '') alert("โปรดระบุเลขที่เล่มให้ถูกต้อง");
+        return;
     }
     
-    if(qty > 500) { 
-        if(!confirm(`คุณกำลังพยายามสร้างชุดข้อมูล ${qty} เล่ม (${(qty*240).toLocaleString()} รายการ) ซึ่งมีขนาดใหญ่มาก เครื่องอาจทำงานช้าลงชั่วขณะ ต้องการทำต่อหรือไม่?`)) {
-            return;
-        }
+    const prefixInput = document.getElementById('smart-prefix');
+    if(!prefixInput.value.trim()) {
+        prefixInput.value = 'EQ'; // Default guess if empty
     }
     
     const bookStart = (bookNo - 1) * 240 + 1;
-    const totalItems = qty * 240;
+    const startStr = bookStart.toString().padStart(8, '0');
     
-    let items = [];
-    for(let i = 0; i < totalItems; i++) {
-        let currentNumStr = (bookStart + i).toString().padStart(8, '0');
-        let cd = TrackingUtils.calculateS10CheckDigit(currentNumStr);
-        if(cd !== null) {
-            items.push(`${prefix}${currentNumStr}${cd}${suffix}`);
-        }
+    document.getElementById('smart-block1').value = startStr.substring(0, 4);
+    document.getElementById('smart-block2').value = startStr.substring(4, 8);
+    
+    // Trigger check digit
+    calculateSmartCheckDigit();
+    
+    // Auto enable Batch Form
+    const rangeEnable = document.getElementById('smart-range-enable');
+    if(!rangeEnable.checked) {
+        rangeEnable.checked = true;
+        toggleSmartRange();
     }
     
-    alert(`สร้างรายการจำนวน ${totalItems.toLocaleString()} รายการเรียบร้อยแล้วครับ!`);
-    sendToManualEdit(items);
+    document.getElementById('magic-bookno').value = '';
+    
+    // Focus on Qty to remind them to input how many books
+    const qtyInput = document.getElementById('smart-book');
+    qtyInput.focus();
+    
+    alert(`ตั้งค่าเตรียมสร้างจากเล่มที่ ${bookNo} สำเร็จ\nเลขเริ่มต้นคือ ${startStr}\nกรุณาระบุจำนวน 'เล่ม/กล่อง' ด้านล่างต่อเลยครับ`);
 };
