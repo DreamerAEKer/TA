@@ -275,18 +275,20 @@
                         </div>
 
                         <!-- ===== SAVE BUTTON (after images) ===== -->
-                        <button class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; margin-top:10px; padding:13px; font-size:1.05rem; border-radius:8px; background:linear-gradient(135deg,#1b5e20,#2e7d32,#43a047); color:white; border:none; cursor:pointer; letter-spacing:0.5px; box-shadow:0 3px 10px rgba(46,125,50,0.35);">
+                        <button id="exception-save-btn" class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; margin-top:10px; padding:13px; font-size:1.05rem; border-radius:8px; background:linear-gradient(135deg,#1b5e20,#2e7d32,#43a047); color:white; border:none; cursor:pointer; letter-spacing:0.5px; box-shadow:0 3px 10px rgba(46,125,50,0.35); transition: all 0.2s ease;">
                             ✅ บันทึกรายการลงประวัติ
                         </button>
 
-                        <!-- Moved Export Button to Top of History -->
+                        <!-- Moved Export Button to Bottom of History -->
                         <div style="margin-top:5px; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                             <h4 style="margin:0; font-size:1rem; color:#333;">ประวัติ / ตารางรายงาน</h4>
-                            <button class="btn btn-primary" onclick="exportExceptionImage()" style="background-color:#0288d1; border-color:#0288d1; color:white; font-size:0.95rem; padding:8px 16px;">📸 สร้างรูปภาพแจ้งหัวหน้า</button>
                         </div>
                         <!-- TABLE CONTAINER -->
                         <div id="exception-table-container" style="width:100%; min-width:0; overflow-x:auto;">
                             <p style="text-align:center; color:#999; padding:20px;">กำลังโหลดตารางรายงาน...</p>
+                        </div>
+                        <div style="margin-top:15px; text-align:center;">
+                            <button class="btn btn-primary" onclick="exportExceptionImage()" style="background:linear-gradient(135deg,#0288d1,#039bec); border:none; color:white; font-size:1rem; padding:12px 24px; border-radius:8px; width:100%; box-shadow:0 4px 12px rgba(2,136,209,0.3);">📸 สร้างรูปภาพแจ้งหัวหน้า (รวมรายการทั้งหมดตามสเปกรายงาน)</button>
                         </div>
                     </div>
                 </div>
@@ -677,7 +679,7 @@
 
     <div id="app-version"
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v1.31</div>
+        v1.32</div>
 
     <!-- IMAGE EDITOR MODAL -->
     <div id="img-editor-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:10px; box-sizing:border-box;">

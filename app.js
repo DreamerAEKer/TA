@@ -2114,7 +2114,7 @@ function processQmsImport() {
         }
         
         if (dates.length === 0) {
-            alert("⚠️ ระบบหาข้อมูลวันที่/เวลาในข้อความที่คุณก๊อปปี้มาไม่เจอเลยครับ\n\nข้อความที่ระบบได้รับ (150 ตัวอักษรแรก):\n" + text.substring(0, 150));
+            console.warn("No date found in QMS import text.");
         }
         
         tracks.forEach((t, i) => {
@@ -2601,6 +2601,23 @@ function addExceptionEntry() {
     extraItemCount = 0;
 
     renderExceptionTable();
+
+    // Visual feedback for Save button
+    const saveBtn = document.getElementById('exception-save-btn');
+    if (saveBtn) {
+        const originalText = saveBtn.innerHTML;
+        const originalBg = saveBtn.style.background;
+        
+        saveBtn.innerHTML = "✅ บันทึกรายการสำเร็จ!";
+        saveBtn.style.background = "linear-gradient(135deg,#004d40,#00695c)"; 
+        saveBtn.disabled = true;
+
+        setTimeout(() => {
+            saveBtn.innerHTML = originalText;
+            saveBtn.style.background = originalBg;
+            saveBtn.disabled = false;
+        }, 2000);
+    }
 }
 
 /**
