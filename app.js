@@ -1984,29 +1984,7 @@ function copyCrossRefAll() {
     }
 }
 
-// ==========================================
-// SECTION: EXCEPTION LOG (ตกหล่น)
-// ==========================================
 
-/**
- * Toggle between single-entry and range mode for Exception form.
- */
-function toggleExceptionRangeMode() {
-    const isRange = document.getElementById('exception-range-toggle').checked;
-    document.getElementById('exception-single-mode').style.display = isRange ? 'none' : 'flex';
-    document.getElementById('exception-range-mode').style.display = isRange ? 'block' : 'none';
-    document.getElementById('exception-range-preview').textContent = '';
-}
-
-/**
- * Add an extra (non-consecutive) tracking number row below the main form.
- */
-let extraItemCount = 0;
-function addExceptionExtraItem() {
-    const container = document.getElementById('exception-extra-items');
-    extraItemCount++;
-    const div = document.createElement('div');
-    div.id = `extra-item-${extraItemCount}`;
     div.style.cssText = 'display:flex; gap:8px; margin-top:6px; align-items:center;';
     div.innerHTML = `
         <input type="text" class="exception-extra-track" placeholder="เลขที่เพิ่มเติม (เช่น EQ123499999TH)" maxlength="13"
@@ -2344,11 +2322,482 @@ function exportExceptionImage() {
     });
 }
 
-// Update checkAuth hook internally to also init exception table if Admin
+// ==========================================
+// SECTION: EXCEPTION META & IMAGE ATTACHMENT
+// ==========================================
+
+const EXCEPTION_META_KEY = 'thp_exception_meta_v1';
+
+/** Toggle collapsible meta/image panels */
+function toggleExceptionMeta() {
+    const panel = document.getElementById('exception-meta-panel');
+    const chevron = document.getElementById('exception-meta-chevron');
+    if (!panel) return;
+    const open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    if (chevron) chevron.textContent = open ? '▼ แสดง' : '▲ ซ่อน';
+}
+
+function toggleExceptionImages() {
+    const panel = document.getElementById('exception-img-panel');
+    const chevron = document.getElementById('exception-img-chevron');
+    if (!panel) return;
+    const open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    if (chevron) chevron.textContent = open ? '▼ แสดง' : '▲ ซ่อน';
+}
+
+/** Persist and restore meta fields */
+function saveExceptionMeta() {
+    const meta = {
+        branch:   (document.getElementById('rpt-branch')?.value   || ''),
+        date:     (document.getElementById('rpt-date')?.value     || ''),
+        reporter: (document.getElementById('rpt-reporter')?.value || ''),
+        subject:  (document.getElementById('rpt-subject')?.value  || ''),
+        note:     (document.getElementById('rpt-note')?.value     || '')
+    };
+    localStorage.setItem(EXCEPTION_META_KEY, JSON.stringify(meta));
+}
+
+function loadExceptionMeta() {
+    try {
+        const raw = localStorage.getItem(EXCEPTION_META_KEY);
+        if (!raw) return;
+        const meta = JSON.parse(raw);
+        if (meta.branch)   document.getElementById('rpt-branch').value   = meta.branch;
+        if (meta.date)     document.getElementById('rpt-date').value     = meta.date;
+        if (meta.reporter) document.getElementById('rpt-reporter').value = meta.reporter;
+        if (meta.subject)  document.getElementById('rpt-subject').value  = meta.subject;
+        if (meta.note)     document.getElementById('rpt-note').value     = meta.note;
+    } catch(e) { /* ignore */ }
+}
+
+/** Image attachment storage (runtime only — not persisted across reloads) */
+let exceptionImages = []; // Array of { dataUrl, name }
+
+function handleExceptionImageUpload(files) {
+    if (!files || files.length === 0) return;
+    const preview = document.getElementById('exception-img-preview');
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const dataUrl = e.target.result;
+            const idx = exceptionImages.length;
+            exceptionImages.push({ dataUrl, name: file.name });
+
+            // Create preview thumb
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'position:relative; display:inline-block;';
+            wrapper.id = `exc-img-${idx}`;
+
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText = 'max-width:120px; max-height:90px; border-radius:4px; border:1px solid #ccc; display:block;';
+            img.title = file.name;
+
+            const del = document.createElement('button');
+            del.textContent = '✕';
+            del.style.cssText = 'position:absolute; top:-5px; right:-5px; border-radius:50%; width:18px; height:18px; border:none; background:#d32f2f; color:white; font-size:0.7rem; cursor:pointer; line-height:1; padding:0;';
+            del.onclick = function() {
+                exceptionImages.splice(idx, 1, null); // null out (keep index stable)
+                wrapper.remove();
+                // Re-compact
+                exceptionImages = exceptionImages.filter(x => x !== null);
+                // Re-assign IDs to remaining wrappers
+                const allWrappers = document.getElementById('exception-img-preview').children;
+                Array.from(allWrappers).forEach((w, i) => { w.id = `exc-img-${i}`; });
+            };
+
+            wrapper.appendChild(img);
+            wrapper.appendChild(del);
+            preview.appendChild(wrapper);
+        };
+        reader.readAsDataURL(file);
+    });
+    // Auto-open panel after first image
+    const panel = document.getElementById('exception-img-panel');
+    const chevron = document.getElementById('exception-img-chevron');
+    if (panel && panel.style.display === 'none') {
+        panel.style.display = 'block';
+        if (chevron) chevron.textContent = '▲ ซ่อน';
+    }
+    // Reset input so same file can be re-added
+    document.getElementById('exception-img-upload').value = '';
+}
+
+function clearExceptionImages() {
+    exceptionImages = [];
+    const preview = document.getElementById('exception-img-preview');
+    if (preview) preview.innerHTML = '';
+}
+
+// ==========================================
+// SECTION: EXCEPTION LOG (ตกหล่น)
+// ==========================================
+
+/**
+ * Get current meta fields as an object.
+ */
+function getExceptionMeta() {
+    return {
+        branch:   document.getElementById('rpt-branch')?.value.trim()   || '',
+        date:     document.getElementById('rpt-date')?.value            || '',
+        reporter: document.getElementById('rpt-reporter')?.value.trim() || '',
+        subject:  document.getElementById('rpt-subject')?.value.trim()  || '',
+        note:     document.getElementById('rpt-note')?.value.trim()     || ''
+    };
+}
+
+/**
+ * Toggle between single-entry and range mode for Exception form.
+ */
+function toggleExceptionRangeMode() {
+    const isRange = document.getElementById('exception-range-toggle').checked;
+    document.getElementById('exception-single-mode').style.display = isRange ? 'none' : 'flex';
+    document.getElementById('exception-range-mode').style.display = isRange ? 'block' : 'none';
+    document.getElementById('exception-range-preview').textContent = '';
+}
+
+/**
+ * Add an extra (non-consecutive) tracking number row below the main form.
+ */
+let extraItemCount = 0;
+function addExceptionExtraItem() {
+    const container = document.getElementById('exception-extra-items');
+    extraItemCount++;
+    const div = document.createElement('div');
+    div.id = `extra-item-${extraItemCount}`;
+    div.style.cssText = 'display:flex; gap:8px; margin-top:6px; align-items:center;';
+    div.innerHTML = `
+        <input type="text" class="exception-extra-track" placeholder="เลขที่เพิ่มเติม (เช่น EQ123499999TH)" maxlength="13"
+            style="flex:1; text-transform:uppercase; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.9rem;">
+        <button type="button" onclick="document.getElementById('extra-item-${extraItemCount}').remove()"
+            style="padding:6px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#d32f2f; cursor:pointer; font-size:0.9rem;">✕</button>
+    `;
+    container.appendChild(div);
+}
+
+/**
+ * Parse a tracking number string into its components.
+ */
+function parseExceptionTrackNum(str) {
+    str = str.trim().toUpperCase().replace(/\s+/g, '');
+    const m = str.match(/^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/);
+    if (!m) return null;
+    return { prefix: m[1], body: m[2], cd: m[3], suffix: m[4], bodyInt: parseInt(m[2]), full: str };
+}
+
+/**
+ * Build a full tracking number with auto check digit.
+ */
+function buildExceptionTrackNum(prefix, bodyInt, suffix) {
+    const bodyStr = bodyInt.toString().padStart(8, '0');
+    const cd = TrackingUtils.calculateS10CheckDigit(bodyStr);
+    return `${prefix}${bodyStr}${cd}${suffix}`;
+}
+
+/**
+ * Main save: collects all inputs and saves as one session.
+ */
+function addExceptionEntry() {
+    const isRange = document.getElementById('exception-range-toggle').checked;
+    const reason = document.getElementById('exception-reason-input').value.trim();
+
+    if (!reason) {
+        alert('กรุณาระบุเหตุผลที่ตกหล่น');
+        document.getElementById('exception-reason-input').focus();
+        return;
+    }
+
+    const trackNums = [];
+
+    if (isRange) {
+        const startRaw = document.getElementById('exception-start-input').value.trim().toUpperCase().replace(/\s+/g, '');
+        const endRaw   = document.getElementById('exception-end-input').value.trim().toUpperCase().replace(/\s+/g, '');
+
+        const startParsed = parseExceptionTrackNum(startRaw);
+        const endParsed   = parseExceptionTrackNum(endRaw);
+
+        if (!startParsed) { alert('เลขเริ่มต้นไม่ถูกต้อง'); return; }
+        if (!endParsed)   { alert('เลขสุดท้ายไม่ถูกต้อง'); return; }
+        if (startParsed.prefix !== endParsed.prefix || startParsed.suffix !== endParsed.suffix) {
+            alert('เลขเริ่มต้นและสุดท้ายต้องเป็นชุดเดียวกัน (Prefix/Suffix ตรงกัน)');
+            return;
+        }
+        if (startParsed.bodyInt > endParsed.bodyInt) {
+            alert('เลขเริ่มต้นต้องน้อยกว่าหรือเท่ากับเลขสุดท้าย');
+            return;
+        }
+
+        const count = endParsed.bodyInt - startParsed.bodyInt + 1;
+        if (count > 500 && !confirm(`คุณกำลังบันทึก ${count} รายการ ยืนยันหรือไม่?`)) return;
+
+        for (let i = startParsed.bodyInt; i <= endParsed.bodyInt; i++) {
+            trackNums.push(buildExceptionTrackNum(startParsed.prefix, i, startParsed.suffix));
+        }
+    } else {
+        const single = document.getElementById('exception-track-input').value.trim().toUpperCase().replace(/\s+/g, '');
+        if (!single || single.length !== 13) {
+            alert('กรุณากรอกเลขพัสดุให้ครบ 13 หลัก');
+            document.getElementById('exception-track-input').focus();
+            return;
+        }
+        trackNums.push(single);
+    }
+
+    // Extra Items
+    document.querySelectorAll('.exception-extra-track').forEach(inp => {
+        const v = inp.value.trim().toUpperCase().replace(/\s+/g, '');
+        if (v && v.length === 13 && !trackNums.includes(v)) trackNums.push(v);
+    });
+
+    if (trackNums.length === 0) { alert('ไม่พบเลขพัสดุที่ถูกต้อง'); return; }
+
+    let companyName = '-';
+    if (typeof CustomerDB !== 'undefined') {
+        const info = CustomerDB.get(trackNums[0]);
+        if (info) companyName = info.name;
+    }
+
+    ExceptionManager.saveSession(trackNums, companyName, reason);
+
+    document.getElementById('exception-track-input').value = '';
+    document.getElementById('exception-start-input').value = '';
+    document.getElementById('exception-end-input').value = '';
+    document.getElementById('exception-range-preview').textContent = '';
+    document.getElementById('exception-extra-items').innerHTML = '';
+    extraItemCount = 0;
+
+    renderExceptionTable();
+}
+
+/**
+ * Group entries by sessionId, show range display, embed meta & images in export target.
+ */
+function renderExceptionTable() {
+    const container = document.getElementById('exception-table-container');
+    if (!container) return;
+
+    if (typeof ExceptionManager === 'undefined') {
+        container.innerHTML = '<span style="color:red;">ExceptionManager not loaded.</span>';
+        return;
+    }
+
+    const exceptions = ExceptionManager.getAll();
+    const meta = getExceptionMeta();
+
+    if (exceptions.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">ยังไม่มีข้อมูลประวัติการตกหล่น</p>';
+        return;
+    }
+
+    // Group by sessionId
+    const sessionMap = new Map();
+    exceptions.forEach(item => {
+        const sid = item.sessionId || item.id;
+        if (!sessionMap.has(sid)) {
+            sessionMap.set(sid, {
+                sessionId: sid,
+                companyName: item.companyName,
+                reason: item.reason,
+                timestamp: item.timestamp,
+                entries: []
+            });
+        }
+        sessionMap.get(sid).entries.push(item);
+    });
+
+    const sessions = Array.from(sessionMap.values()).sort((a, b) =>
+        new Date(b.timestamp) - new Date(a.timestamp)
+    );
+
+    function fmtNum(raw) {
+        raw = raw.replace(/\s+/g, '');
+        if (raw.length === 13)
+            return `${raw.slice(0,2)} ${raw.slice(2,6)} ${raw.slice(6,10)} ${raw.slice(10,11)} ${raw.slice(11,13)}`;
+        return raw;
+    }
+
+    function compressEntries(entries) {
+        const parsed = entries.map(e => {
+            const m = e.trackNum.replace(/\s+/g,'').match(/^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/);
+            return m ? { full: e.trackNum.replace(/\s+/g,''), prefix: m[1], body: parseInt(m[2]), cd: m[3], suffix: m[4] } : { full: e.trackNum, prefix: null };
+        });
+        const sortable = parsed.filter(p => p.prefix !== null).sort((a,b) => {
+            if (a.prefix !== b.prefix || a.suffix !== b.suffix) return a.full.localeCompare(b.full);
+            return a.body - b.body;
+        });
+        const unsortable = parsed.filter(p => p.prefix === null);
+        const groups = [];
+        let i = 0;
+        while (i < sortable.length) {
+            let j = i;
+            while (j+1 < sortable.length &&
+                sortable[j+1].prefix === sortable[i].prefix &&
+                sortable[j+1].suffix === sortable[i].suffix &&
+                sortable[j+1].body === sortable[j].body + 1) { j++; }
+            if (j - i === 0) {
+                groups.push({ display: fmtNum(sortable[i].full), count: 1 });
+            } else {
+                groups.push({
+                    display: `${fmtNum(sortable[i].full)} <span style="color:#555;">ถึง</span> ${fmtNum(sortable[j].full)}`,
+                    count: j - i + 1
+                });
+            }
+            i = j + 1;
+        }
+        unsortable.forEach(p => groups.push({ display: fmtNum(p.full), count: 1 }));
+        return groups;
+    }
+
+    // ---- Build Header (meta) HTML ----
+    const reportDate = meta.date ? new Date(meta.date).toLocaleDateString('th-TH') : new Date().toLocaleDateString('th-TH');
+    let metaHtml = '';
+    if (meta.branch || meta.reporter || meta.subject || meta.note) {
+        metaHtml += `<div style="margin-bottom:10px; font-size:0.88rem; line-height:1.7;">`;
+        if (meta.subject)  metaHtml += `<div><strong>เรื่อง:</strong> ${meta.subject}</div>`;
+        if (meta.branch)   metaHtml += `<div><strong>ที่ทำการ:</strong> ${meta.branch}</div>`;
+        if (meta.reporter) metaHtml += `<div><strong>ผู้รายงาน:</strong> ${meta.reporter}</div>`;
+        if (meta.note)     metaHtml += `<div><strong>หมายเหตุ:</strong> ${meta.note}</div>`;
+        metaHtml += `</div>`;
+    }
+
+    // ---- Build Image HTML (for export) ----
+    const validImages = exceptionImages.filter(x => x && x.dataUrl);
+    let imagesHtml = '';
+    if (validImages.length > 0) {
+        imagesHtml = `
+            <div style="margin-top:12px; padding-top:10px; border-top:1px solid #eee;">
+                <div style="font-size:0.8rem; font-weight:bold; color:#555; margin-bottom:6px;">รูปภาพประกอบ:</div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                    ${validImages.map(img => `<img src="${img.dataUrl}" style="max-width:200px; max-height:160px; border:1px solid #ccc; border-radius:4px;" title="${img.name}">`).join('')}
+                </div>
+            </div>`;
+    }
+
+    // ---- Build Table ----
+    let tableRows = '';
+    sessions.forEach((session, idx) => {
+        const dateStr = new Date(session.timestamp).toLocaleDateString('th-TH');
+        const groups = compressEntries(session.entries);
+        const totalCount = session.entries.length;
+        const trackDisplay = groups.map(g =>
+            `<div style="font-family:monospace; font-weight:bold; white-space:nowrap; margin-bottom:2px;">${g.display}</div>`
+        ).join('');
+
+        tableRows += `
+            <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
+                <td style="padding:10px 8px; text-align:center; color:#999;">${idx + 1}</td>
+                <td style="padding:10px 8px;">${trackDisplay}<div style="font-size:0.75rem; color:#888; margin-top:4px;">📅 ${dateStr}</div></td>
+                <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1;">${totalCount}</td>
+                <td style="padding:10px 8px;">${session.companyName}</td>
+                <td style="padding:10px 8px; color:#d32f2f;">${session.reason}</td>
+                <td style="padding:10px 8px; text-align:center;" data-html2canvas-ignore>
+                    <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteExceptionSession('${session.sessionId}')">ลบ</button>
+                </td>
+            </tr>`;
+    });
+
+    let html = `
+        <div id="exception-export-target" style="background:white; padding:15px; border-radius:8px;">
+            <div style="margin-bottom:10px; border-bottom:2px solid #333; padding-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:4px;">
+                <strong style="font-size:1.1rem;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</strong>
+                <span style="font-size:0.8rem; color:#666;">${reportDate}</span>
+            </div>
+            ${metaHtml}
+            <table style="width:100%; font-size:0.9rem; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f1f1f1;">
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;">ลำดับ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เลขพัสดุ / ช่วงเลข</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;">จำนวน</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">ชื่อบริษัท/สังกัด</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เหตุผล / สถานะ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;" data-html2canvas-ignore>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+            ${imagesHtml}
+        </div>
+        <div style="margin-top:10px; text-align:right;">
+            <button class="btn btn-neutral" onclick="clearAllExceptions()">🗑️ ล้างประวัติทั้งหมด</button>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+function deleteExceptionSession(sessionId) {
+    if (confirm('ลบรายการในกลุ่มนี้ทั้งหมดใช่หรือไม่?')) {
+        ExceptionManager.removeSession(sessionId);
+        renderExceptionTable();
+    }
+}
+
+function deleteException(id) {
+    if (confirm('ยืนยันลบรายการนี้?')) {
+        ExceptionManager.remove(id);
+        renderExceptionTable();
+    }
+}
+
+function clearAllExceptions() {
+    if (ExceptionManager.clearAll()) {
+        renderExceptionTable();
+    }
+}
+
+function exportExceptionImage() {
+    // Re-render to bake latest meta + images into the export target
+    renderExceptionTable();
+
+    const targetNode = document.getElementById('exception-export-target');
+    if (!targetNode) {
+        alert('ไม่พบข้อมูลที่จะสร้างรูปภาพ กรุณาเพิ่มประวัติก่อนครับ');
+        return;
+    }
+
+    if (typeof html2canvas === 'undefined') {
+        alert('ระบบกำลังโหลดเครื่องมือสร้างภาพ กรุณาลองใหม่อีกครั้ง');
+        return;
+    }
+
+    const originalBackground = targetNode.style.background;
+    targetNode.style.background = '#ffffff';
+    const originalPadding = targetNode.style.padding;
+    targetNode.style.padding = '30px';
+
+    html2canvas(targetNode, {
+        scale: 1.5,
+        backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: true
+    }).then(canvas => {
+        targetNode.style.background = originalBackground;
+        targetNode.style.padding = originalPadding;
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.9);
+        const link = document.createElement('a');
+        link.download = `Exception_Report_${new Date().toISOString().slice(0, 10)}.jpg`;
+        link.href = imgData;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }).catch(err => {
+        targetNode.style.background = originalBackground;
+        targetNode.style.padding = originalPadding;
+        console.error('Error generating image:', err);
+        alert('เกิดข้อผิดพลาดในการสร้างภาพ: ' + err.message);
+    });
+}
+
+// Update checkAuth hook internally to also init exception table + meta if Admin
 const originalCheckAuth = checkAuth;
 checkAuth = function() {
     originalCheckAuth();
     if (document.getElementById('exception-table-container')) {
+        loadExceptionMeta();   // Restore meta fields from localStorage
         renderExceptionTable();
     }
 };
