@@ -2044,7 +2044,8 @@ function processQmsImport() {
 
     // Extract tracking numbers and optional datetime using index distance to handle multiline grid pastes
     const trackPattern = /[a-zA-Z]{2}\d{9}[a-zA-Z]{2}/g;
-    const datetimePattern = /(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2})/g;
+    // VERY LOOSE regex: DD/MM/YYYY then any non-digits, then HH:MM
+    const datetimePattern = /(\d{1,2}\/\d{1,2}\/\d{2,4})[^\d]*(\d{1,2}:\d{2})/g;
     
     const trackMap = new Map();
     let hasAnyMatches = false;
@@ -2710,7 +2711,7 @@ function renderExceptionTable() {
     });
 
     let html = `
-        <div style="width:100%; overflow-x:auto;">
+        <div style="width:100%; min-width:0; overflow-x:auto;">
             <div id="exception-export-target" style="background:white; padding:25px; border-radius:8px; min-width:850px; font-family:sans-serif;">
                 <div style="margin-bottom:15px; border-bottom:2px solid #333; padding-bottom:10px; display:flex; justify-content:space-between; align-items:flex-end;">
                     <strong style="font-size:1.3rem; color:#222;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</strong>

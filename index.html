@@ -278,10 +278,9 @@
                             <h4 style="margin:0; font-size:1rem; color:#333;">ประวัติ / ตารางรายงาน</h4>
                             <button class="btn btn-primary" onclick="exportExceptionImage()" style="background-color:#0288d1; border-color:#0288d1; color:white; font-size:0.95rem; padding:8px 16px;">📸 สร้างรูปภาพแจ้งหัวหน้า</button>
                         </div>
-
-                        <div id="exception-table-container">
-                            <!-- Table injected via app.js -->
-
+                        <!-- TABLE CONTAINER -->
+                        <div id="exception-table-container" style="width:100%; min-width:0; overflow-x:auto;">
+                            <p style="text-align:center; color:#999; padding:20px;">กำลังโหลดตารางรายงาน...</p>
                         </div>
                     </div>
                 </div>
@@ -672,7 +671,7 @@
 
     <div id="app-version"
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v1.24</div>
+        v1.25</div>
 
     <!-- IMAGE EDITOR MODAL -->
     <div id="img-editor-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:10px; box-sizing:border-box;">
@@ -694,10 +693,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="utils.js?v=45"></script>
-    <script src="db_manager.js?v=45"></script>
-    <script src="smart_input.js?v=45"></script>
-    <script src="app.js?v=45"></script>
+    <script src="utils.js?v=46"></script>
+    <script src="db_manager.js?v=46"></script>
+    <script src="smart_input.js?v=46"></script>
+    <script src="app.js?v=46"></script>
 </body>
 
 </html>
