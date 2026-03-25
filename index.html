@@ -198,17 +198,22 @@
                             </div>
                         </div>
                         <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-                            <div style="flex:2; min-width:200px; position:relative;">
+                            <div style="flex:2; min-width:220px; position:relative;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                                    <label style="font-size:0.8rem; display:block; margin:0;">วันที่และเวลา (Date & Time)</label>
-                                    <button type="button" id="exception-datetime-edit" style="display:none; background:none; border:none; color:#0288d1; font-size:0.75rem; cursor:pointer; padding:0; text-decoration:underline;" onclick="document.getElementById('exception-datetime').readOnly=false; document.getElementById('exception-datetime').style.backgroundColor='#fff'; document.getElementById('exception-datetime').focus(); this.style.display='none';">✏️ แก้ไข</button>
+                                    <label style="font-size:0.8rem; display:block; margin:0;">📅 วันที่และเวลา (Date & Time)</label>
+                                    <span id="exception-be-display" style="font-size:0.8rem; color:#0288d1; font-weight:bold;"></span>
                                 </div>
-                                <input type="text" id="exception-datetime" placeholder="เช่น 19/03/2569 17:03 (เว้นว่างได้)" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                                    <input type="date" id="exception-date-picker" style="flex:1; min-width:130px; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.9rem; box-sizing:border-box;" oninput="updateBEDisplay()">
+                                    <input type="time" id="exception-time-picker" style="flex:0 0 100px; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.9rem; box-sizing:border-box;" oninput="updateBEDisplay()">
+                                </div>
+                                <input type="hidden" id="exception-datetime">
                             </div>
                             <div style="flex:0.5; min-width:100px;">
                                 <button class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; height:40px; padding:0;">➕ บันทึก</button>
                             </div>
                         </div>
+
 
                         <!-- ===== REPORT META SECTION ===== -->
                         <div style="margin-top:18px; border-top:1px dashed #ddd; padding-top:14px;">
@@ -671,7 +676,7 @@
 
     <div id="app-version"
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v1.28</div>
+        v1.29</div>
 
     <!-- IMAGE EDITOR MODAL -->
     <div id="img-editor-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:10px; box-sizing:border-box;">
@@ -693,10 +698,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="utils.js?v=49"></script>
-    <script src="db_manager.js?v=49"></script>
-    <script src="smart_input.js?v=49"></script>
-    <script src="app.js?v=49"></script>
+    <script src="utils.js?v=50"></script>
+    <script src="db_manager.js?v=50"></script>
+    <script src="smart_input.js?v=50"></script>
+    <script src="app.js?v=50"></script>
 </body>
 
 </html>

@@ -2029,6 +2029,50 @@ function copyCrossRefAll() {
 // ==========================================
 let qmsStagingGroups = {}; // Memory to store parsed groups
 
+// =====================================
+// DATE HELPER: BE <-> CE conversion
+// =====================================
+
+/**
+ * Given a BE date string like "19/03/2569 17:03" or "20/03/2569"
+ * parse it and set the date+time pickers, updating hidden field and display.
+ */
+function setExceptionDatePickerFromBE(beStr) {
+    if (!beStr) return;
+    // Match DD/MM/YYYY HH:MM or DD/MM/YYYY
+    const m = beStr.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:\s+(\d{1,2}):(\d{2}))/);
+    if (!m) return;
+    const [, dd, mm, yyyy_be, hh, min] = m;
+    const yyyy_ce = parseInt(yyyy_be, 10) - 543;
+    const dateStr = `${yyyy_ce}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+    const datePicker = document.getElementById('exception-date-picker');
+    const timePicker = document.getElementById('exception-time-picker');
+    if (datePicker) datePicker.value = dateStr;
+    if (timePicker && hh && min) timePicker.value = `${hh.padStart(2,'0')}:${min}`;
+    updateBEDisplay();
+}
+
+/** Called by oninput on both pickers — updates hidden field and the blue BE label */
+function updateBEDisplay() {
+    const dateVal = document.getElementById('exception-date-picker')?.value;
+    const timeVal = document.getElementById('exception-time-picker')?.value;
+    const beDisplay = document.getElementById('exception-be-display');
+    const hidden = document.getElementById('exception-datetime');
+    if (!dateVal) {
+        if (beDisplay) beDisplay.textContent = '';
+        if (hidden) hidden.value = '';
+        return;
+    }
+    // Convert CE to BE
+    const [yyyy_ce, mm, dd] = dateVal.split('-');
+    const yyyy_be = parseInt(yyyy_ce, 10) + 543;
+    const beStr = timeVal
+        ? `${dd}/${mm}/${yyyy_be} ${timeVal}`
+        : `${dd}/${mm}/${yyyy_be}`;
+    if (beDisplay) beDisplay.textContent = `📅 ${beStr}`;
+    if (hidden) hidden.value = beStr;
+}
+
 function toggleQmsStaging() {
     const panel = document.getElementById('qms-staging-panel');
     const chevron = document.getElementById('qms-staging-chevron');
@@ -2272,16 +2316,9 @@ function draftReportFromGroup(prefix) {
         subjectInput.value = "รายงานชิ้นงานตกหล่น: " + companyNameVal;
     }
 
-    // NEW: Auto-fill Date/Time
+    // NEW: Auto-fill Date/Time from QMS into the new pickers
     if (group.extractedDateTime) {
-        const dtInput = document.getElementById('exception-datetime');
-        const dtEditBtn = document.getElementById('exception-datetime-edit');
-        if (dtInput) {
-            dtInput.value = group.extractedDateTime;
-            dtInput.readOnly = true;
-            dtInput.style.backgroundColor = '#f0f0f0';
-            if (dtEditBtn) dtEditBtn.style.display = 'inline-block';
-        }
+        setExceptionDatePickerFromBE(group.extractedDateTime);
     }
     const fsInput = document.getElementById('exception-first-status');
     if (fsInput) fsInput.value = 'ใส่ของลงถุง'; // Enforce default
@@ -2549,14 +2586,12 @@ function addExceptionEntry() {
     document.getElementById('exception-range-preview').textContent = '';
     document.getElementById('exception-extra-items').innerHTML = '';
     
-    const dtInput = document.getElementById('exception-datetime');
-    if (dtInput) {
-        dtInput.value = '';
-        dtInput.readOnly = false;
-        dtInput.style.backgroundColor = '#fff';
-    }
-    const dtEditBtn = document.getElementById('exception-datetime-edit');
-    if (dtEditBtn) dtEditBtn.style.display = 'none';
+    // Reset the date+time pickers
+    const dpicker = document.getElementById('exception-date-picker');
+    const tpicker = document.getElementById('exception-time-picker');
+    if (dpicker) dpicker.value = '';
+    if (tpicker) tpicker.value = '';
+    updateBEDisplay();
     extraItemCount = 0;
 
     renderExceptionTable();
