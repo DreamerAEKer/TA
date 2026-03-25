@@ -2042,17 +2042,46 @@ function processQmsImport() {
     const text = document.getElementById('qms-import-text').value;
     if (!text) return;
 
-    // Extract all 13-digit tracking numbers
-    const trackPattern = /[a-zA-Z]{2}\d{9}[a-zA-Z]{2}/g;
-    const matches = text.match(trackPattern);
+    // Extract tracking numbers and optional datetime line-by-line for context
+    const lines = text.split('\n');
+    const trackPattern = /[a-zA-Z]{2}\d{9}[a-zA-Z]{2}/;
+    // Looking for a date like DD/MM/YYYY and time HH:MM
+    const datetimePattern = /(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2})/;
     
-    if (!matches || matches.length === 0) {
-        alert('ไม่พบเลขพัสดุรูปแบบ 13 หลักในข้อมูลที่วาง');
-        return;
+    const trackMap = new Map();
+    let hasAnyMatches = false;
+
+    lines.forEach(line => {
+        const tMatch = line.match(trackPattern);
+        if (tMatch) {
+            hasAnyMatches = true;
+            const track = tMatch[0].toUpperCase();
+            if (!trackMap.has(track)) {
+                let dtStr = '';
+                const dMatch = line.match(datetimePattern);
+                if (dMatch) {
+                    dtStr = `${dMatch[1]} ${dMatch[2]}`;
+                }
+                trackMap.set(track, dtStr);
+            }
+        }
+    });
+
+    if (!hasAnyMatches) {
+        // Fallback to global match if multiline logic fails
+        const globalPattern = /[a-zA-Z]{2}\d{9}[a-zA-Z]{2}/g;
+        const fallbackMatches = text.match(globalPattern);
+        if (!fallbackMatches) {
+            alert('ไม่พบเลขพัสดุรูปแบบ 13 หลักในข้อมูลที่วาง');
+            return;
+        }
+        fallbackMatches.forEach(t => {
+            const upT = t.toUpperCase();
+            if(!trackMap.has(upT)) trackMap.set(upT, '');
+        });
     }
 
-    // Clean up to uppercase and unique
-    const uniqueTracks = [...new Set(matches.map(t => t.toUpperCase()))];
+    const uniqueTracks = Array.from(trackMap.keys());
     
     qmsStagingGroups = {};
     const existingExceptions = ExceptionManager.getAll();
@@ -2063,6 +2092,7 @@ function processQmsImport() {
     uniqueTracks.forEach(track => {
         // Group by 4 digits: first 2 letters, then the NEXT 4 digits.
         const groupPrefix = track.substring(2, 6);
+        const dtStr = trackMap.get(track);
         
         if (!qmsStagingGroups[groupPrefix]) {
             qmsStagingGroups[groupPrefix] = {
@@ -2070,8 +2100,11 @@ function processQmsImport() {
                 prefix: groupPrefix,
                 items: [],
                 companyHint: 'กำลังค้นหา...',
-                companyFound: false
+                companyFound: false,
+                extractedDateTime: dtStr
             };
+        } else if (!qmsStagingGroups[groupPrefix].extractedDateTime && dtStr) {
+            qmsStagingGroups[groupPrefix].extractedDateTime = dtStr;
         }
         
         const isDuplicate = existingNumSet.has(track);
@@ -2221,6 +2254,14 @@ function draftReportFromGroup(prefix) {
     if (subjectInput && !subjectInput.value && companyNameVal) {
         subjectInput.value = "รายงานชิ้นงานตกหล่น: " + companyNameVal;
     }
+
+    // NEW: Auto-fill Date/Time
+    if (group.extractedDateTime) {
+        const dtInput = document.getElementById('exception-datetime');
+        if (dtInput) dtInput.value = group.extractedDateTime;
+    }
+    const fsInput = document.getElementById('exception-first-status');
+    if (fsInput) fsInput.value = 'ใส่ของลงถุง'; // Enforce default
 
     // Scroll down to the form smoothly
     if (mainInput) {
@@ -2467,7 +2508,10 @@ function addExceptionEntry() {
         if (info) companyName = info.name;
     }
 
-    ExceptionManager.saveSession(trackNums, companyName, reason);
+    const firstStatus = document.getElementById('exception-first-status').value.trim();
+    const dateTime = document.getElementById('exception-datetime').value.trim();
+
+    ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime);
 
     document.getElementById('exception-track-input').value = '';
     document.getElementById('exception-start-input').value = '';
@@ -2574,11 +2618,15 @@ function renderExceptionTable() {
     const validImages = exceptionImages.filter(x => x && x.dataUrl);
     let imagesHtml = '';
     if (validImages.length > 0) {
+        const scaleNode = document.getElementById('exception-img-scale');
+        const scaleVal = scaleNode ? scaleNode.value : "100";
+        const imgSize = (parseInt(scaleVal) / 100 * 200) + "px"; // Base size 200px
+        
         imagesHtml = `
             <div style="margin-top:12px; padding-top:10px; border-top:1px solid #eee;">
                 <div style="font-size:0.8rem; font-weight:bold; color:#555; margin-bottom:6px;">รูปภาพประกอบ:</div>
-                <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                    ${validImages.map(img => `<img src="${img.dataUrl}" style="max-width:200px; max-height:160px; border:1px solid #ccc; border-radius:4px;" title="${img.name}">`).join('')}
+                <div id="exception-img-export-area" style="display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start;">
+                    ${validImages.map(img => `<img src="${img.dataUrl}" style="width:${imgSize}; object-fit:contain; border:1px solid #ccc; border-radius:4px;" title="${img.name}">`).join('')}
                 </div>
             </div>`;
     }
@@ -2593,15 +2641,23 @@ function renderExceptionTable() {
             `<div style="font-family:monospace; font-weight:bold; white-space:nowrap; margin-bottom:2px;">${g.display}</div>`
         ).join('');
 
+        const firstEntry = session.entries[0];
+        const dispFirstStatus = firstEntry && firstEntry.firstStatus ? firstEntry.firstStatus : 'ใส่ของลงถุง';
+        const dispDateTime = firstEntry && firstEntry.dateTime ? firstEntry.dateTime : dateStr;
+
         tableRows += `
             <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
-                <td style="padding:10px 8px; text-align:center; color:#999;">${idx + 1}</td>
-                <td style="padding:10px 8px;">${trackDisplay}<div style="font-size:0.75rem; color:#888; margin-top:4px;">📅 ${dateStr}</div></td>
-                <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1;">${totalCount}</td>
-                <td style="padding:10px 8px;">${session.companyName}</td>
-                <td style="padding:10px 8px; color:#d32f2f;">${session.reason}</td>
-                <td style="padding:10px 8px; text-align:center;" data-html2canvas-ignore>
-                    <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteExceptionSession('${session.sessionId}')">ลบ</button>
+                <td style="padding:10px 8px; text-align:center; color:#999; vertical-align:middle;">${idx + 1}</td>
+                <td style="padding:10px 8px;">${trackDisplay}</td>
+                <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1; vertical-align:middle;">${totalCount}</td>
+                <td style="padding:10px 8px; vertical-align:middle;">${session.companyName}</td>
+                <td style="padding:10px 8px; line-height:1.4;">
+                    <div style="color:#d32f2f; font-weight:bold; margin-bottom:4px;">${session.reason}</div>
+                    <div style="font-size:0.8rem; color:#555;"><strong>สถานะแรก:</strong> <span style="color:#333;">${dispFirstStatus}</span></div>
+                    <div style="font-size:0.8rem; color:#555;"><strong>วันที่/เวลา:</strong> <span style="color:#0288d1;">${dispDateTime}</span></div>
+                </td>
+                <td style="padding:10px 8px; text-align:center; vertical-align:middle;" data-html2canvas-ignore>
+                    <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteExceptionSession('${session.sessionId}')">🗑️ ลบ</button>
                 </td>
             </tr>`;
     });
@@ -2616,12 +2672,12 @@ function renderExceptionTable() {
             <table style="width:100%; font-size:0.9rem; border-collapse:collapse;">
                 <thead>
                     <tr style="background:#f1f1f1;">
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;">ลำดับ</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เลขพัสดุ / ช่วงเลข</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;">จำนวน</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">ชื่อบริษัท/สังกัด</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เหตุผล / สถานะ</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;" data-html2canvas-ignore>จัดการ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center; width:5%;">ลำดับ</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left; width:22%;">เลขพัสดุ / ช่วงเลข</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center; width:8%;">จำนวน</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left; width:25%;">ชื่อบริษัท/สังกัด</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left; width:30%;">รายละเอียดการตกหล่น</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center; width:10%;" data-html2canvas-ignore>จัดการ</th>
                     </tr>
                 </thead>
                 <tbody>${tableRows}</tbody>
@@ -2710,4 +2766,20 @@ checkAuth = function() {
     }
 };
 
-
+function updateExceptionImageScale() {
+    const scaleVal = document.getElementById('exception-img-scale') ? document.getElementById('exception-img-scale').value : "100";
+    const imgSize = (parseInt(scaleVal) / 100 * 200) + "px"; // Mapping 100% to 200px base
+    
+    // Update live preview in upload section
+    const previewImgs = document.querySelectorAll('#exception-img-preview img');
+    previewImgs.forEach(img => {
+        img.style.maxWidth = imgSize;
+        img.style.maxHeight = imgSize;
+    });
+    
+    // Update export Target section images (if visible)
+    const exportImgs = document.querySelectorAll('#exception-img-export-area img');
+    exportImgs.forEach(img => {
+        img.style.width = imgSize;
+    });
+}

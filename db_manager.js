@@ -943,7 +943,7 @@ const ExceptionManager = {
      * @param {string} companyName - Company name
      * @param {string} reason - Reason
      */
-    saveSession: (trackNums, companyName, reason) => {
+    saveSession: (trackNums, companyName, reason, firstStatus = 'ใส่ของลงถุง', dateTime = '') => {
         const exceptions = ExceptionManager.getAll();
         const sessionId = Date.now().toString();
 
@@ -956,6 +956,8 @@ const ExceptionManager = {
                 trackNum: trackNum,
                 companyName: companyName,
                 reason: reason,
+                firstStatus: firstStatus,
+                dateTime: dateTime,
                 timestamp: new Date().toISOString(),
                 sessionId: sessionId
             });

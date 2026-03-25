@@ -117,7 +117,6 @@
                         <div class="workspace-header">
                             <i class="icon">⚠️</i>
                             <h3 class="workspace-title">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</h3>
-                            <button class="btn btn-primary" onclick="exportExceptionImage()" style="background-color:#0288d1; border-color:#0288d1; color:white; margin-left:auto; font-size:0.8rem; padding:4px 8px;">📸 สร้างรูปภาพแจ้งหัวหน้า</button>
                         </div>
                         <p style="font-size:0.9rem; color:#666; margin-bottom:10px;">บันทึกเลขพัสดุที่ไม่สามารถหาข้อมูลพบหรือมีปัญหา พร้อมระบุสาเหตุ เพื่อเก็บเป็นประวัติและส่งรายงานผ่านไลน์</p>
 
@@ -179,9 +178,9 @@
                         </div>
 
 
-                        <!-- Reason + Save -->
-                        <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-                            <div style="flex:2; min-width:200px;">
+                        <!-- Reason + Status + Save -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                            <div>
                                 <label style="font-size:0.8rem; display:block; margin-bottom:5px;">เหตุผล (Reason)</label>
                                 <input type="text" id="exception-reason-input" placeholder="เช่น ของยังไม่มาส่ง, จ่าหน้าไม่ชัดเจน..." list="exception-reason-list" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                                 <datalist id="exception-reason-list">
@@ -192,6 +191,16 @@
                                     <option value="สลับของกับบริษัทอื่น">
                                     <option value="ชำรุด/กล่องแตก">
                                 </datalist>
+                            </div>
+                            <div>
+                                <label style="font-size:0.8rem; display:block; margin-bottom:5px;">สถานะแรก (First Status)</label>
+                                <input type="text" id="exception-first-status" value="ใส่ของลงถุง" placeholder="เช่น ใส่ของลงถุง" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                            <div style="flex:2; min-width:200px;">
+                                <label style="font-size:0.8rem; display:block; margin-bottom:5px;">วันที่และเวลา (Date & Time)</label>
+                                <input type="text" id="exception-datetime" placeholder="เช่น 19/03/2569 17:03 (เว้นว่างได้)" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                             </div>
                             <div style="flex:0.5; min-width:100px;">
                                 <button class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; height:40px; padding:0;">➕ บันทึก</button>
@@ -248,11 +257,14 @@
                                         📎 แนบรูปภาพ
                                     </button>
                                     <input type="file" id="exception-img-upload" accept="image/*" multiple style="display:none" onchange="handleExceptionImageUpload(this.files)">
-                                    <button type="button" class="btn btn-neutral" onclick="clearExceptionImages()"
+                                    <button type="button" class="btn btn-neutral" onclick="if(confirm('ยืนยันที่จะล้างรูปภาพทั้งหมดหรือไม่?')) clearExceptionImages()"
                                         style="font-size:0.8rem; padding:5px 10px; border:1px solid #ccc; color:#d32f2f; background:#fff;">
                                         🗑️ ล้างรูปทั้งหมด
                                     </button>
-                                    <span style="font-size:0.75rem; color:#999;">รูปจะปรากฏอยู่ในภาพรายงาน</span>
+                                    <div style="display:flex; align-items:center; gap:5px; margin-left:auto;">
+                                        <label for="exception-img-scale" style="font-size:0.75rem; color:#666;">ขนาดรูป:</label>
+                                        <input type="range" id="exception-img-scale" min="50" max="250" value="100" oninput="updateExceptionImageScale()" style="width:80px; accent-color:#0288d1;">
+                                    </div>
                                 </div>
                                 <div id="exception-img-preview" style="display:flex; flex-wrap:wrap; gap:8px; min-height:0;"></div>
                             </div>
@@ -261,6 +273,11 @@
                         <div id="exception-table-container">
                             <!-- Table injected via app.js -->
 
+                        </div>
+                        
+                        <!-- Moved Export Button to Bottom -->
+                        <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px; text-align:right;">
+                            <button class="btn btn-primary" onclick="exportExceptionImage()" style="background-color:#0288d1; border-color:#0288d1; color:white; font-size:0.95rem; padding:8px 16px; width:100%; max-width:300px;">📸 สร้างรูปภาพแจ้งหัวหน้า</button>
                         </div>
                     </div>
                 </div>
