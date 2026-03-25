@@ -2688,49 +2688,52 @@ function renderExceptionTable() {
 
         tableRows += `
             <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
-                <td style="padding:10px 8px; text-align:center; color:#999; vertical-align:middle;">${idx + 1}</td>
-                <td style="padding:10px 8px;">${trackDisplay}</td>
-                <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1; vertical-align:middle;">${totalCount}</td>
-                <td style="padding:10px 8px; vertical-align:middle;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span>${session.companyName}</span>
+                <td style="padding:10px 8px; text-align:center; color:#999; vertical-align:top;">${idx + 1}</td>
+                <td style="padding:10px 8px; vertical-align:top;">${trackDisplay}</td>
+                <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1; vertical-align:top;">${totalCount}</td>
+                <td style="padding:10px 8px; vertical-align:top;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <span style="word-break:break-word;">${session.companyName}</span>
                         <button onclick="editExceptionCompany('${session.sessionId}', '${firstEntry.trackNum}')" style="background:none; border:none; cursor:pointer; font-size:0.8rem; padding:0; margin-left:5px;" title="แก้ไขและอัปเดตฐานข้อมูล" data-html2canvas-ignore>✏️</button>
                     </div>
                 </td>
-                <td style="padding:10px 8px; line-height:1.4; position:relative;">
-                    <button onclick="editExceptionReason('${session.sessionId}')" style="position:absolute; top:5px; right:5px; background:none; border:none; cursor:pointer; font-size:0.8rem; padding:0;" title="แก้ไขรายละเอียด" data-html2canvas-ignore>✏️</button>
-                    <div style="color:#d32f2f; font-weight:bold; margin-bottom:4px; padding-right:15px;">${session.reason}</div>
-                    <div style="font-size:0.8rem; color:#555;"><strong>สถานะแรก:</strong> <span style="color:#333;">${dispFirstStatus}</span></div>
-                    <div style="font-size:0.8rem; color:#555;"><strong>วันที่/เวลา:</strong> <span style="color:#0288d1;">${dispDateTime}</span></div>
+                <td style="padding:10px 8px; line-height:1.5; position:relative; vertical-align:top;">
+                    <button onclick="editExceptionReason('${session.sessionId}')" style="position:absolute; top:8px; right:5px; background:none; border:none; cursor:pointer; font-size:0.8rem; padding:0;" title="แก้ไขรายละเอียด" data-html2canvas-ignore>✏️</button>
+                    <div style="color:#d32f2f; font-weight:bold; margin-bottom:6px; padding-right:15px; word-break:break-word;">${session.reason}</div>
+                    <div style="font-size:0.85rem; color:#555; margin-bottom:2px;"><strong>สถานะแรก:</strong> <span style="color:#333;">${dispFirstStatus}</span></div>
+                    <div style="font-size:0.85rem; color:#555;"><strong>วันที่/เวลา:</strong> <span style="color:#0288d1;">${dispDateTime}</span></div>
                 </td>
-                <td style="padding:10px 8px; text-align:center; vertical-align:middle;" data-html2canvas-ignore>
+                <td style="padding:10px 8px; text-align:center; vertical-align:top;" data-html2canvas-ignore>
                     <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteExceptionSession('${session.sessionId}')">🗑️ ลบ</button>
                 </td>
             </tr>`;
     });
 
     let html = `
-        <div id="exception-export-target" style="background:white; padding:15px; border-radius:8px;">
-            <div style="margin-bottom:10px; border-bottom:2px solid #333; padding-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:4px;">
-                <strong style="font-size:1.1rem;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</strong>
-                <span style="font-size:0.8rem; color:#666;">${reportDate}</span>
+        <div style="width:100%; overflow-x:auto;">
+            <div id="exception-export-target" style="background:white; padding:25px; border-radius:8px; min-width:850px; font-family:sans-serif;">
+                <div style="margin-bottom:15px; border-bottom:2px solid #333; padding-bottom:10px; display:flex; justify-content:space-between; align-items:flex-end;">
+                    <strong style="font-size:1.3rem; color:#222;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</strong>
+                    <span style="font-size:0.9rem; color:#555;">${reportDate}</span>
+                </div>
+                ${metaHtml}
+                <table style="width:100%; font-size:0.95rem; border-collapse:collapse; margin-top:15px;">
+                    <thead>
+                        <tr style="background:#f5f5f5;">
+                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:5%; color:#333;">ลำดับ</th>
+                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:22%; color:#333;">เลขพัสดุ / ช่วงเลข</th>
+                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:8%; color:#333;">จำนวน</th>
+                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:25%; color:#333;">ชื่อบริษัท/สังกัด</th>
+                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:30%; color:#333;">รายละเอียดการตกหล่น</th>
+                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:10%;" data-html2canvas-ignore>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+                ${imagesHtml}
             </div>
-            ${metaHtml}
-            <table style="width:100%; font-size:0.9rem; border-collapse:collapse;">
-                <thead>
-                    <tr style="background:#f1f1f1;">
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center; width:5%;">ลำดับ</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left; width:22%;">เลขพัสดุ / ช่วงเลข</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center; width:8%;">จำนวน</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left; width:25%;">ชื่อบริษัท/สังกัด</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left; width:30%;">รายละเอียดการตกหล่น</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center; width:10%;" data-html2canvas-ignore>จัดการ</th>
-                    </tr>
-                </thead>
-                <tbody>${tableRows}</tbody>
-            </table>
-            ${imagesHtml}
         </div>
+
         <div style="margin-top:10px; text-align:right;">
             <button class="btn btn-neutral" onclick="clearAllExceptions()">🗑️ ล้างประวัติทั้งหมด</button>
         </div>
