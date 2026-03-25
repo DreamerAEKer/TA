@@ -2685,6 +2685,7 @@ function renderExceptionTable() {
                 companyName: item.companyName,
                 reason: item.reason,
                 timestamp: item.timestamp,
+                images: item.images || [], // Ensure images are accessible at session level
                 entries: []
             });
         }
@@ -2785,6 +2786,10 @@ function renderExceptionTable() {
     // ---- Build Table ----
     let tableRows = '';
     sessions.forEach((session, idx) => {
+        const firstEntry = session.entries[0] || {};
+        const sessImages = firstEntry.images || [];
+        const hasImages = sessImages.length > 0;
+        
         const dateStr = new Date(session.timestamp).toLocaleDateString('th-TH');
         const groups = compressEntries(session.entries);
         const totalCount = session.entries.length;
@@ -2792,11 +2797,9 @@ function renderExceptionTable() {
             `<div style="font-family:monospace; font-weight:bold; white-space:nowrap; margin-bottom:2px;">${g.display}</div>`
         ).join('');
 
-        const firstEntry = session.entries[0];
-        const dispFirstStatus = firstEntry && firstEntry.firstStatus ? firstEntry.firstStatus : 'ใส่ของลงถุง';
-        
+        const dispFirstStatus = firstEntry.firstStatus || 'ใส่ของลงถุง';
         let dispDateTime = dateStr;
-        if (firstEntry && firstEntry.dateTime) {
+        if (firstEntry.dateTime) {
             const dtMatch = firstEntry.dateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/);
             if (dtMatch) {
                 let yr = parseInt(dtMatch[1], 10);
@@ -2809,6 +2812,9 @@ function renderExceptionTable() {
 
         tableRows += `
             <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
+                <td style="padding:10px 8px; text-align:center; vertical-align:top;" data-html2canvas-ignore>
+                    <input type="checkbox" class="sess-select" value="${session.sessionId}" checked style="width:18px; height:18px; cursor:pointer;">
+                </td>
                 <td style="padding:10px 8px; text-align:center; color:#999; vertical-align:top;">${idx + 1}</td>
                 <td style="padding:10px 8px; vertical-align:top;">${trackDisplay}</td>
                 <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1; vertical-align:top;">${totalCount}</td>
@@ -2823,10 +2829,18 @@ function renderExceptionTable() {
                     <div style="color:#d32f2f; font-weight:bold; margin-bottom:6px; padding-right:15px; word-break:break-word;">${session.reason}</div>
                     <div style="font-size:0.85rem; color:#555; margin-bottom:2px;"><strong>สถานะแรก:</strong> <span style="color:#333;">${dispFirstStatus}</span></div>
                     <div style="font-size:0.85rem; color:#555;"><strong>วันที่/เวลา:</strong> <span style="color:#0288d1;">${dispDateTime}</span></div>
+                    
+                    ${hasImages ? `
+                    <div style="margin-top:8px;" data-html2canvas-ignore>
+                        <button onclick="toggleHistoryImages('${session.sessionId}')" style="font-size:0.75rem; background:#fff2e0; border:1px solid #ffcc80; color:#e65100; padding:2px 8px; border-radius:4px; cursor:pointer;">🖼️ ดูรูปภาพ (${sessImages.length})</button>
+                        <div id="sess-imgs-${session.sessionId}" style="display:none; margin-top:5px; flex-wrap:wrap; gap:5px;">
+                            ${sessImages.map(img => `<img src="${img.dataUrl}" style="width:60px; height:60px; object-fit:cover; border:1px solid #ddd; border-radius:3px;">`).join('')}
+                        </div>
+                    </div>` : ''}
                 </td>
                 <td style="padding:10px 8px; text-align:center; vertical-align:top;" data-html2canvas-ignore>
                     <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
-                        <button class="btn" style="padding:4px 10px; font-size:0.8rem; background:#e3f2fd; border:1px solid #90caf9; color:#0277bd; border-radius:4px;" onclick="openHistoryImageEditor('${session.sessionId}')" title="แก้ไข/เพิ่มรูปภาพของรายการนี้">🖼️ รูป</button>
+                        <button class="btn" style="padding:4px 10px; font-size:0.8rem; background:#e3f2fd; border:1px solid #90caf9; color:#0277bd; border-radius:4px;" onclick="openHistoryImageEditor('${session.sessionId}')" title="แก้ไข/เพิ่มรูปภาพของรายการนี้">🖼️ แก้ไขรูป</button>
                         <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteExceptionSession('${session.sessionId}')">🗑️ ลบ</button>
                     </div>
                 </td>
@@ -2844,6 +2858,9 @@ function renderExceptionTable() {
                 <table style="width:100%; font-size:0.95rem; border-collapse:collapse; margin-top:15px;">
                     <thead>
                         <tr style="background:#f5f5f5;">
+                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:40px;" data-html2canvas-ignore>
+                                <input type="checkbox" id="sess-master-select" checked onclick="toggleAllSessions(this.checked)" title="เลือกทั้งหมด">
+                            </th>
                             <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:5%; color:#333;">ลำดับ</th>
                             <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:22%; color:#333;">เลขพัสดุ / ช่วงเลข</th>
                             <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:8%; color:#333;">จำนวน</th>
@@ -2949,33 +2966,154 @@ function clearAllExceptions() {
 }
 
 function exportExceptionImage() {
-    // Re-render to bake latest meta + images into the export target
+    // 1. Re-render to ensure current selection state and DOM is ready
     renderExceptionTable();
 
+    // 2. Identify selected sessions
+    const selectedSids = Array.from(document.querySelectorAll('.sess-select:checked')).map(cb => cb.value);
+    if (selectedSids.length === 0) {
+        alert('กรุณาเลือกอย่างน้อย 1 รายการเพื่อออกรายงานครับ');
+        return;
+    }
+
+    // 3. Temporarily filter out unselected rows in the export target
+    // We already have exception-export-target rendered with ALL items.
+    // We need to hide the <tr> elements of unselected sessions in that container.
     const targetNode = document.getElementById('exception-export-target');
-    if (!targetNode) {
-        alert('ไม่พบข้อมูลที่จะสร้างรูปภาพ กรุณาเพิ่มประวัติก่อนครับ');
-        return;
+    const tableBody = targetNode.querySelector('tbody');
+    const allRows = Array.from(tableBody.querySelectorAll('tr'));
+    
+    // Also build a custom totalImagesHtml for ONLY selected sessions
+    // To do this strictly, it's easier to modify renderExceptionTable to accept a filter...
+    // But since we want the history to show ALL, let's just do a specialized build here.
+    
+    const exceptions = ExceptionManager.getAll();
+    const selectedExceptions = exceptions.filter(e => selectedSids.includes(e.sessionId));
+    
+    const meta = getExceptionMeta();
+    const reportDate = meta.date ? new Date(meta.date).toLocaleDateString('th-TH') : new Date().toLocaleDateString('th-TH');
+    
+    let metaHtml = '';
+    if (meta.branch || meta.reporter || meta.subject || meta.note) {
+        metaHtml += `<div style="margin-bottom:10px; font-size:0.88rem; line-height:1.7;">`;
+        if (meta.subject)  metaHtml += `<div><strong>เรื่อง:</strong> ${meta.subject}</div>`;
+        if (meta.branch)   metaHtml += `<div><strong>ที่ทำการ:</strong> ${meta.branch}</div>`;
+        if (meta.reporter) metaHtml += `<div><strong>ผู้รายงาน:</strong> ${meta.reporter}</div>`;
+        if (meta.note)     metaHtml += `<div><strong>หมายเหตุ:</strong> ${meta.note}</div>`;
+        metaHtml += `</div>`;
     }
 
-    if (typeof html2canvas === 'undefined') {
-        alert('ระบบกำลังโหลดเครื่องมือสร้างภาพ กรุณาลองใหม่อีกครั้ง');
-        return;
+    // Group selected only
+    const sessionMap = new Map();
+    selectedExceptions.forEach(item => {
+        const sid = item.sessionId || item.id;
+        if (!sessionMap.has(sid)) {
+            sessionMap.set(sid, { sessionId: sid, companyName: item.companyName, reason: item.reason, timestamp: item.timestamp, entries: [] });
+        }
+        sessionMap.get(sid).entries.push(item);
+    });
+    const sessions = Array.from(sessionMap.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Gather unique images from selected sessions
+    let totalImages = [];
+    sessionMap.forEach(sess => {
+        const first = sess.entries[0];
+        if (first && first.images) {
+            first.images.forEach(img => {
+                if (!totalImages.find(x => x.dataUrl === img.dataUrl)) totalImages.push(img);
+            });
+        }
+    });
+
+    const scaleNode = document.getElementById('exception-img-scale');
+    const scaleVal = scaleNode ? scaleNode.value : "100";
+    const imgSize = (parseInt(scaleVal) / 100 * 200) + "px";
+    
+    let imagesHtml = '';
+    if (totalImages.length > 0) {
+        imagesHtml = `
+            <div style="margin-top:12px; padding-top:10px; border-top:1px solid #eee;">
+                <div style="font-size:0.8rem; font-weight:bold; color:#555; margin-bottom:6px;">รูปภาพประกอบ:</div>
+                <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start;">
+                    ${totalImages.map(img => `<img src="${img.dataUrl}" style="width:${imgSize}; object-fit:contain; border:1px solid #ccc; border-radius:4px;" title="${img.name}">`).join('')}
+                </div>
+            </div>`;
     }
 
+    // Reuse compressEntries from global scope if possible (it's inside renderExceptionTable currently, so we might need to extract it or copy)
+    // For now, I'll assume we duplicate it or it was defined higher up. 
+    // Wait, let me extract it to global scope in a separate chunk.
+
+    // Let's create a temporary div for export instead of modifying the live history target
+    const exportDiv = document.createElement('div');
+    exportDiv.style.position = 'absolute';
+    exportDiv.style.left = '-9999px';
+    exportDiv.style.top = '0';
+    document.body.appendChild(exportDiv);
+
+    let tableRowsHtml = '';
+    sessions.forEach((sess, idx) => {
+        const groups = compressSessEntries(sess.entries); // Need to define this globally
+        const totalCount = sess.entries.length;
+        const trackDisplay = groups.map(g => `<div style="font-family:monospace; font-weight:bold; white-space:nowrap; margin-bottom:2px;">${g.display}</div>`).join('');
+        const firstE = sess.entries[0];
+        const dispFirstStatus = firstE.firstStatus || 'ใส่ของลงถุง';
+        let dispDT = new Date(sess.timestamp).toLocaleDateString('th-TH');
+        if (firstE.dateTime) {
+            const m = firstE.dateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/);
+            if(m) { let y=parseInt(m[1]); if(y<2500)y+=543; dispDT=`${m[3]}/${m[2]}/${y} ${m[4]}`; }
+            else dispDT=firstE.dateTime;
+        }
+
+        tableRowsHtml += `
+            <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
+                <td style="padding:10px 8px; text-align:center; color:#999; vertical-align:top;">${idx + 1}</td>
+                <td style="padding:10px 8px; vertical-align:top;">${trackDisplay}</td>
+                <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1; vertical-align:top;">${totalCount}</td>
+                <td style="padding:10px 8px; vertical-align:top;">${sess.companyName}</td>
+                <td style="padding:10px 8px; line-height:1.5; vertical-align:top;">
+                    <div style="color:#d32f2f; font-weight:bold; margin-bottom:6px;">${sess.reason}</div>
+                    <div style="font-size:0.85rem; color:#555; margin-bottom:2px;"><strong>สถานะแรก:</strong> <span style="color:#333;">${dispFirstStatus}</span></div>
+                    <div style="font-size:0.85rem; color:#555;"><strong>วันที่/เวลา:</strong> <span style="color:#0288d1;">${dispDT}</span></div>
+                </td>
+            </tr>`;
+    });
+
+    exportDiv.innerHTML = `
+        <div style="background:white; padding:30px; border-radius:8px; width:850px; font-family:sans-serif;">
+            <div style="margin-bottom:15px; border-bottom:2px solid #333; padding-bottom:10px; display:flex; justify-content:space-between; align-items:flex-end;">
+                <strong style="font-size:1.3rem; color:#222;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</strong>
+                <span style="font-size:0.9rem; color:#555;">${reportDate}</span>
+            </div>
+            ${metaHtml}
+            <table style="width:100%; font-size:0.95rem; border-collapse:collapse; margin-top:15px;">
+                <thead>
+                    <tr style="background:#f5f5f5;">
+                        <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:5%;">ลำดับ</th>
+                        <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:22%;">เลขพัสดุ / ช่วงเลข</th>
+                        <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:8%;">จำนวน</th>
+                        <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:25%;">ชื่อบริษัท/สังกัด</th>
+                        <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:40%;">รายละเอียดเหตุผล</th>
+                    </tr>
+                </thead>
+                <tbody>${tableRowsHtml}</tbody>
+            </table>
+            ${imagesHtml}
+        </div>`;
+
+    // Perform capture
     const originalBackground = targetNode.style.background;
     targetNode.style.background = '#ffffff';
     const originalPadding = targetNode.style.padding;
-    targetNode.style.padding = '30px';
+    targetNode.style.padding = '0'; // Custom content has its own padding
 
-    html2canvas(targetNode, {
+    html2canvas(exportDiv.firstChild, {
         scale: 3,
         backgroundColor: '#ffffff',
         logging: false,
         useCORS: true
     }).then(canvas => {
-        targetNode.style.background = originalBackground;
-        targetNode.style.padding = originalPadding;
+        document.body.removeChild(exportDiv);
 
         const imgData = canvas.toDataURL('image/jpeg', 0.9);
         const link = document.createElement('a');
@@ -2985,11 +3123,47 @@ function exportExceptionImage() {
         link.click();
         document.body.removeChild(link);
     }).catch(err => {
-        targetNode.style.background = originalBackground;
-        targetNode.style.padding = originalPadding;
+        document.body.removeChild(exportDiv);
         console.error('Error generating image:', err);
         alert('เกิดข้อผิดพลาดในการสร้างภาพ: ' + err.message);
     });
+}
+
+function toggleHistoryImages(sid) {
+    const div = document.getElementById(`sess-imgs-${sid}`);
+    if (div) div.style.display = (div.style.display === 'none') ? 'flex' : 'none';
+}
+
+function toggleAllSessions(checked) {
+    document.querySelectorAll('.sess-select').forEach(cb => cb.checked = checked);
+}
+
+function compressSessEntries(entries) {
+    function fNum(r) {
+        r = r.replace(/\s+/g, '');
+        if (r.length === 13) return `${r.slice(0,2)} ${r.slice(2,6)} ${r.slice(6,10)} ${r.slice(10,11)} ${r.slice(11,13)}`;
+        return r;
+    }
+    const parsed = entries.map(e => {
+        const m = e.trackNum.replace(/\s+/g,'').match(/^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/);
+        return m ? { full: e.trackNum.replace(/\s+/g,''), prefix: m[1], body: parseInt(m[2]), cd: m[3], suffix: m[4] } : { full: e.trackNum, prefix: null };
+    });
+    const sortable = parsed.filter(p => p.prefix !== null).sort((a,b) => {
+        if (a.prefix !== b.prefix || a.suffix !== b.suffix) return a.full.localeCompare(b.full);
+        return a.body - b.body;
+    });
+    const unsortable = parsed.filter(p => p.prefix === null);
+    const groups = [];
+    let i = 0;
+    while (i < sortable.length) {
+        let j = i;
+        while (j+1 < sortable.length && sortable[j+1].prefix === sortable[i].prefix && sortable[j+1].suffix === sortable[i].suffix && sortable[j+1].body === sortable[j].body + 1) { j++; }
+        if (j - i === 0) groups.push({ display: fNum(sortable[i].full), count: 1 });
+        else groups.push({ display: `${fNum(sortable[i].full)} <span style="color:#555;">ถึง</span> ${fNum(sortable[j].full)}`, count: j - i + 1 });
+        i = j + 1;
+    }
+    unsortable.forEach(p => groups.push({ display: fNum(p.full), count: 1 }));
+    return groups;
 }
 
 // Update checkAuth hook internally to also init exception table + meta if Admin
