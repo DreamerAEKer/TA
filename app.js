@@ -2336,7 +2336,7 @@ function handleExceptionImageUpload(files) {
         reader.onload = function(e) {
             const dataUrl = e.target.result;
             const idx = exceptionImages.length;
-            exceptionImages.push({ dataUrl, name: file.name });
+            exceptionImages.push({ dataUrl, originalDataUrl: dataUrl, name: file.name });
 
             // Create preview thumb
             const wrapper = document.createElement('div');
@@ -2351,18 +2351,25 @@ function handleExceptionImageUpload(files) {
             const del = document.createElement('button');
             del.textContent = '✕';
             del.style.cssText = 'position:absolute; top:-5px; right:-5px; border-radius:50%; width:18px; height:18px; border:none; background:#d32f2f; color:white; font-size:0.7rem; cursor:pointer; line-height:1; padding:0;';
-            del.onclick = function() {
-                exceptionImages.splice(idx, 1, null); // null out (keep index stable)
+            del.onclick = function(event) {
+                const currentId = parseInt(event.target.parentElement.id.replace('exc-img-', ''), 10);
+                exceptionImages.splice(currentId, 1);
                 wrapper.remove();
-                // Re-compact
-                exceptionImages = exceptionImages.filter(x => x !== null);
-                // Re-assign IDs to remaining wrappers
                 const allWrappers = document.getElementById('exception-img-preview').children;
                 Array.from(allWrappers).forEach((w, i) => { w.id = `exc-img-${i}`; });
             };
 
+            const editBtn = document.createElement('button');
+            editBtn.textContent = '✏️';
+            editBtn.style.cssText = 'position:absolute; top:-5px; left:-5px; border-radius:50%; width:18px; height:18px; border:none; background:#0288d1; color:white; font-size:0.6rem; cursor:pointer; line-height:1; padding:0;';
+            editBtn.onclick = function(event) {
+                const currentId = parseInt(event.target.parentElement.id.replace('exc-img-', ''), 10);
+                openImageEditor(currentId);
+            };
+
             wrapper.appendChild(img);
             wrapper.appendChild(del);
+            wrapper.appendChild(editBtn);
             preview.appendChild(wrapper);
         };
         reader.readAsDataURL(file);
@@ -2879,4 +2886,121 @@ function editExceptionReason(sessionId) {
     localStorage.setItem(EXCEPTION_KEY, JSON.stringify(exceptions));
     renderExceptionTable();
 }
+
+// ==========================================
+// SECTION: INDIVIDUAL IMAGE EDITOR
+// ==========================================
+let editIdx = -1;
+let tImg = new Image();
+let tScale = 1;
+let baseFitScale = 1;
+let tPanX = 0;
+let tPanY = 0;
+let isDragging = false;
+let startX = 0, startY = 0;
+
+function openImageEditor(index) {
+    const item = exceptionImages[index];
+    if (!item) return;
+    editIdx = index;
+    
+    tImg.onload = function() {
+        const cvs = document.getElementById('img-editor-canvas');
+        baseFitScale = Math.max(cvs.width / tImg.width, cvs.height / tImg.height);
+        tScale = baseFitScale;
+        tPanX = (cvs.width - (tImg.width * tScale)) / 2;
+        tPanY = (cvs.height - (tImg.height * tScale)) / 2;
+        
+        const zoomSlider = document.getElementById('img-editor-zoom');
+        if(zoomSlider) zoomSlider.value = "100";
+        
+        drawEditorCanvas();
+        document.getElementById('img-editor-modal').style.display = 'flex';
+    };
+    tImg.src = item.originalDataUrl || item.dataUrl; 
+}
+
+function closeImageEditor() {
+    document.getElementById('img-editor-modal').style.display = 'none';
+}
+
+function drawEditorCanvas() {
+    const cvs = document.getElementById('img-editor-canvas');
+    if (!cvs) return;
+    const ctx = cvs.getContext('2d');
+    
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
+    
+    if (tImg.src) {
+        ctx.drawImage(tImg, tPanX, tPanY, tImg.width * tScale, tImg.height * tScale);
+    }
+}
+
+function saveImageEditor() {
+    if (editIdx > -1 && exceptionImages[editIdx]) {
+        const cvs = document.getElementById('img-editor-canvas');
+        const croppedDataUrl = cvs.toDataURL('image/jpeg', 0.9);
+        exceptionImages[editIdx].dataUrl = croppedDataUrl;
+        
+        const thumb = document.querySelector(`#exc-img-${editIdx} img`);
+        if (thumb) thumb.src = croppedDataUrl;
+    }
+    closeImageEditor();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const cvs = document.getElementById('img-editor-canvas');
+    const zoomSlider = document.getElementById('img-editor-zoom');
+    
+    if (cvs) {
+        cvs.addEventListener('mousedown', e => {
+            isDragging = true;
+            startX = e.clientX - tPanX;
+            startY = e.clientY - tPanY;
+        });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+        window.addEventListener('mousemove', e => {
+            if (isDragging) {
+                tPanX = e.clientX - startX;
+                tPanY = e.clientY - startY;
+                drawEditorCanvas();
+            }
+        });
+        
+        cvs.addEventListener('touchstart', e => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                startX = e.touches[0].clientX - tPanX;
+                startY = e.touches[0].clientY - tPanY;
+            }
+        }, {passive: false});
+        window.addEventListener('touchend', () => { isDragging = false; });
+        window.addEventListener('touchmove', e => {
+            if (isDragging && e.touches.length === 1) {
+                e.preventDefault();
+                tPanX = e.touches[0].clientX - startX;
+                tPanY = e.touches[0].clientY - startY;
+                drawEditorCanvas();
+            }
+        }, {passive: false});
+    }
+    
+    if (zoomSlider) {
+        zoomSlider.addEventListener('input', e => {
+            const pct = parseInt(e.target.value, 10) / 100;
+            const newScale = baseFitScale * pct;
+            const cvsW = 500, cvsH = 500;
+            const centerX = cvsW / 2;
+            const centerY = cvsH / 2;
+            
+            tPanX = centerX - (centerX - tPanX) * (newScale / tScale);
+            tPanY = centerY - (centerY - tPanY) * (newScale / tScale);
+            
+            tScale = newScale;
+            drawEditorCanvas();
+        });
+    }
+});
 
