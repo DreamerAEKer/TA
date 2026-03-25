@@ -162,6 +162,7 @@
                             <div style="font-size:0.75rem; color:#999; margin-top:4px;">กรณีบริษัทเดียวแต่มีหมายเลขหลายชุด</div>
                         </div>
 
+
                         <!-- Reason + Save -->
                         <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
                             <div style="flex:2; min-width:200px;">
@@ -181,8 +182,69 @@
                             </div>
                         </div>
 
+                        <!-- ===== REPORT META SECTION ===== -->
+                        <div style="margin-top:18px; border-top:1px dashed #ddd; padding-top:14px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; margin-bottom:8px;" onclick="toggleExceptionMeta()">
+                                <span style="font-size:0.85rem; font-weight:bold; color:#444;">📝 ข้อมูลประกอบรายงาน (หัวรายงาน)</span>
+                                <span id="exception-meta-chevron" style="font-size:0.8rem; color:#888;">▼ แสดง</span>
+                            </div>
+                            <div id="exception-meta-panel" style="display:none;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+                                    <div>
+                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px;">🏢 ชื่อที่ทำการ / สาขา</label>
+                                        <input type="text" id="rpt-branch" placeholder="เช่น ปณ.ลาดพร้าว 19" oninput="saveExceptionMeta()"
+                                            style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px;">📅 วันที่รายงาน</label>
+                                        <input type="date" id="rpt-date" oninput="saveExceptionMeta()"
+                                            style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px;">👤 ผู้รายงาน</label>
+                                        <input type="text" id="rpt-reporter" placeholder="เช่น นายสมชาย รักงาน" oninput="saveExceptionMeta()"
+                                            style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px;">🔖 หัวข้อ / เรื่อง</label>
+                                        <input type="text" id="rpt-subject" placeholder="เช่น รายงานชิ้นงานค้างไม่รับฝาก" oninput="saveExceptionMeta()"
+                                            style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px;">📌 หมายเหตุเพิ่มเติม</label>
+                                    <textarea id="rpt-note" rows="2" placeholder="รายละเอียดเพิ่มเติม..." oninput="saveExceptionMeta()"
+                                        style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box; resize:vertical;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ===== IMAGE ATTACHMENT SECTION ===== -->
+                        <div style="margin-top:14px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; margin-bottom:8px;" onclick="toggleExceptionImages()">
+                                <span style="font-size:0.85rem; font-weight:bold; color:#444;">🖼️ รูปภาพประกอบรายงาน</span>
+                                <span id="exception-img-chevron" style="font-size:0.8rem; color:#888;">▼ แสดง</span>
+                            </div>
+                            <div id="exception-img-panel" style="display:none;">
+                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
+                                    <button type="button" class="btn btn-neutral" onclick="document.getElementById('exception-img-upload').click()"
+                                        style="font-size:0.85rem; padding:6px 14px; border:1px dashed #0288d1; color:#0288d1; background:#e3f2fd;">
+                                        📎 แนบรูปภาพ
+                                    </button>
+                                    <input type="file" id="exception-img-upload" accept="image/*" multiple style="display:none" onchange="handleExceptionImageUpload(this.files)">
+                                    <button type="button" class="btn btn-neutral" onclick="clearExceptionImages()"
+                                        style="font-size:0.8rem; padding:5px 10px; border:1px solid #ccc; color:#d32f2f; background:#fff;">
+                                        🗑️ ล้างรูปทั้งหมด
+                                    </button>
+                                    <span style="font-size:0.75rem; color:#999;">รูปจะปรากฏอยู่ในภาพรายงาน</span>
+                                </div>
+                                <div id="exception-img-preview" style="display:flex; flex-wrap:wrap; gap:8px; min-height:0;"></div>
+                            </div>
+                        </div>
+
                         <div id="exception-table-container">
                             <!-- Table injected via app.js -->
+
                         </div>
                     </div>
                 </div>
