@@ -200,7 +200,7 @@
                         <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
                             <div style="flex:2; min-width:200px;">
                                 <label style="font-size:0.8rem; display:block; margin-bottom:5px;">วันที่และเวลา (Date & Time)</label>
-                                <input type="text" id="exception-datetime" placeholder="เช่น 19/03/2569 17:03 (เว้นว่างได้)" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                                <input type="datetime-local" id="exception-datetime" style="width:100%; padding:9px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                             </div>
                             <div style="flex:0.5; min-width:100px;">
                                 <button class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; height:40px; padding:0;">➕ บันทึก</button>
@@ -270,14 +270,15 @@
                             </div>
                         </div>
 
+                        <!-- Moved Export Button to Top of History -->
+                        <div style="margin-top:5px; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                            <h4 style="margin:0; font-size:1rem; color:#333;">ประวัติ / ตารางรายงาน</h4>
+                            <button class="btn btn-primary" onclick="exportExceptionImage()" style="background-color:#0288d1; border-color:#0288d1; color:white; font-size:0.95rem; padding:8px 16px;">📸 สร้างรูปภาพแจ้งหัวหน้า</button>
+                        </div>
+
                         <div id="exception-table-container">
                             <!-- Table injected via app.js -->
 
-                        </div>
-                        
-                        <!-- Moved Export Button to Bottom -->
-                        <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px; text-align:right;">
-                            <button class="btn btn-primary" onclick="exportExceptionImage()" style="background-color:#0288d1; border-color:#0288d1; color:white; font-size:0.95rem; padding:8px 16px; width:100%; max-width:300px;">📸 สร้างรูปภาพแจ้งหัวหน้า</button>
                         </div>
                     </div>
                 </div>

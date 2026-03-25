@@ -2258,7 +2258,16 @@ function draftReportFromGroup(prefix) {
     // NEW: Auto-fill Date/Time
     if (group.extractedDateTime) {
         const dtInput = document.getElementById('exception-datetime');
-        if (dtInput) dtInput.value = group.extractedDateTime;
+        if (dtInput) {
+            let val = group.extractedDateTime;
+            const mt = val.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}:\d{2})/);
+            if(mt) {
+                let yr = parseInt(mt[3], 10);
+                if(yr > 2500) yr -= 543;
+                val = `${yr}-${mt[2]}-${mt[1]}T${mt[4]}`;
+            }
+            dtInput.value = val;
+        }
     }
     const fsInput = document.getElementById('exception-first-status');
     if (fsInput) fsInput.value = 'ใส่ของลงถุง'; // Enforce default
@@ -2643,16 +2652,33 @@ function renderExceptionTable() {
 
         const firstEntry = session.entries[0];
         const dispFirstStatus = firstEntry && firstEntry.firstStatus ? firstEntry.firstStatus : 'ใส่ของลงถุง';
-        const dispDateTime = firstEntry && firstEntry.dateTime ? firstEntry.dateTime : dateStr;
+        
+        let dispDateTime = dateStr;
+        if (firstEntry && firstEntry.dateTime) {
+            const dtMatch = firstEntry.dateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/);
+            if (dtMatch) {
+                let yr = parseInt(dtMatch[1], 10);
+                if (yr < 2500) yr += 543; // Convert back to BE
+                dispDateTime = `${dtMatch[3]}/${dtMatch[2]}/${yr} ${dtMatch[4]}`;
+            } else {
+                dispDateTime = firstEntry.dateTime;
+            }
+        }
 
         tableRows += `
             <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
                 <td style="padding:10px 8px; text-align:center; color:#999; vertical-align:middle;">${idx + 1}</td>
                 <td style="padding:10px 8px;">${trackDisplay}</td>
                 <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1; vertical-align:middle;">${totalCount}</td>
-                <td style="padding:10px 8px; vertical-align:middle;">${session.companyName}</td>
-                <td style="padding:10px 8px; line-height:1.4;">
-                    <div style="color:#d32f2f; font-weight:bold; margin-bottom:4px;">${session.reason}</div>
+                <td style="padding:10px 8px; vertical-align:middle;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>${session.companyName}</span>
+                        <button onclick="editExceptionCompany('${session.sessionId}', '${firstEntry.trackNum}')" style="background:none; border:none; cursor:pointer; font-size:0.8rem; padding:0; margin-left:5px;" title="แก้ไขและอัปเดตฐานข้อมูล" data-html2canvas-ignore>✏️</button>
+                    </div>
+                </td>
+                <td style="padding:10px 8px; line-height:1.4; position:relative;">
+                    <button onclick="editExceptionReason('${session.sessionId}')" style="position:absolute; top:5px; right:5px; background:none; border:none; cursor:pointer; font-size:0.8rem; padding:0;" title="แก้ไขรายละเอียด" data-html2canvas-ignore>✏️</button>
+                    <div style="color:#d32f2f; font-weight:bold; margin-bottom:4px; padding-right:15px;">${session.reason}</div>
                     <div style="font-size:0.8rem; color:#555;"><strong>สถานะแรก:</strong> <span style="color:#333;">${dispFirstStatus}</span></div>
                     <div style="font-size:0.8rem; color:#555;"><strong>วันที่/เวลา:</strong> <span style="color:#0288d1;">${dispDateTime}</span></div>
                 </td>
@@ -2783,3 +2809,70 @@ function updateExceptionImageScale() {
         img.style.width = imgSize;
     });
 }
+
+function editExceptionCompany(sessionId, trackNum) {
+    const newName = prompt('ระบุชื่อบริษัทใหม่ (ระบบจะเรียนรู้และบันทึกลงฐานข้อมูล 240 รายการอัตโนมัติ):');
+    if (newName === null || newName.trim() === '') return;
+    
+    const exceptions = ExceptionManager.getAll();
+    let updated = false;
+    exceptions.forEach(e => {
+        if (e.sessionId === sessionId) {
+            e.companyName = newName.trim();
+            updated = true;
+        }
+    });
+
+    if (updated) {
+        localStorage.setItem(EXCEPTION_KEY, JSON.stringify(exceptions));
+        
+        if (typeof CustomerDB !== 'undefined' && typeof TrackingUtils !== 'undefined') {
+            const regex = /^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/;
+            const match = trackNum.match(regex);
+            if (match) {
+                const prefix = match[1];
+                const bodyNum = parseInt(match[2], 10);
+                const suffix = match[4];
+                
+                const bookStart = Math.floor((bodyNum - 1) / 240) * 240 + 1;
+                const itemsToAdd = [];
+                for (let i = 0; i < 240; i++) {
+                    let currentNumStr = (bookStart + i).toString().padStart(8, '0');
+                    if (currentNumStr.length > 8) break;
+                    let checkDigit = TrackingUtils.calculateS10CheckDigit(currentNumStr);
+                    if (checkDigit !== null) {
+                        itemsToAdd.push(`${prefix}${currentNumStr}${checkDigit}${suffix}`);
+                    }
+                }
+                
+                if (itemsToAdd.length > 0) {
+                    CustomerDB.addBatch({
+                        name: newName.trim(),
+                        type: "General",
+                        contract: "",
+                        requestDate: "",
+                        timestamp: new Date().getTime()
+                    }, itemsToAdd);
+                    
+                    alert(`อัปเดตชื่อบริษัทเป็น "${newName.trim()}" สำเร็จ!\n(สอนบอทจดจำเลขชุดนี้ 240 รายการเรียบร้อย)`);
+                }
+            }
+        }
+        renderExceptionTable();
+    }
+}
+
+function editExceptionReason(sessionId) {
+    const newReason = prompt('ระบุสาเหตุ / รายละเอียดการตกหล่นใหม่:');
+    if (newReason === null || newReason.trim() === '') return;
+    
+    const exceptions = ExceptionManager.getAll();
+    exceptions.forEach(e => {
+        if (e.sessionId === sessionId) {
+            e.reason = newReason.trim();
+        }
+    });
+    localStorage.setItem(EXCEPTION_KEY, JSON.stringify(exceptions));
+    renderExceptionTable();
+}
+
