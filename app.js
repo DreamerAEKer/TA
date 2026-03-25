@@ -2748,7 +2748,6 @@ function renderExceptionTable() {
     }
 
     // ---- Build Image HTML (for export) ----
-    // NEW: Gather images from ALL sessions in history to show in the final report
     let totalImages = [];
     sessionMap.forEach(sess => {
         const first = sess.entries[0];
@@ -2775,7 +2774,12 @@ function renderExceptionTable() {
         const imgSize = (parseInt(scaleVal) / 100 * 200) + "px"; // Base size 200px
         
         imagesHtml = `
-            <div style="margin-top:12px; padding-top:10px; border-top:1px solid #eee;">
+            <div style="margin-top:12px; padding-top:10px; border-top:1px solid #eee;" data-html2canvas-ignore>
+                <button onclick="toggleReportImages()" class="btn btn-neutral" style="font-size:0.85rem; padding:6px 14px; border:1px solid #0288d1; color:#0288d1; background:#e3f2fd; width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    🖼️ <span id="btn-toggle-report-imgs-text">แสดงรูปภาพประกอบทั้งหมด (${totalImages.length} รูป)</span>
+                </button>
+            </div>
+            <div id="exception-img-summary-panel" style="display:none; margin-top:12px;">
                 <div style="font-size:0.8rem; font-weight:bold; color:#555; margin-bottom:6px;">รูปภาพประกอบ:</div>
                 <div id="exception-img-export-area" style="display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start;">
                     ${totalImages.map(img => `<img src="${img.dataUrl}" style="width:${imgSize}; object-fit:contain; border:1px solid #ccc; border-radius:4px;" title="${img.name}">`).join('')}
@@ -2871,6 +2875,12 @@ function renderExceptionTable() {
                     </thead>
                     <tbody>${tableRows}</tbody>
                 </table>
+                <div id="exception-img-summary-export-only" style="display:none;">
+                    <div style="font-size:0.8rem; font-weight:bold; color:#555; margin-top:15px; margin-bottom:6px; border-top:1px dashed #ccc; padding-top:10px;">รูปภาพประกอบ:</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                        ${totalImages.map(img => `<img src="${img.dataUrl}" style="width:200px; object-fit:contain; border:1px solid #ccc; border-radius:4px;">`).join('')}
+                    </div>
+                </div>
                 ${imagesHtml}
             </div>
         </div>
@@ -2881,6 +2891,36 @@ function renderExceptionTable() {
     `;
 
     container.innerHTML = html;
+}
+
+function toggleReportImages() {
+    const panel = document.getElementById('exception-img-summary-panel');
+    const text = document.getElementById('btn-toggle-report-imgs-text');
+    if (!panel) return;
+    
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        if (text) text.textContent = text.textContent.replace('แสดง', 'ซ่อน');
+    } else {
+        panel.style.display = 'none';
+        if (text) text.textContent = text.textContent.replace('ซ่อน', 'แสดง');
+    }
+}
+
+let isHistoryTableVisible = true;
+function toggleHistoryReport() {
+    const container = document.getElementById('exception-table-container');
+    const btn = document.getElementById('btn-toggle-history-report');
+    if (!container) return;
+
+    isHistoryTableVisible = !isHistoryTableVisible;
+    container.style.display = isHistoryTableVisible ? 'block' : 'none';
+    
+    if (btn) {
+        btn.innerHTML = isHistoryTableVisible 
+            ? '👁️ ซ่อนประวัติรายงาน (Hide History)' 
+            : '👁️ แสดงประวัติรายงาน (Show History)';
+    }
 }
 
 function deleteExceptionSession(sessionId) {
