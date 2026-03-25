@@ -2088,13 +2088,13 @@ function processQmsImport() {
     );
 
     uniqueTracks.forEach(track => {
-        // Group by 4 digits: first 2 letters, then the NEXT 4 digits.
-        const groupPrefix = track.substring(2, 6);
+        // Group by 2 letters + space + 4 digits: e.g. "EQ 0898"
+        const groupPrefix = track.substring(0, 2) + " " + track.substring(2, 6);
         const dtStr = trackMap.get(track);
         
         if (!qmsStagingGroups[groupPrefix]) {
             qmsStagingGroups[groupPrefix] = {
-                id: 'grp_' + groupPrefix,
+                id: 'grp_' + track.substring(0, 6),
                 prefix: groupPrefix,
                 items: [],
                 companyHint: 'กำลังค้นหา...',
