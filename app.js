@@ -2066,7 +2066,12 @@ function processQmsImport() {
         
         tracks.forEach((t, i) => {
             const nextTrackIndex = (i < tracks.length - 1) ? tracks[i+1].index : text.length;
-            const validDate = dates.find(d => d.index > t.index && d.index < nextTrackIndex);
+            let validDate = dates.find(d => d.index > t.index && d.index < nextTrackIndex);
+            
+            // FALLBACK: If index bounding failed because of weird clipboard formatting, grab the first available date in the document.
+            if (!validDate && dates.length > 0) {
+                validDate = dates[0];
+            }
             
             if (!trackMap.has(t.track)) {
                 trackMap.set(t.track, validDate ? validDate.dtStr : '');
