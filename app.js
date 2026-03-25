@@ -2042,43 +2042,41 @@ function processQmsImport() {
     const text = document.getElementById('qms-import-text').value;
     if (!text) return;
 
-    // Extract tracking numbers and optional datetime line-by-line for context
-    const lines = text.split('\n');
-    const trackPattern = /[a-zA-Z]{2}\d{9}[a-zA-Z]{2}/;
-    // Looking for a date like DD/MM/YYYY and time HH:MM
-    const datetimePattern = /(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2})/;
+    // Extract tracking numbers and optional datetime using index distance to handle multiline grid pastes
+    const trackPattern = /[a-zA-Z]{2}\d{9}[a-zA-Z]{2}/g;
+    const datetimePattern = /(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2})/g;
     
     const trackMap = new Map();
     let hasAnyMatches = false;
 
-    lines.forEach(line => {
-        const tMatch = line.match(trackPattern);
-        if (tMatch) {
-            hasAnyMatches = true;
-            const track = tMatch[0].toUpperCase();
-            if (!trackMap.has(track)) {
-                let dtStr = '';
-                const dMatch = line.match(datetimePattern);
-                if (dMatch) {
-                    dtStr = `${dMatch[1]} ${dMatch[2]}`;
-                }
-                trackMap.set(track, dtStr);
-            }
-        }
-    });
+    const tracks = [];
+    let match;
+    while ((match = trackPattern.exec(text)) !== null) {
+        tracks.push({ track: match[0].toUpperCase(), index: match.index });
+    }
 
-    if (!hasAnyMatches) {
-        // Fallback to global match if multiline logic fails
-        const globalPattern = /[a-zA-Z]{2}\d{9}[a-zA-Z]{2}/g;
-        const fallbackMatches = text.match(globalPattern);
-        if (!fallbackMatches) {
-            alert('ไม่พบเลขพัสดุรูปแบบ 13 หลักในข้อมูลที่วาง');
-            return;
+    if (tracks.length > 0) {
+        hasAnyMatches = true;
+        
+        const dates = [];
+        let dMatch;
+        while ((dMatch = datetimePattern.exec(text)) !== null) {
+            dates.push({ dtStr: `${dMatch[1]} ${dMatch[2]}`, index: dMatch.index });
         }
-        fallbackMatches.forEach(t => {
-            const upT = t.toUpperCase();
-            if(!trackMap.has(upT)) trackMap.set(upT, '');
+        
+        tracks.forEach((t, i) => {
+            const nextTrackIndex = (i < tracks.length - 1) ? tracks[i+1].index : text.length;
+            const validDate = dates.find(d => d.index > t.index && d.index < nextTrackIndex);
+            
+            if (!trackMap.has(t.track)) {
+                trackMap.set(t.track, validDate ? validDate.dtStr : '');
+            } else if (validDate && !trackMap.get(t.track)) {
+                trackMap.set(t.track, validDate.dtStr);
+            }
         });
+    } else {
+        alert('ไม่พบเลขพัสดุรูปแบบ 13 หลักในข้อมูลที่วาง');
+        return;
     }
 
     const uniqueTracks = Array.from(trackMap.keys());
