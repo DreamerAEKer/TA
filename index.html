@@ -675,18 +675,18 @@
         v1.20</div>
 
     <!-- IMAGE EDITOR MODAL -->
-    <div id="img-editor-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column;">
-        <div style="background:#fff; padding:15px; border-radius:8px; width:90%; max-width:550px; text-align:center;">
-            <h4 style="margin-top:0; margin-bottom:10px;">✂️ ปรับพื้นที่แสดงรูปภาพ</h4>
-            <div style="position:relative; width:100%; max-width:500px; aspect-ratio:1/1; background:#eee; margin:0 auto; overflow:hidden; border:1px solid #ccc; cursor:move;" id="img-editor-canvas-wrapper">
+    <div id="img-editor-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:10px; box-sizing:border-box;">
+        <div style="background:#fff; padding:15px; border-radius:8px; width:100%; max-width:450px; text-align:center; max-height:95vh; overflow-y:auto; display:flex; flex-direction:column;">
+            <h4 style="margin-top:0; margin-bottom:10px; flex-shrink:0;">✂️ ปรับพื้นที่แสดงรูปภาพ</h4>
+            <div style="position:relative; width:100%; aspect-ratio:1/1; background:#eee; margin:0 auto; overflow:hidden; border:1px solid #ccc; cursor:move; flex-shrink:0;" id="img-editor-canvas-wrapper">
                 <canvas id="img-editor-canvas" width="500" height="500" style="width:100%; height:100%; touch-action:none;"></canvas>
             </div>
-            <div style="margin-top:15px; display:flex; align-items:center; justify-content:center; gap:10px;">
+            <div style="margin-top:10px; display:flex; align-items:center; justify-content:center; gap:10px; flex-shrink:0;">
                 <label style="font-weight:bold; font-size:0.9rem;">🔍 ซูมเข้า-ออก:</label>
                 <input type="range" id="img-editor-zoom" min="10" max="300" value="100" style="width:60%; accent-color:#0288d1;">
             </div>
-            <p style="font-size:0.75rem; color:#666; margin-top:5px;">* กดค้างที่รูปแล้วลากเพื่อเลื่อนตำแหน่งตามต้องการ</p>
-            <div style="margin-top:15px; display:flex; gap:10px; justify-content:center;">
+            <p style="font-size:0.75rem; color:#666; margin-top:5px; margin-bottom:10px; flex-shrink:0;">* กดค้างที่รูปแล้วลากเพื่อเลื่อนตำแหน่งตามต้องการ</p>
+            <div style="display:flex; gap:10px; justify-content:center; flex-shrink:0;">
                 <button class="btn btn-neutral" onclick="closeImageEditor()" style="padding:8px 20px;">✖ ยกเลิก</button>
                 <button class="btn btn-success" onclick="saveImageEditor()" style="padding:8px 20px;">✔ นำไปใช้</button>
             </div>
