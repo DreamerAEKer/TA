@@ -2176,6 +2176,10 @@ function renderQmsGroups() {
         const dupWarning = dupCount > 0 ? `<span style="color:#d32f2f; font-size:0.75rem; margin-left:8px; background:#ffebee; padding:2px 6px; border-radius:10px; font-weight:bold;">⚠️ ซ้ำ/ประวัติเดิม ${dupCount} รายการ</span>` : '';
         const bgHint = g.companyFound ? '#e8f5e9' : '#fff';
         const borderHint = g.companyFound ? '#81c784' : '#ccc';
+        
+        const timeHint = g.extractedDateTime 
+            ? `<div style="font-size:0.85rem; color:#0288d1; margin-top:6px;">🕒 เวลาสแกน (QMS): ${g.extractedDateTime}</div>`
+            : `<div style="font-size:0.8rem; color:#f57c00; margin-top:6px;">⚠️ ไม่พบข้อมูลเวลาสแกนในข้อมูลที่วาง</div>`;
 
         html += `
             <div style="border:1px solid ${borderHint}; border-radius:6px; padding:12px; margin-bottom:12px; background:${bgHint}; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
@@ -2187,6 +2191,7 @@ function renderQmsGroups() {
                             ${dupWarning}
                         </div>
                         <div style="font-size:0.9rem; color:#333; margin-top:6px;">🏢 <strong>บริษัท:</strong> ${g.companyHint}</div>
+                        ${timeHint}
                     </div>
                     <button class="btn btn-primary" style="font-size:0.85rem; padding:6px 12px; background-color:#0288d1; border-color:#0288d1;" onclick="draftReportFromGroup('${g.prefix}')">
                         ➕ นำกลุ่มนี้ไปสร้างรายงาน
