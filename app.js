@@ -1985,6 +1985,214 @@ function copyCrossRefAll() {
 }
 
 // ==========================================
+
+// ==========================================
+// SECTION: QMS STAGING & IMPORT (Admin)
+// ==========================================
+let qmsStagingGroups = {}; // Memory to store parsed groups
+
+function toggleQmsStaging() {
+    const panel = document.getElementById('qms-staging-panel');
+    const chevron = document.getElementById('qms-staging-chevron');
+    if (!panel) return;
+    const open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    if (chevron) chevron.textContent = open ? '▼ เปิด' : '▲ ปิด';
+}
+
+function processQmsImport() {
+    const text = document.getElementById('qms-import-text').value;
+    if (!text) return;
+
+    // Extract all 13-digit tracking numbers
+    const trackPattern = /[a-zA-Z]{2}\d{9}[a-zA-Z]{2}/g;
+    const matches = text.match(trackPattern);
+    
+    if (!matches || matches.length === 0) {
+        alert('ไม่พบเลขพัสดุรูปแบบ 13 หลักในข้อมูลที่วาง');
+        return;
+    }
+
+    // Clean up to uppercase and unique
+    const uniqueTracks = [...new Set(matches.map(t => t.toUpperCase()))];
+    
+    qmsStagingGroups = {};
+    const existingExceptions = ExceptionManager.getAll();
+    const existingNumSet = new Set(
+        existingExceptions.flatMap(e => e.entries ? e.entries.map(ex => ex.trackNum) : [e.trackNum])
+    );
+
+    uniqueTracks.forEach(track => {
+        // Group by 4 digits: first 2 letters, then the NEXT 4 digits.
+        const groupPrefix = track.substring(2, 6);
+        
+        if (!qmsStagingGroups[groupPrefix]) {
+            qmsStagingGroups[groupPrefix] = {
+                id: 'grp_' + groupPrefix,
+                prefix: groupPrefix,
+                items: [],
+                companyHint: 'กำลังค้นหา...',
+                companyFound: false
+            };
+        }
+        
+        const isDuplicate = existingNumSet.has(track);
+        qmsStagingGroups[groupPrefix].items.push({ track, isDuplicate });
+    });
+
+    // Smart Lookup for each group
+    Object.values(qmsStagingGroups).forEach(group => {
+        const firstTrack = group.items[0].track;
+        const prefix = firstTrack.substring(0, 2);
+        const suffix = firstTrack.substring(11, 13);
+        const bodyInt = parseInt(firstTrack.substring(2, 10), 10);
+        
+        let foundCompany = null;
+
+        // Helper to check DB
+        const checkDb = (bInt) => {
+            if (typeof CustomerDB === 'undefined' || typeof TrackingUtils === 'undefined') return null;
+            const numStr = bInt.toString().padStart(8, '0');
+            const cd = TrackingUtils.calculateS10CheckDigit(numStr);
+            const testNum = `${prefix}${numStr}${cd}${suffix}`;
+            const info = CustomerDB.get(testNum);
+            return info ? info.name : null;
+        };
+
+        // 1. Check exact first track
+        foundCompany = checkDb(bodyInt);
+        
+        if (foundCompany) {
+            group.companyHint = foundCompany;
+            group.companyFound = true;
+        } else {
+            // 2. Smart Guess: Check -2, -1, +1
+            const guessOffsets = [-1, -2, 1];
+            for (let offset of guessOffsets) {
+                const hint = checkDb(bodyInt + offset);
+                if (hint) {
+                    foundCompany = hint;
+                    break;
+                }
+            }
+            if (foundCompany) {
+                group.companyHint = `(คาดเดาจากเลขใกล้เคียง) ${foundCompany}`;
+                group.companyFound = true; // treat as found for UI coloring
+            } else {
+                group.companyHint = 'ไม่พบข้อมูลบริษัทในฐานข้อมูล';
+            }
+        }
+    });
+
+    renderQmsGroups();
+}
+
+function renderQmsGroups() {
+    const container = document.getElementById('qms-staging-results');
+    if (!container) return;
+
+    let html = '';
+    const groups = Object.values(qmsStagingGroups);
+    
+    if (groups.length === 0) {
+        container.innerHTML = '<div style="color:#666; font-size:0.85rem;">ไม่พบข้อมูลหลังจัดกลุ่ม</div>';
+        return;
+    }
+
+    // Sort groups by size descending
+    groups.sort((a,b) => b.items.length - a.items.length);
+
+    groups.forEach(g => {
+        const dupCount = g.items.filter(i => i.isDuplicate).length;
+        const dupWarning = dupCount > 0 ? `<span style="color:#d32f2f; font-size:0.75rem; margin-left:8px; background:#ffebee; padding:2px 6px; border-radius:10px; font-weight:bold;">⚠️ ซ้ำ/ประวัติเดิม ${dupCount} รายการ</span>` : '';
+        const bgHint = g.companyFound ? '#e8f5e9' : '#fff';
+        const borderHint = g.companyFound ? '#81c784' : '#ccc';
+
+        html += `
+            <div style="border:1px solid ${borderHint}; border-radius:6px; padding:12px; margin-bottom:12px; background:${bgHint}; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <div style="display:flex; align-items:center;">
+                            <strong style="font-size:1.1rem; color:#1565c0;">กลุ่ม ${g.prefix}</strong>
+                            <span style="font-size:0.85rem; color:#555; margin-left:8px; padding:2px 6px; background:#e0e0e0; border-radius:10px;">${g.items.length} รายการ</span>
+                            ${dupWarning}
+                        </div>
+                        <div style="font-size:0.9rem; color:#333; margin-top:6px;">🏢 <strong>บริษัท:</strong> ${g.companyHint}</div>
+                    </div>
+                    <button class="btn btn-primary" style="font-size:0.85rem; padding:6px 12px; background-color:#0288d1; border-color:#0288d1;" onclick="draftReportFromGroup('${g.prefix}')">
+                        ➕ นำกลุ่มนี้ไปสร้างรายงาน
+                    </button>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px; font-family:monospace; font-size:0.85rem;">
+                    ${g.items.map(i => `<span style="padding:4px 6px; background:${i.isDuplicate ? '#ffebee' : '#faebd7'}; border:1px solid ${i.isDuplicate ? '#ffcdd2' : '#e0e0e0'}; border-radius:4px; color:${i.isDuplicate ? '#c62828' : '#333'}">${i.track}</span>`).join('')}
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function draftReportFromGroup(prefix) {
+    const group = qmsStagingGroups[prefix];
+    if (!group) return;
+
+    // Open Exception Single Mode if Range is open
+    const rangeToggle = document.getElementById('exception-range-toggle');
+    if (rangeToggle && rangeToggle.checked) {
+        rangeToggle.checked = false;
+        if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
+    }
+
+    // Clear existing
+    const mainInput = document.getElementById('exception-track-input');
+    if (mainInput) mainInput.value = '';
+    
+    document.getElementById('exception-extra-items').innerHTML = '';
+    
+    // Attempt to reset global counter
+    if (typeof window.extraItemCount !== 'undefined') {
+        window.extraItemCount = 0; 
+    }
+
+    const items = group.items.map(i => i.track);
+    
+    if (items.length > 0) {
+        if (mainInput) mainInput.value = items[0];
+        
+        for (let i = 1; i < items.length; i++) {
+            if (typeof addExceptionExtraItem === 'function') {
+                addExceptionExtraItem();
+                const extras = document.querySelectorAll('.exception-extra-track');
+                if (extras.length > 0) {
+                    extras[extras.length - 1].value = items[i];
+                }
+            }
+        }
+    }
+
+    // Pre-fill reason if empty
+    const reasonInput = document.getElementById('exception-reason-input');
+    if (reasonInput && !reasonInput.value) {
+        reasonInput.value = "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง (จาก QMS)";
+    }
+
+    // Pre-fill auto-discovered company name into Subject as a helper if Subject is empty
+    let companyNameVal = group.companyFound ? group.companyHint.replace('(คาดเดาจากเลขใกล้เคียง) ', '') : "";
+    const subjectInput = document.getElementById('rpt-subject');
+    if (subjectInput && !subjectInput.value && companyNameVal) {
+        subjectInput.value = "รายงานชิ้นงานตกหล่น: " + companyNameVal;
+    }
+
+    // Scroll down to the form smoothly
+    if (mainInput) {
+        mainInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        mainInput.style.transition = "background-color 0.5s";
+        mainInput.style.backgroundColor = "#fff9c4";
+        setTimeout(() => mainInput.style.backgroundColor = "", 1500);
+    }
+}
+
 // SECTION: EXCEPTION META & IMAGE ATTACHMENT
 // ==========================================
 
