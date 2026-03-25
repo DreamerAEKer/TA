@@ -936,30 +936,52 @@ const ExceptionManager = {
             return [];
         }
     },
-    
-    save: (trackNum, companyName, reason) => {
+
+    /**
+     * Save a batch of tracking numbers in one session.
+     * @param {string[]} trackNums - Array of tracking numbers
+     * @param {string} companyName - Company name
+     * @param {string} reason - Reason
+     */
+    saveSession: (trackNums, companyName, reason) => {
         const exceptions = ExceptionManager.getAll();
-        
-        // Remove existing entry for this tracking number if it exists (Overwrite)
-        const filtered = exceptions.filter(e => e.trackNum !== trackNum);
-        
-        filtered.push({
-            id: Date.now().toString(),
-            trackNum: trackNum,
-            companyName: companyName,
-            reason: reason,
-            timestamp: new Date().toISOString()
+        const sessionId = Date.now().toString();
+
+        // Remove any existing entries for these numbers (overwrite)
+        const filtered = exceptions.filter(e => !trackNums.includes(e.trackNum));
+
+        trackNums.forEach((trackNum, i) => {
+            filtered.push({
+                id: `${sessionId}_${i}`,
+                trackNum: trackNum,
+                companyName: companyName,
+                reason: reason,
+                timestamp: new Date().toISOString(),
+                sessionId: sessionId
+            });
         });
-        
+
+        localStorage.setItem(EXCEPTION_KEY, JSON.stringify(filtered));
+        return sessionId;
+    },
+
+    // Legacy single-save (kept for compatibility)
+    save: (trackNum, companyName, reason) => {
+        ExceptionManager.saveSession([trackNum], companyName, reason);
+    },
+
+    removeSession: (sessionId) => {
+        const exceptions = ExceptionManager.getAll();
+        const filtered = exceptions.filter(e => e.sessionId !== sessionId);
         localStorage.setItem(EXCEPTION_KEY, JSON.stringify(filtered));
     },
-    
+
     remove: (id) => {
         const exceptions = ExceptionManager.getAll();
         const filtered = exceptions.filter(e => e.id !== id);
         localStorage.setItem(EXCEPTION_KEY, JSON.stringify(filtered));
     },
-    
+
     clearAll: () => {
         if(confirm('ยืนยันลบประวัติการตกหล่นทั้งหมดระวังจะกู้คืนไม่ได้?')) {
             localStorage.removeItem(EXCEPTION_KEY);

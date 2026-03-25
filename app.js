@@ -1988,37 +1988,255 @@ function copyCrossRefAll() {
 // SECTION: EXCEPTION LOG (ตกหล่น)
 // ==========================================
 
+/**
+ * Toggle between single-entry and range mode for Exception form.
+ */
+function toggleExceptionRangeMode() {
+    const isRange = document.getElementById('exception-range-toggle').checked;
+    document.getElementById('exception-single-mode').style.display = isRange ? 'none' : 'flex';
+    document.getElementById('exception-range-mode').style.display = isRange ? 'block' : 'none';
+    document.getElementById('exception-range-preview').textContent = '';
+}
+
+/**
+ * Add an extra (non-consecutive) tracking number row below the main form.
+ */
+let extraItemCount = 0;
+function addExceptionExtraItem() {
+    const container = document.getElementById('exception-extra-items');
+    extraItemCount++;
+    const div = document.createElement('div');
+    div.id = `extra-item-${extraItemCount}`;
+    div.style.cssText = 'display:flex; gap:8px; margin-top:6px; align-items:center;';
+    div.innerHTML = `
+        <input type="text" class="exception-extra-track" placeholder="เลขที่เพิ่มเติม (เช่น EQ123499999TH)" maxlength="13"
+            style="flex:1; text-transform:uppercase; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.9rem;">
+        <button type="button" onclick="document.getElementById('extra-item-${extraItemCount}').remove()"
+            style="padding:6px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#d32f2f; cursor:pointer; font-size:0.9rem;">✕</button>
+    `;
+    container.appendChild(div);
+}
+
+/**
+ * Parse a tracking number string into its components.
+ * Returns { prefix, body, cd, suffix, bodyInt } or null.
+ */
+function parseExceptionTrackNum(str) {
+    str = str.trim().toUpperCase().replace(/\s+/g, '');
+    const m = str.match(/^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/);
+    if (!m) return null;
+    return { prefix: m[1], body: m[2], cd: m[3], suffix: m[4], bodyInt: parseInt(m[2]), full: str };
+}
+
+/**
+ * Build a full tracking number from components, auto-calculating check digit.
+ */
+function buildExceptionTrackNum(prefix, bodyInt, suffix) {
+    const bodyStr = bodyInt.toString().padStart(8, '0');
+    const cd = TrackingUtils.calculateS10CheckDigit(bodyStr);
+    return `${prefix}${bodyStr}${cd}${suffix}`;
+}
+
+/**
+ * Main entry point: called when user clicks "บันทึก".
+ * Collects all inputs, validates, and saves as one session.
+ */
+function addExceptionEntry() {
+    const isRange = document.getElementById('exception-range-toggle').checked;
+    const reason = document.getElementById('exception-reason-input').value.trim();
+
+    if (!reason) {
+        alert('กรุณาระบุเหตุผลที่ตกหล่น');
+        document.getElementById('exception-reason-input').focus();
+        return;
+    }
+
+    const trackNums = [];
+
+    if (isRange) {
+        // --- Range Mode ---
+        const startRaw = document.getElementById('exception-start-input').value.trim().toUpperCase().replace(/\s+/g, '');
+        const endRaw   = document.getElementById('exception-end-input').value.trim().toUpperCase().replace(/\s+/g, '');
+
+        const startParsed = parseExceptionTrackNum(startRaw);
+        const endParsed   = parseExceptionTrackNum(endRaw);
+
+        if (!startParsed) { alert('เลขเริ่มต้นไม่ถูกต้อง (ต้องเป็นรูปแบบ XXNNNNNNNNNXX)'); return; }
+        if (!endParsed)   { alert('เลขสุดท้ายไม่ถูกต้อง (ต้องเป็นรูปแบบ XXNNNNNNNNNXX)'); return; }
+        if (startParsed.prefix !== endParsed.prefix || startParsed.suffix !== endParsed.suffix) {
+            alert('เลขเริ่มต้นและสุดท้ายต้องเป็นชุดเดียวกัน (Prefix/Suffix ตรงกัน)');
+            return;
+        }
+        if (startParsed.bodyInt > endParsed.bodyInt) {
+            alert('เลขเริ่มต้นต้องน้อยกว่าหรือเท่ากับเลขสุดท้าย');
+            return;
+        }
+
+        const count = endParsed.bodyInt - startParsed.bodyInt + 1;
+        if (count > 500) {
+            if (!confirm(`คุณกำลังบันทึก ${count} รายการ ยืนยันหรือไม่?`)) return;
+        }
+
+        for (let i = startParsed.bodyInt; i <= endParsed.bodyInt; i++) {
+            trackNums.push(buildExceptionTrackNum(startParsed.prefix, i, startParsed.suffix));
+        }
+
+    } else {
+        // --- Single Mode ---
+        const single = document.getElementById('exception-track-input').value.trim().toUpperCase().replace(/\s+/g, '');
+        if (!single || single.length !== 13) {
+            alert('กรุณากรอกเลขพัสดุให้ครบ 13 หลัก');
+            document.getElementById('exception-track-input').focus();
+            return;
+        }
+        trackNums.push(single);
+    }
+
+    // --- Extra Items ---
+    const extraInputs = document.querySelectorAll('.exception-extra-track');
+    extraInputs.forEach(inp => {
+        const v = inp.value.trim().toUpperCase().replace(/\s+/g, '');
+        if (v && v.length === 13) {
+            if (!trackNums.includes(v)) trackNums.push(v);
+        }
+    });
+
+    if (trackNums.length === 0) {
+        alert('ไม่พบเลขพัสดุที่ถูกต้อง');
+        return;
+    }
+
+    // Lookup company name from first trackNum
+    let companyName = '-';
+    if (typeof CustomerDB !== 'undefined') {
+        const lookupInfo = CustomerDB.get(trackNums[0]);
+        if (lookupInfo) companyName = lookupInfo.name;
+    }
+
+    ExceptionManager.saveSession(trackNums, companyName, reason);
+
+    // Clear inputs
+    document.getElementById('exception-track-input').value = '';
+    document.getElementById('exception-start-input').value = '';
+    document.getElementById('exception-end-input').value = '';
+    document.getElementById('exception-range-preview').textContent = '';
+    document.getElementById('exception-extra-items').innerHTML = '';
+    extraItemCount = 0;
+    // Keep range toggle state and reason for convenience
+
+    renderExceptionTable();
+}
+
+/**
+ * Group exception entries by sessionId, then render.
+ * Consecutive entries within the same session are collapsed to a range display.
+ */
 function renderExceptionTable() {
     const container = document.getElementById('exception-table-container');
     if (!container) return;
-    
-    // Check if ExceptionManager is ready
-    if(typeof ExceptionManager === 'undefined') {
-        container.innerHTML = '<span style="color:red;">ExceptionManager not loaded. Check db_manager.js</span>';
+
+    if (typeof ExceptionManager === 'undefined') {
+        container.innerHTML = '<span style="color:red;">ExceptionManager not loaded.</span>';
         return;
     }
 
     const exceptions = ExceptionManager.getAll();
-    
+
     if (exceptions.length === 0) {
         container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">ยังไม่มีข้อมูลประวัติการตกหล่น</p>';
         return;
     }
 
-    // Sort by newest first
-    exceptions.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+    // --- Group by sessionId ---
+    const sessionMap = new Map();
+    exceptions.forEach(item => {
+        // Legacy entries without sessionId get their own pseudo-session
+        const sid = item.sessionId || item.id;
+        if (!sessionMap.has(sid)) {
+            sessionMap.set(sid, {
+                sessionId: sid,
+                companyName: item.companyName,
+                reason: item.reason,
+                timestamp: item.timestamp,
+                entries: []
+            });
+        }
+        sessionMap.get(sid).entries.push(item);
+    });
+
+    // Sort sessions newest first
+    const sessions = Array.from(sessionMap.values()).sort((a, b) =>
+        new Date(b.timestamp) - new Date(a.timestamp)
+    );
+
+    // --- Helper: format a single tracking number nicely ---
+    function fmtNum(raw) {
+        raw = raw.replace(/\s+/g, '');
+        if (raw.length === 13) {
+            return `${raw.slice(0,2)} ${raw.slice(2,6)} ${raw.slice(6,10)} ${raw.slice(10,11)} ${raw.slice(11,13)}`;
+        }
+        return raw;
+    }
+
+    // --- Helper: compress entries into range groups ---
+    function compressEntries(entries) {
+        // Parse all
+        const parsed = entries.map(e => {
+            const m = e.trackNum.replace(/\s+/g,'').match(/^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/);
+            return m ? { full: e.trackNum.replace(/\s+/g,''), prefix: m[1], body: parseInt(m[2]), cd: m[3], suffix: m[4] } : { full: e.trackNum, prefix: null };
+        });
+
+        // Separate parseable from non-parseable (edge case)
+        const sortable = parsed.filter(p => p.prefix !== null).sort((a,b) => {
+            if (a.prefix !== b.prefix || a.suffix !== b.suffix) return a.full.localeCompare(b.full);
+            return a.body - b.body;
+        });
+        const unsortable = parsed.filter(p => p.prefix === null);
+
+        const groups = []; // { display: string, startFull: string, endFull: string, count: int }
+
+        let i = 0;
+        while (i < sortable.length) {
+            let j = i;
+            // Extend as long as consecutive within same prefix/suffix
+            while (
+                j + 1 < sortable.length &&
+                sortable[j+1].prefix === sortable[i].prefix &&
+                sortable[j+1].suffix === sortable[i].suffix &&
+                sortable[j+1].body === sortable[j].body + 1
+            ) { j++; }
+
+            const count = j - i + 1;
+            if (count === 1) {
+                groups.push({ display: fmtNum(sortable[i].full), count: 1 });
+            } else {
+                groups.push({
+                    display: `${fmtNum(sortable[i].full)} <span style="color:#555;">ถึง</span> ${fmtNum(sortable[j].full)}`,
+                    count: count
+                });
+            }
+            i = j + 1;
+        }
+
+        // Append non-parseable
+        unsortable.forEach(p => groups.push({ display: fmtNum(p.full), count: 1 }));
+
+        return groups;
+    }
 
     let html = `
         <div id="exception-export-target" style="background:white; padding:15px; border-radius:8px;">
             <div style="margin-bottom:10px; border-bottom:2px solid #333; padding-bottom:10px;">
-                <strong style="font-size:1.1rem;">รายงานขึ้นงานที่ไม่มีสถานะรับฝาก</strong>
+                <strong style="font-size:1.1rem;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</strong>
+                <span style="font-size:0.8rem; color:#666; margin-left:10px;">${new Date().toLocaleDateString('th-TH')}</span>
             </div>
             <table style="width:100%; font-size:0.9rem; border-collapse: collapse;">
                 <thead>
                     <tr style="background:#f1f1f1;">
                         <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;">ลำดับ</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เลขพัสดุ</th>
-                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">ชื่อบริษัท/สังกัด (ถ้ามี)</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เลขพัสดุ / ช่วงเลข</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;">จำนวน</th>
+                        <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">ชื่อบริษัท/สังกัด</th>
                         <th style="padding:8px; border-bottom:1px solid #ccc; text-align:left;">เหตุผล / สถานะ</th>
                         <th style="padding:8px; border-bottom:1px solid #ccc; text-align:center;" data-html2canvas-ignore>จัดการ</th>
                     </tr>
@@ -2026,16 +2244,28 @@ function renderExceptionTable() {
                 <tbody>
     `;
 
-    exceptions.forEach((item, idx) => {
-        const dateStr = new Date(item.timestamp).toLocaleDateString('th-TH');
+    sessions.forEach((session, idx) => {
+        const dateStr = new Date(session.timestamp).toLocaleDateString('th-TH');
+        const groups = compressEntries(session.entries);
+        const totalCount = session.entries.length;
+
+        // Build the tracking number display (each group on its own line)
+        const trackDisplay = groups.map(g =>
+            `<div style="font-family:monospace; font-weight:bold; white-space:nowrap; margin-bottom:2px;">${g.display}${g.count > 1 ? '' : ''}</div>`
+        ).join('');
+
         html += `
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding:10px 8px; text-align:center;">${idx + 1}</td>
-                <td style="padding:10px 8px; font-family:monospace; font-weight:bold;">${item.trackNum}</td>
-                <td style="padding:10px 8px;">${item.companyName}</td>
-                <td style="padding:10px 8px; color:#d32f2f;">${item.reason}</td>
+            <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
+                <td style="padding:10px 8px; text-align:center; color:#999;">${idx + 1}</td>
+                <td style="padding:10px 8px;">
+                    ${trackDisplay}
+                    <div style="font-size:0.75rem; color:#888; margin-top:4px;">📅 ${dateStr}</div>
+                </td>
+                <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1;">${totalCount}</td>
+                <td style="padding:10px 8px;">${session.companyName}</td>
+                <td style="padding:10px 8px; color:#d32f2f;">${session.reason}</td>
                 <td style="padding:10px 8px; text-align:center;" data-html2canvas-ignore>
-                    <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteException('${item.id}')">ลบ</button>
+                    <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteExceptionSession('${session.sessionId}')">ลบ</button>
                 </td>
             </tr>
         `;
@@ -2053,54 +2283,24 @@ function renderExceptionTable() {
     container.innerHTML = html;
 }
 
-function addExceptionEntry() {
-    const trackInput = document.getElementById('exception-track-input');
-    const reasonInput = document.getElementById('exception-reason-input');
-    
-    const trackNum = trackInput.value.trim().toUpperCase();
-    const reason = reasonInput.value.trim();
-    
-    if (!trackNum || trackNum.length !== 13) {
-        alert('กรุณากรอกเลขพัสดุให้ครบ 13 หลัก');
-        trackInput.focus();
-        return;
+function deleteExceptionSession(sessionId) {
+    if (confirm('ลบรายการในกลุ่มนี้ทั้งหมดใช่หรือไม่?')) {
+        ExceptionManager.removeSession(sessionId);
+        renderExceptionTable();
     }
-    
-    if (!reason) {
-        alert('กรุณาระบุเหตุผลที่ตกหล่น');
-        reasonInput.focus();
-        return;
-    }
-    
-    // Attempt lookup to find company name
-    let companyName = '-';
-    if(typeof CustomerDB !== 'undefined') {
-        const lookupInfo = CustomerDB.get(trackNum);
-        if(lookupInfo) {
-             companyName = lookupInfo.name;
-        }
-    }
-    
-    ExceptionManager.save(trackNum, companyName, reason);
-    
-    // Clear inputs
-    trackInput.value = '';
-    // reasonInput.value = ''; // keep reason in case of multiple similar entries
-    trackInput.focus();
-    
-    renderExceptionTable();
 }
 
+// Keep old deleteException for legacy entries (without sessionId)
 function deleteException(id) {
-    if(confirm('ยอดลบรายการนี้ใช่หรือไม่?')) {
+    if (confirm('ยืนยันลบรายการนี้?')) {
         ExceptionManager.remove(id);
         renderExceptionTable();
     }
 }
 
 function clearAllExceptions() {
-    if(ExceptionManager.clearAll()) {
-         renderExceptionTable();
+    if (ExceptionManager.clearAll()) {
+        renderExceptionTable();
     }
 }
 
@@ -2110,32 +2310,28 @@ function exportExceptionImage() {
         alert('ไม่พบข้อมูลที่จะสร้างรูปภาพ กรุณาเพิ่มประวัติก่อนครับ');
         return;
     }
-    
-    if(typeof html2canvas === 'undefined') {
+
+    if (typeof html2canvas === 'undefined') {
         alert('ระบบกำลังโหลดเครื่องมือสร้างภาพ หรือโหลดไม่สำเร็จ กรุณาลองใหม่ (ต้องต่อเน็ต)');
         return;
     }
-    
+
     const originalBackground = targetNode.style.background;
-    targetNode.style.background = '#ffffff'; // Ensure white background for image
-    
-    // Temporarily apply padding for better image borders
+    targetNode.style.background = '#ffffff';
     const originalPadding = targetNode.style.padding;
-    targetNode.style.padding = "30px";
-    
+    targetNode.style.padding = '30px';
+
     html2canvas(targetNode, {
-        scale: 1.5, // balanced resolution for LINE sharing
+        scale: 1.5,
         backgroundColor: '#ffffff',
         logging: false
     }).then(canvas => {
-        // Restore styles
         targetNode.style.background = originalBackground;
         targetNode.style.padding = originalPadding;
-        
-        // Trigger Download
+
         const imgData = canvas.toDataURL('image/jpeg', 0.85);
         const link = document.createElement('a');
-        link.download = `Exception_Report_${new Date().toISOString().slice(0,10)}.jpg`;
+        link.download = `Exception_Report_${new Date().toISOString().slice(0, 10)}.jpg`;
         link.href = imgData;
         document.body.appendChild(link);
         link.click();
@@ -2152,8 +2348,9 @@ function exportExceptionImage() {
 const originalCheckAuth = checkAuth;
 checkAuth = function() {
     originalCheckAuth();
-    if(document.getElementById('exception-table-container')) {
+    if (document.getElementById('exception-table-container')) {
         renderExceptionTable();
     }
 };
+
 

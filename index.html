@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracking Analyst v1.14</title>
+    <title>Tracking Analyst v1.16</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=13">
+    <link rel="stylesheet" href="style.css?v=14">
     <style>
         /* Force tabs to wrap and buttons to stay on one line */
         .tabs { 
@@ -120,15 +120,53 @@
                             <button class="btn btn-primary" onclick="exportExceptionImage()" style="background-color:#0288d1; border-color:#0288d1; color:white; margin-left:auto; font-size:0.8rem; padding:4px 8px;">📸 สร้างรูปภาพแจ้งหัวหน้า</button>
                         </div>
                         <p style="font-size:0.9rem; color:#666; margin-bottom:10px;">บันทึกเลขพัสดุที่ไม่สามารถหาข้อมูลพบหรือมีปัญหา พร้อมระบุสาเหตุ เพื่อเก็บเป็นประวัติและส่งรายงานผ่านไลน์</p>
-                        
-                        <div style="display:flex; gap:10px; margin-bottom:15px; align-items:flex-end; flex-wrap:wrap;">
+
+                        <!-- Mode Toggle -->
+                        <div style="margin-bottom:12px;">
+                            <label style="font-size:0.85rem; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
+                                <input type="checkbox" id="exception-range-toggle" onchange="toggleExceptionRangeMode()">
+                                <span>📋 ระบุแบบ <strong>ช่วงเลข</strong> (กรณีต่อเนื่องกัน)</span>
+                            </label>
+                        </div>
+
+                        <!-- Single Mode (default) -->
+                        <div id="exception-single-mode" style="display:flex; gap:10px; margin-bottom:10px; align-items:flex-end; flex-wrap:wrap;">
                             <div style="flex:1; min-width:200px;">
                                 <label style="font-size:0.8rem; display:block; margin-bottom:5px;">เลขพัสดุ (Tracking Number)</label>
-                                <input type="text" id="exception-track-input" placeholder="เช่น EQ123456785TH" style="text-transform:uppercase; width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                                <input type="text" id="exception-track-input" placeholder="เช่น EQ123456785TH" style="text-transform:uppercase; width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                             </div>
+                        </div>
+
+                        <!-- Range Mode (hidden by default) -->
+                        <div id="exception-range-mode" style="display:none; margin-bottom:10px;">
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                <div style="flex:1; min-width:180px;">
+                                    <label style="font-size:0.8rem; display:block; margin-bottom:5px;">🔢 เลขที่ <strong>เริ่มต้น</strong> (Start)</label>
+                                    <input type="text" id="exception-start-input" placeholder="เช่น EQ123456001TH" maxlength="13" style="text-transform:uppercase; width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                                </div>
+                                <div style="font-size:1.2rem; padding-top:18px; color:#666; flex:0 0 auto;">ถึง</div>
+                                <div style="flex:1; min-width:180px;">
+                                    <label style="font-size:0.8rem; display:block; margin-bottom:5px;">🔢 เลขที่ <strong>สุดท้าย</strong> (End)</label>
+                                    <input type="text" id="exception-end-input" placeholder="เช่น EQ123456050TH" maxlength="13" style="text-transform:uppercase; width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                                </div>
+                            </div>
+                            <div id="exception-range-preview" style="margin-top:6px; font-size:0.8rem; color:#0288d1;"></div>
+                        </div>
+
+                        <!-- Extra (Non-consecutive) Items -->
+                        <div id="exception-extra-container" style="margin-bottom:10px;">
+                            <div id="exception-extra-items"></div>
+                            <button type="button" class="btn btn-neutral" onclick="addExceptionExtraItem()" style="font-size:0.8rem; padding:5px 12px; border:1px dashed #999; background:#f9f9f9; margin-top:4px;">
+                                ➕ เพิ่มเลขที่ไม่ต่อเนื่อง
+                            </button>
+                            <div style="font-size:0.75rem; color:#999; margin-top:4px;">กรณีบริษัทเดียวแต่มีหมายเลขหลายชุด</div>
+                        </div>
+
+                        <!-- Reason + Save -->
+                        <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
                             <div style="flex:2; min-width:200px;">
                                 <label style="font-size:0.8rem; display:block; margin-bottom:5px;">เหตุผล (Reason)</label>
-                                <input type="text" id="exception-reason-input" placeholder="เช่น ของยังไม่มาส่ง, จ่าหน้าไม่ชัดเจน..." list="exception-reason-list" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                                <input type="text" id="exception-reason-input" placeholder="เช่น ของยังไม่มาส่ง, จ่าหน้าไม่ชัดเจน..." list="exception-reason-list" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                                 <datalist id="exception-reason-list">
                                     <option value="บันทึกข้อมูลไม่ตรงตามจริง">
                                     <option value="ไม่ได้บันทึกข้อมูลในระบบ New CA">
@@ -535,12 +573,12 @@
 
     <div
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v1.15</div>
+        v1.16</div>
 
-    <script src="utils.js?v=36"></script>
-    <script src="db_manager.js?v=36"></script>
-    <script src="smart_input.js?v=36"></script>
-    <script src="app.js?v=36"></script>
+    <script src="utils.js?v=37"></script>
+    <script src="db_manager.js?v=37"></script>
+    <script src="smart_input.js?v=37"></script>
+    <script src="app.js?v=37"></script>
 </body>
 
 </html>
