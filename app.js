@@ -352,21 +352,36 @@ async function handleTrackOcrUpload(files) {
             // --- QMS AUTO-FILL LINK ---
             const qmsTextarea = document.getElementById('qms-import-text');
             const qmsSection = document.getElementById('qms-staging-section');
+            const qmsPanel = document.getElementById('qms-staging-panel');
             if (qmsTextarea && qmsSection) {
-                // Pre-fill staging and trigger grouping if admin is viewing
                 qmsTextarea.value = numbers.join('\n');
                 
                 if (typeof processQmsImport === 'function') {
                     qmsSection.style.display = 'block';
+                    if (qmsPanel) qmsPanel.style.display = 'block';
+                    const chevron = document.getElementById('qms-staging-chevron');
+                    if (chevron) chevron.textContent = '▲ ปิด';
+
                     qmsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     
-                    // Flash staging area to show it was populated
                     qmsTextarea.style.transition = "background-color 0.5s";
                     qmsTextarea.style.backgroundColor = "#fff9c4";
                     
                     setTimeout(() => {
                         processQmsImport();
                         qmsTextarea.style.backgroundColor = "";
+                        
+                        // If all items fall into exactly 1 group, auto-draft it to save a click!
+                        if (typeof qmsStagingGroups !== 'undefined') {
+                            const groupKeys = Object.keys(qmsStagingGroups);
+                            if (groupKeys.length === 1) {
+                                setTimeout(() => {
+                                    if (typeof draftReportFromGroup === 'function') {
+                                        draftReportFromGroup(groupKeys[0]);
+                                    }
+                                }, 500);
+                            }
+                        }
                     }, 800);
                 }
             }
