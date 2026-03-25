@@ -2258,16 +2258,7 @@ function draftReportFromGroup(prefix) {
     // NEW: Auto-fill Date/Time
     if (group.extractedDateTime) {
         const dtInput = document.getElementById('exception-datetime');
-        if (dtInput) {
-            let val = group.extractedDateTime;
-            const mt = val.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}:\d{2})/);
-            if(mt) {
-                let yr = parseInt(mt[3], 10);
-                if(yr > 2500) yr -= 543;
-                val = `${yr}-${mt[2]}-${mt[1]}T${mt[4]}`;
-            }
-            dtInput.value = val;
-        }
+        if (dtInput) dtInput.value = group.extractedDateTime;
     }
     const fsInput = document.getElementById('exception-first-status');
     if (fsInput) fsInput.value = 'ใส่ของลงถุง'; // Enforce default
