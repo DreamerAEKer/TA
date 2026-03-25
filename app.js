@@ -333,7 +333,7 @@ async function handleTrackOcrUpload(files) {
             numbers.forEach((num, i) => {
                 const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(num) : null;
                 html += `<tr>
-                    <td>${i + 1}</td>
+                    <td style="padding-left:10px;">${i + 1}</td>
                     <td style="font-family:monospace;">${TrackingUtils.formatTrackingNumber(num)}</td>
                     <td>
                         ${owner ? `<span style="color:#0d47a1; font-size:0.8rem;">👤 ${owner.name}</span>` : ''}
@@ -348,6 +348,29 @@ async function handleTrackOcrUpload(files) {
             resultArea.innerHTML = html;
             const copyBar = document.getElementById('smart-copy-all-bar');
             if (copyBar) copyBar.classList.remove('hidden');
+
+            // --- QMS AUTO-FILL LINK ---
+            const qmsTextarea = document.getElementById('qms-import-text');
+            const qmsSection = document.getElementById('qms-staging-section');
+            if (qmsTextarea && qmsSection) {
+                // Pre-fill staging and trigger grouping if admin is viewing
+                qmsTextarea.value = numbers.join('\n');
+                
+                if (typeof processQmsImport === 'function') {
+                    qmsSection.style.display = 'block';
+                    qmsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // Flash staging area to show it was populated
+                    qmsTextarea.style.transition = "background-color 0.5s";
+                    qmsTextarea.style.backgroundColor = "#fff9c4";
+                    
+                    setTimeout(() => {
+                        processQmsImport();
+                        qmsTextarea.style.backgroundColor = "";
+                    }, 800);
+                }
+            }
+            // --------------------------
         }
         statusEl.textContent = `✅ เสร็จ พบ ${numbers.length} เลข`;
     } catch (err) {
@@ -2337,12 +2360,12 @@ function addExceptionExtraItem() {
     extraItemCount++;
     const div = document.createElement('div');
     div.id = `extra-item-${extraItemCount}`;
-    div.style.cssText = 'display:flex; gap:8px; margin-top:6px; align-items:center;';
+    div.style.cssText = 'display:flex; gap:10px; margin-top:10px; align-items:center;';
     div.innerHTML = `
         <input type="text" class="exception-extra-track" placeholder="เลขที่เพิ่มเติม (เช่น EQ123499999TH)" maxlength="13"
-            style="flex:1; text-transform:uppercase; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.9rem;">
+            style="flex:1; text-transform:uppercase; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; font-family:inherit; font-size:inherit;">
         <button type="button" onclick="document.getElementById('extra-item-${extraItemCount}').remove()"
-            style="padding:6px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#d32f2f; cursor:pointer; font-size:0.9rem;">✕</button>
+            style="padding:10px 14px; border:1px solid #ffcdd2; border-radius:4px; background:#ffebee; color:#d32f2f; cursor:pointer;">✕</button>
     `;
     container.appendChild(div);
 }
