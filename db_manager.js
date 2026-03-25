@@ -964,8 +964,18 @@ const ExceptionManager = {
             });
         });
 
-        localStorage.setItem(EXCEPTION_KEY, JSON.stringify(filtered));
-        return sessionId;
+        try {
+            localStorage.setItem(EXCEPTION_KEY, JSON.stringify(filtered));
+            return sessionId;
+        } catch (e) {
+            console.error("ExceptionManager.saveSession Error:", e);
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                alert("⚠️ พื้นที่จัดเก็บข้อมูลเต็ม! (Storage Full)\n\nสาเหตุ: รูปภาพที่แนบมีขนาดใหญ่เกินกว่าที่เบราว์เซอร์จะรับได้ในระบบประวัติ\nวิธีแก้ไข: โปรดล้างรูปภาพบางส่วนออก หรือใช้รูปที่มีความละเอียดน้อยลง");
+            } else {
+                alert("❌ เกิดข้อผิดพลาดในการบันทึก: " + e.message);
+            }
+            return null;
+        }
     },
 
     // Legacy single-save (kept for compatibility)

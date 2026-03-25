@@ -2580,7 +2580,8 @@ function addExceptionEntry() {
     const dateTime = document.getElementById('exception-datetime').value.trim();
 
     // Pass images and current editing ID to save (overwrite existing if same track keys/session)
-    ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime, exceptionImages, currentEditingSessionId);
+    const savedId = ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime, exceptionImages, currentEditingSessionId);
+    if (!savedId) return; // Stop if save failed (e.g. quota exceeded)
     
     // Clear state
     currentEditingSessionId = null;
