@@ -2783,7 +2783,7 @@ function exportExceptionImage() {
     targetNode.style.padding = '30px';
 
     html2canvas(targetNode, {
-        scale: 1.5,
+        scale: 3,
         backgroundColor: '#ffffff',
         logging: false,
         useCORS: true
@@ -2942,6 +2942,10 @@ function drawEditorCanvas() {
     if (!cvs) return;
     const ctx = cvs.getContext('2d');
     
+    // Smooth rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
     ctx.clearRect(0, 0, cvs.width, cvs.height);
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, cvs.width, cvs.height);
@@ -2954,7 +2958,7 @@ function drawEditorCanvas() {
 function saveImageEditor() {
     if (editIdx > -1 && exceptionImages[editIdx]) {
         const cvs = document.getElementById('img-editor-canvas');
-        const croppedDataUrl = cvs.toDataURL('image/jpeg', 0.9);
+        const croppedDataUrl = cvs.toDataURL('image/jpeg', 0.92);
         exceptionImages[editIdx].dataUrl = croppedDataUrl;
         
         const thumb = document.querySelector(`#exc-img-${editIdx} img`);
@@ -2970,14 +2974,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cvs) {
         cvs.addEventListener('mousedown', e => {
             isDragging = true;
-            startX = e.clientX - tPanX;
-            startY = e.clientY - tPanY;
+            const rect = cvs.getBoundingClientRect();
+            const ratioX = cvs.width / rect.width;
+            const ratioY = cvs.height / rect.height;
+            startX = (e.clientX * ratioX) - tPanX;
+            startY = (e.clientY * ratioY) - tPanY;
         });
         window.addEventListener('mouseup', () => { isDragging = false; });
         window.addEventListener('mousemove', e => {
             if (isDragging) {
-                tPanX = e.clientX - startX;
-                tPanY = e.clientY - startY;
+                const rect = cvs.getBoundingClientRect();
+                const ratioX = cvs.width / rect.width;
+                const ratioY = cvs.height / rect.height;
+                tPanX = (e.clientX * ratioX) - startX;
+                tPanY = (e.clientY * ratioY) - startY;
                 drawEditorCanvas();
             }
         });
@@ -2985,16 +2995,22 @@ document.addEventListener('DOMContentLoaded', () => {
         cvs.addEventListener('touchstart', e => {
             if (e.touches.length === 1) {
                 isDragging = true;
-                startX = e.touches[0].clientX - tPanX;
-                startY = e.touches[0].clientY - tPanY;
+                const rect = cvs.getBoundingClientRect();
+                const ratioX = cvs.width / rect.width;
+                const ratioY = cvs.height / rect.height;
+                startX = (e.touches[0].clientX * ratioX) - tPanX;
+                startY = (e.touches[0].clientY * ratioY) - tPanY;
             }
         }, {passive: false});
         window.addEventListener('touchend', () => { isDragging = false; });
         window.addEventListener('touchmove', e => {
             if (isDragging && e.touches.length === 1) {
                 e.preventDefault();
-                tPanX = e.touches[0].clientX - startX;
-                tPanY = e.touches[0].clientY - startY;
+                const rect = cvs.getBoundingClientRect();
+                const ratioX = cvs.width / rect.width;
+                const ratioY = cvs.height / rect.height;
+                tPanX = (e.touches[0].clientX * ratioX) - startX;
+                tPanY = (e.touches[0].clientY * ratioY) - startY;
                 drawEditorCanvas();
             }
         }, {passive: false});
@@ -3004,7 +3020,7 @@ document.addEventListener('DOMContentLoaded', () => {
         zoomSlider.addEventListener('input', e => {
             const pct = parseInt(e.target.value, 10) / 100;
             const newScale = baseFitScale * pct;
-            const cvsW = 500, cvsH = 500;
+            const cvsW = cvs.width, cvsH = cvs.height;
             const centerX = cvsW / 2;
             const centerY = cvsH / 2;
             
