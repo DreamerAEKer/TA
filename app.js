@@ -2385,15 +2385,49 @@ function loadExceptionMeta() {
 let exceptionImages = []; // Array of { dataUrl, name }
 let currentEditingSessionId = null; // Track if we are editing an existing history entry
 
+/**
+ * Compress image before storing to localStorage to avoid QuotaExceededError (5MB limit).
+ */
+function compressExceptionImage(dataUrl, maxWidth = 1200, quality = 0.6) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+                height = (maxWidth / width) * height;
+                width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Export as compressed JPEG
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(dataUrl); // Fallback to original
+        img.src = dataUrl;
+    });
+}
+
 function handleExceptionImageUpload(files) {
     if (!files || files.length === 0) return;
     const preview = document.getElementById('exception-img-preview');
     Array.from(files).forEach(file => {
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const dataUrl = e.target.result;
+        reader.onload = async function(e) {
+            const rawDataUrl = e.target.result;
+            
+            // Compress BEFORE pushing to global array
+            const dataUrl = await compressExceptionImage(rawDataUrl);
+            
             const idx = exceptionImages.length;
-            exceptionImages.push({ dataUrl, originalDataUrl: dataUrl, name: file.name });
+            exceptionImages.push({ dataUrl, name: file.name });
 
             // Create preview thumb
             const wrapper = document.createElement('div');

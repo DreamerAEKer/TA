@@ -996,10 +996,6 @@ const ExceptionManager = {
     },
 
     clearAll: () => {
-        if(confirm('ยืนยันลบประวัติการตกหล่นทั้งหมดระวังจะกู้คืนไม่ได้?')) {
-            localStorage.removeItem(EXCEPTION_KEY);
-            return true;
-        }
-        return false;
+        localStorage.removeItem(EXCEPTION_KEY);
     }
 };

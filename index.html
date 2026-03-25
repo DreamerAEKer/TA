@@ -282,6 +282,10 @@
                         <!-- Moved Export Button to Bottom of History -->
                         <div style="margin-top:5px; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                             <h4 style="margin:0; font-size:1rem; color:#333;">ประวัติ / ตารางรายงาน</h4>
+                            <button class="btn btn-neutral" onclick="if(confirm('ยืนยันที่จะลบประวัติรายงานชุดนี้ทั้งหมดหรือไม่?\\n(ข้อมูลที่บันทึกไว้จะหายไปทั้งหมด)')) { ExceptionManager.clearAll(); renderExceptionTable(); }" 
+                                style="font-size:0.75rem; padding:4px 8px; border:1px solid #ffcdd2; color:#d32f2f; background:#fff5f5; border-radius:4px;">
+                                🗑️ ล้างประวัติทั้งหมด
+                            </button>
                         </div>
                         <!-- TABLE CONTAINER -->
                         <div id="exception-table-container" style="width:100%; min-width:0; overflow-x:auto;">
@@ -679,7 +683,7 @@
 
     <div id="app-version"
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v1.33</div>
+        v1.34</div>
 
     <!-- IMAGE EDITOR MODAL -->
     <div id="img-editor-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:10px; box-sizing:border-box;">
@@ -701,10 +705,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="utils.js?v=55"></script>
-    <script src="db_manager.js?v=55"></script>
-    <script src="smart_input.js?v=55"></script>
-    <script src="app.js?v=55"></script>
+    <script src="utils.js?v=60"></script>
+    <script src="db_manager.js?v=60"></script>
+    <script src="smart_input.js?v=60"></script>
+    <script src="app.js?v=60"></script>
 </body>
 
 </html>
