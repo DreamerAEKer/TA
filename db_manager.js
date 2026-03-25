@@ -943,9 +943,9 @@ const ExceptionManager = {
      * @param {string} companyName - Company name
      * @param {string} reason - Reason
      */
-    saveSession: (trackNums, companyName, reason, firstStatus = 'ใส่ของลงถุง', dateTime = '') => {
+    saveSession: (trackNums, companyName, reason, firstStatus = 'ใส่ของลงถุง', dateTime = '', images = [], existingSessionId = null) => {
         const exceptions = ExceptionManager.getAll();
-        const sessionId = Date.now().toString();
+        const sessionId = existingSessionId || Date.now().toString();
 
         // Remove any existing entries for these numbers (overwrite)
         const filtered = exceptions.filter(e => !trackNums.includes(e.trackNum));
@@ -958,6 +958,7 @@ const ExceptionManager = {
                 reason: reason,
                 firstStatus: firstStatus,
                 dateTime: dateTime,
+                images: images, // Store images array { dataUrl, name }
                 timestamp: new Date().toISOString(),
                 sessionId: sessionId
             });

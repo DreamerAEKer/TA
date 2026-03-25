@@ -197,20 +197,17 @@
                                 <input type="text" id="exception-first-status" value="ใส่ของลงถุง" placeholder="เช่น ใส่ของลงถุง" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                             </div>
                         </div>
-                        <!-- Date & Time + Save Button Block -->
+                        <!-- Date & Time Block (no save button here) -->
                         <div style="background:#f0f7ff; border:1px solid #c2d9f2; border-radius:8px; padding:12px; margin-top:4px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                 <label style="font-size:0.85rem; font-weight:bold; color:#0277bd; margin:0;">📅 วันที่และเวลาสแกน (Date & Time)</label>
                                 <span id="exception-be-display" style="font-size:0.85rem; color:#01579b; font-weight:bold; background:#e3f2fd; padding:2px 8px; border-radius:12px;"></span>
                             </div>
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                                 <input type="date" id="exception-date-picker" style="flex:1; min-width:140px; padding:9px; border:1px solid #90caf9; border-radius:6px; font-size:0.95rem; box-sizing:border-box; background:white;" oninput="updateBEDisplay()">
                                 <input type="time" id="exception-time-picker" style="flex:0 0 105px; padding:9px; border:1px solid #90caf9; border-radius:6px; font-size:0.95rem; box-sizing:border-box; background:white;" oninput="updateBEDisplay()">
                             </div>
                             <input type="hidden" id="exception-datetime">
-                            <button class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; padding:11px; font-size:1rem; border-radius:6px; background:linear-gradient(135deg,#2e7d32,#43a047); color:white; border:none; cursor:pointer; letter-spacing:0.5px;">
-                                ➕ บันทึกรายการ
-                            </button>
                         </div>
 
 
@@ -276,6 +273,11 @@
                                 <div id="exception-img-preview" style="display:flex; flex-wrap:wrap; gap:8px; min-height:0;"></div>
                             </div>
                         </div>
+
+                        <!-- ===== SAVE BUTTON (after images) ===== -->
+                        <button class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; margin-top:10px; padding:13px; font-size:1.05rem; border-radius:8px; background:linear-gradient(135deg,#1b5e20,#2e7d32,#43a047); color:white; border:none; cursor:pointer; letter-spacing:0.5px; box-shadow:0 3px 10px rgba(46,125,50,0.35);">
+                            ✅ บันทึกรายการลงประวัติ
+                        </button>
 
                         <!-- Moved Export Button to Top of History -->
                         <div style="margin-top:5px; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -675,7 +677,7 @@
 
     <div id="app-version"
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v1.30</div>
+        v1.31</div>
 
     <!-- IMAGE EDITOR MODAL -->
     <div id="img-editor-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:10px; box-sizing:border-box;">
@@ -697,10 +699,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="utils.js?v=51"></script>
-    <script src="db_manager.js?v=51"></script>
-    <script src="smart_input.js?v=51"></script>
-    <script src="app.js?v=51"></script>
+    <script src="utils.js?v=52"></script>
+    <script src="db_manager.js?v=52"></script>
+    <script src="smart_input.js?v=52"></script>
+    <script src="app.js?v=52"></script>
 </body>
 
 </html>

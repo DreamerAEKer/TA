@@ -2383,6 +2383,7 @@ function loadExceptionMeta() {
 
 /** Image attachment storage (runtime only — not persisted across reloads) */
 let exceptionImages = []; // Array of { dataUrl, name }
+let currentEditingSessionId = null; // Track if we are editing an existing history entry
 
 function handleExceptionImageUpload(files) {
     if (!files || files.length === 0) return;
@@ -2578,7 +2579,12 @@ function addExceptionEntry() {
     const firstStatus = document.getElementById('exception-first-status').value.trim();
     const dateTime = document.getElementById('exception-datetime').value.trim();
 
-    ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime);
+    // Pass images and current editing ID to save (overwrite existing if same track keys/session)
+    ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime, exceptionImages, currentEditingSessionId);
+    
+    // Clear state
+    currentEditingSessionId = null;
+    clearExceptionImages();
 
     document.getElementById('exception-track-input').value = '';
     document.getElementById('exception-start-input').value = '';
@@ -2689,9 +2695,28 @@ function renderExceptionTable() {
     }
 
     // ---- Build Image HTML (for export) ----
-    const validImages = exceptionImages.filter(x => x && x.dataUrl);
+    // NEW: Gather images from ALL sessions in history to show in the final report
+    let totalImages = [];
+    sessionMap.forEach(sess => {
+        const first = sess.entries[0];
+        if (first && first.images && Array.isArray(first.images)) {
+            first.images.forEach(img => {
+                if (!totalImages.find(x => x.dataUrl === img.dataUrl)) {
+                    totalImages.push(img);
+                }
+            });
+        }
+    });
+
+    // Also include currently unsaved images in the form (if any)
+    exceptionImages.forEach(img => {
+        if (!totalImages.find(x => x.dataUrl === img.dataUrl)) {
+            totalImages.push(img);
+        }
+    });
+
     let imagesHtml = '';
-    if (validImages.length > 0) {
+    if (totalImages.length > 0) {
         const scaleNode = document.getElementById('exception-img-scale');
         const scaleVal = scaleNode ? scaleNode.value : "100";
         const imgSize = (parseInt(scaleVal) / 100 * 200) + "px"; // Base size 200px
@@ -2700,7 +2725,7 @@ function renderExceptionTable() {
             <div style="margin-top:12px; padding-top:10px; border-top:1px solid #eee;">
                 <div style="font-size:0.8rem; font-weight:bold; color:#555; margin-bottom:6px;">รูปภาพประกอบ:</div>
                 <div id="exception-img-export-area" style="display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start;">
-                    ${validImages.map(img => `<img src="${img.dataUrl}" style="width:${imgSize}; object-fit:contain; border:1px solid #ccc; border-radius:4px;" title="${img.name}">`).join('')}
+                    ${totalImages.map(img => `<img src="${img.dataUrl}" style="width:${imgSize}; object-fit:contain; border:1px solid #ccc; border-radius:4px;" title="${img.name}">`).join('')}
                 </div>
             </div>`;
     }
@@ -2748,7 +2773,10 @@ function renderExceptionTable() {
                     <div style="font-size:0.85rem; color:#555;"><strong>วันที่/เวลา:</strong> <span style="color:#0288d1;">${dispDateTime}</span></div>
                 </td>
                 <td style="padding:10px 8px; text-align:center; vertical-align:top;" data-html2canvas-ignore>
-                    <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteExceptionSession('${session.sessionId}')">🗑️ ลบ</button>
+                    <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
+                        <button class="btn" style="padding:4px 10px; font-size:0.8rem; background:#e3f2fd; border:1px solid #90caf9; color:#0277bd; border-radius:4px;" onclick="openHistoryImageEditor('${session.sessionId}')" title="แก้ไข/เพิ่มรูปภาพของรายการนี้">🖼️ รูป</button>
+                        <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteExceptionSession('${session.sessionId}')">🗑️ ลบ</button>
+                    </div>
                 </td>
             </tr>`;
     });
@@ -2798,6 +2826,68 @@ function deleteException(id) {
         ExceptionManager.remove(id);
         renderExceptionTable();
     }
+}
+
+function openHistoryImageEditor(sessionId) {
+    const exceptions = ExceptionManager.getAll();
+    const sessionItems = exceptions.filter(e => e.sessionId === sessionId);
+    if (sessionItems.length === 0) return;
+
+    const first = sessionItems[0];
+    currentEditingSessionId = sessionId;
+
+    // 1. Populate Range/Single
+    if (sessionItems.length > 1) {
+        document.getElementById('exception-range-toggle').checked = true;
+        document.getElementById('exception-start-input').value = sessionItems[0].trackNum;
+        document.getElementById('exception-end-input').value = sessionItems[sessionItems.length-1].trackNum;
+    } else {
+        document.getElementById('exception-range-toggle').checked = false;
+        document.getElementById('exception-track-input').value = first.trackNum;
+    }
+    toggleExceptionRangeMode();
+
+    // 2. Populate Other Fields
+    document.getElementById('exception-reason-input').value = first.reason;
+    document.getElementById('exception-first-status').value = first.firstStatus || 'ใส่ของลงถุง';
+    
+    // Date/Time Pickers
+    if (first.dateTime) {
+        setExceptionDatePickerFromBE(first.dateTime);
+    }
+
+    // 3. Populate Images
+    clearExceptionImages();
+    if (first.images && Array.isArray(first.images)) {
+        // We simulate handleExceptionImageUpload behavior but with dataUrls
+        const preview = document.getElementById('exception-img-preview');
+        first.images.forEach(imgData => {
+            const idx = exceptionImages.length;
+            exceptionImages.push({ dataUrl: imgData.dataUrl, originalDataUrl: imgData.dataUrl, name: imgData.name });
+
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'position:relative; display:inline-block;';
+            wrapper.id = `exc-img-${idx}`;
+
+            wrapper.innerHTML = `
+                <img src="${imgData.dataUrl}" style="max-width:120px; max-height:90px; border-radius:4px; border:1px solid #ccc; display:block;">
+                <button onclick="const currentId = parseInt(this.parentElement.id.replace('exc-img-', ''), 10); exceptionImages.splice(currentId, 1); this.parentElement.remove(); const allWrappers = document.getElementById('exception-img-preview').children; Array.from(allWrappers).forEach((w, i) => { w.id = 'exc-img-' + i; });" style="position:absolute; top:-5px; right:-5px; border-radius:50%; width:18px; height:18px; border:none; background:#d32f2f; color:white; font-size:0.7rem; cursor:pointer; line-height:1; padding:0;">✕</button>
+                <button onclick="const currentId = parseInt(this.parentElement.id.replace('exc-img-', ''), 10); openImageEditor(currentId);" style="position:absolute; top:-5px; left:-5px; border-radius:50%; width:18px; height:18px; border:none; background:#0288d1; color:white; font-size:0.6rem; cursor:pointer; line-height:1; padding:0;">✏️</button>
+            `;
+            preview.appendChild(wrapper);
+        });
+        
+        // Open panel
+        const panel = document.getElementById('exception-img-panel');
+        if (panel) {
+            panel.style.display = 'block';
+            const chevron = document.getElementById('exception-img-chevron');
+            if (chevron) chevron.textContent = '▲ ซ่อน';
+        }
+    }
+
+    // Scroll to top to see the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function clearAllExceptions() {
