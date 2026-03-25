@@ -2258,7 +2258,13 @@ function draftReportFromGroup(prefix) {
     // NEW: Auto-fill Date/Time
     if (group.extractedDateTime) {
         const dtInput = document.getElementById('exception-datetime');
-        if (dtInput) dtInput.value = group.extractedDateTime;
+        const dtEditBtn = document.getElementById('exception-datetime-edit');
+        if (dtInput) {
+            dtInput.value = group.extractedDateTime;
+            dtInput.readOnly = true;
+            dtInput.style.backgroundColor = '#f0f0f0';
+            if (dtEditBtn) dtEditBtn.style.display = 'inline-block';
+        }
     }
     const fsInput = document.getElementById('exception-first-status');
     if (fsInput) fsInput.value = 'ใส่ของลงถุง'; // Enforce default
@@ -2518,6 +2524,15 @@ function addExceptionEntry() {
     document.getElementById('exception-end-input').value = '';
     document.getElementById('exception-range-preview').textContent = '';
     document.getElementById('exception-extra-items').innerHTML = '';
+    
+    const dtInput = document.getElementById('exception-datetime');
+    if (dtInput) {
+        dtInput.value = '';
+        dtInput.readOnly = false;
+        dtInput.style.backgroundColor = '#fff';
+    }
+    const dtEditBtn = document.getElementById('exception-datetime-edit');
+    if (dtEditBtn) dtEditBtn.style.display = 'none';
     extraItemCount = 0;
 
     renderExceptionTable();
