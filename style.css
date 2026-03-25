@@ -702,10 +702,12 @@ table th {
 
 .unified-main {
     grid-column: span 1;
+    min-width: 0;
 }
 
 .unified-side {
     grid-column: span 1;
+    min-width: 0;
 }
 
 .workspace-card {

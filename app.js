@@ -2044,8 +2044,8 @@ function processQmsImport() {
 
     // Extract tracking numbers and optional datetime using index distance to handle multiline grid pastes
     const trackPattern = /[a-zA-Z]{2}\d{9}[a-zA-Z]{2}/g;
-    // VERY LOOSE regex: DD/MM/YYYY then any non-digits, then HH:MM
-    const datetimePattern = /(\d{1,2}\/\d{1,2}\/\d{2,4})[^\d]*(\d{1,2}:\d{2})/g;
+    // VERY LOOSE regex: Handles DD/MM/YYYY, DD-MM-YYYY, or localized "19 มี.ค. 2569", with optional Time.
+    const datetimePattern = /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{1,2}\s*[^\d]{3,10}\s*\d{2,4})(?:[^\d]*(\d{1,2}:\d{2}))?/g;
     
     const trackMap = new Map();
     let hasAnyMatches = false;
@@ -2062,7 +2062,13 @@ function processQmsImport() {
         const dates = [];
         let dMatch;
         while ((dMatch = datetimePattern.exec(text)) !== null) {
-            dates.push({ dtStr: `${dMatch[1]} ${dMatch[2]}`, index: dMatch.index });
+            let dtStr = dMatch[1];
+            if (dMatch[2]) dtStr += ' ' + dMatch[2];
+            dates.push({ dtStr: dtStr, index: dMatch.index });
+        }
+        
+        if (dates.length === 0) {
+            alert("⚠️ ระบบหาข้อมูลวันที่/เวลาในข้อความที่คุณก๊อปปี้มาไม่เจอเลยครับ (อาจเป็นเพราะก๊อปจาก Excel แล้วคอมพิวเตอร์เปลี่ยนภาษา)\n\nโปรดแตปหน้าจอนี้ส่งให้โปรแกรมเมอร์ดูครับ:\n" + text.substring(0, 150));
         }
         
         tracks.forEach((t, i) => {
