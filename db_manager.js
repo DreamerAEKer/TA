@@ -962,11 +962,11 @@ const ExceptionManager = {
                 timestamp: new Date().toISOString(),
                 sessionId: sessionId,
                 // New metadata fields
-                category: metadata.category || 'เงินสด',
-                branch: metadata.branch || '',
-                reporter: metadata.reporter || '',
-                subject: metadata.subject || '',
-                note: metadata.note || ''
+                category: (metadata && metadata.category) || 'เงินสด',
+                branch: (metadata && metadata.branch) || '',
+                reporter: (metadata && metadata.reporter) || '',
+                subject: (metadata && metadata.subject) || '',
+                note: (metadata && metadata.note) || ''
             });
         });
 
@@ -991,7 +991,10 @@ const ExceptionManager = {
 
     removeSession: (sessionId) => {
         const exceptions = ExceptionManager.getAll();
-        const filtered = exceptions.filter(e => e.sessionId !== sessionId);
+        const filtered = exceptions.filter(e => {
+            const sid = e.sessionId || e.id;
+            return sid !== sessionId;
+        });
         localStorage.setItem(EXCEPTION_KEY, JSON.stringify(filtered));
     },
 

@@ -2507,6 +2507,27 @@ function clearExceptionImages() {
     if (preview) preview.innerHTML = '';
 }
 
+function updateBEDisplay() {
+    const dp = document.getElementById('exception-date-picker');
+    const tp = document.getElementById('exception-time-picker');
+    const hidden = document.getElementById('exception-datetime');
+    if (!dp || !tp || !hidden) return;
+    hidden.value = `${dp.value}T${tp.value}`;
+}
+
+function setExceptionDatePickerFromBE(dateTimeStr) {
+    const dp = document.getElementById('exception-date-picker');
+    const tp = document.getElementById('exception-time-picker');
+    const hidden = document.getElementById('exception-datetime');
+    if (!dp || !tp || !hidden) return;
+    const parts = dateTimeStr.split('T');
+    if (parts.length === 2) {
+        dp.value = parts[0];
+        tp.value = parts[1];
+        hidden.value = dateTimeStr;
+    }
+}
+
 // ==========================================
 // SECTION: EXCEPTION LOG (ตกหล่น)
 // ==========================================
@@ -3033,7 +3054,8 @@ function openHistoryImageEditor(sessionId) {
 }
 
 function clearAllExceptions() {
-    if (ExceptionManager.clearAll()) {
+    if (confirm('ยืนยันล้างประวัติรายงานทั้งหมด?')) {
+        ExceptionManager.clearAll();
         renderExceptionTable();
     }
 }
@@ -3364,15 +3386,7 @@ function compressSessEntries(entries) {
     return groups;
 }
 
-// Update checkAuth hook internally to also init exception table + meta if Admin
-const originalCheckAuth = checkAuth;
-checkAuth = function() {
-    originalCheckAuth();
-    if (document.getElementById('exception-table-container')) {
-        loadExceptionMeta();   // Restore meta fields from localStorage
-        renderExceptionTable();
-    }
-};
+// Auth listener removed (handled in initial load)
 
 function updateExceptionImageScale() {
     const scaleVal = document.getElementById('exception-img-scale') ? document.getElementById('exception-img-scale').value : "100";
