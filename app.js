@@ -2749,14 +2749,12 @@ function addExceptionEntry() {
     // Visual feedback
     const saveBtn = document.getElementById('exception-save-btn');
     if (saveBtn) {
-        const originalText = saveBtn.innerHTML;
-        const originalBg = saveBtn.style.background;
         saveBtn.innerHTML = "✅ บันทึกรายการสำเร็จ!";
         saveBtn.style.background = "linear-gradient(135deg,#2e7d32,#388e3c)"; 
         saveBtn.disabled = true;
         setTimeout(() => {
-            saveBtn.innerHTML = originalText;
-            saveBtn.style.background = originalBg;
+            saveBtn.innerHTML = '➕ เพิ่มรายการลงในรายงาน (Add to Draft)';
+            saveBtn.style.background = "linear-gradient(135deg,#0288d1,#0277bd)";
             saveBtn.disabled = false;
         }, 1500);
     }
@@ -3157,8 +3155,20 @@ function editExceptionSession(sessionId) {
         }
     }
 
-    // Scroll to top to see the form
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Update Save Button Text for Edit Mode
+    const saveBtn = document.getElementById('exception-save-btn');
+    if (saveBtn) {
+        saveBtn.innerHTML = '<i class="fas fa-save mr-2" style="margin-right:8px;"></i> บันทึกการแก้ไขนี้ (Save Changes)';
+        saveBtn.style.background = "linear-gradient(135deg,#ef6c00,#e65100)"; // Orange for edit
+    }
+
+    // Scroll to the Form card specifically
+    const formCard = document.getElementById('exception-reporting-card');
+    if (formCard) {
+        formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 }
 
 function clearAllExceptions() {
