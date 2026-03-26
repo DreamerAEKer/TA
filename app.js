@@ -29,9 +29,15 @@ function switchTab(tabId) {
 // Global Event Listeners (Run on load)
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
+    
+    // Auto-init Exception Report if visible
+    if (document.getElementById('exception-table-container')) {
+        console.log("DOMContentLoaded: Initializing Exception Report Features...");
+        loadExceptionMeta(); 
+        renderExceptionTable();
+    }
 
     // --- Old tools consolidated into Smart Workspace ---
-    // Event listeners removed for input-check-single, rangeInputs, gapInputs as UI is merged.
     checkAdminUI();
 
     // 4. Smart Workspace Inputs -> Enter Key
@@ -2371,14 +2377,33 @@ function saveExceptionMeta() {
 function loadExceptionMeta() {
     try {
         const raw = localStorage.getItem(EXCEPTION_META_KEY);
-        if (!raw) return;
-        const meta = JSON.parse(raw);
-        if (meta.branch)   document.getElementById('rpt-branch').value   = meta.branch;
-        if (meta.date)     document.getElementById('rpt-date').value     = meta.date;
-        if (meta.reporter) document.getElementById('rpt-reporter').value = meta.reporter;
-        if (meta.subject)  document.getElementById('rpt-subject').value  = meta.subject;
-        if (meta.note)     document.getElementById('rpt-note').value     = meta.note;
-    } catch(e) { /* ignore */ }
+        const meta = raw ? JSON.parse(raw) : {};
+        
+        const b = document.getElementById('rpt-branch');
+        const r = document.getElementById('rpt-reporter');
+        const s = document.getElementById('rpt-subject');
+        const n = document.getElementById('rpt-note');
+        const d = document.getElementById('rpt-date');
+
+        if (b) b.value = meta.branch || '';
+        if (r) r.value = meta.reporter || '';
+        if (s) s.value = meta.subject || '';
+        if (n) n.value = meta.note || '';
+        
+        if (d) {
+            const now = new Date();
+            const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            
+            // If empty or if user wants it to always be today (current requirement)
+            if (!d.value || d.value === "") {
+                d.value = today;
+                saveExceptionMeta();
+            }
+        }
+        console.log("loadExceptionMeta completed. Current rpt-date value:", d ? d.value : "N/A");
+    } catch(e) { 
+        console.error("loadExceptionMeta error:", e);
+    }
 }
 
 /** Image attachment storage (runtime only — not persisted across reloads) */
@@ -3005,7 +3030,7 @@ function clearAllExceptions() {
     }
 }
 
-function exportExceptionImage() {
+async function exportExceptionImage() {
     // 1. Re-render to ensure current selection state and DOM is ready
     renderExceptionTable();
 
@@ -3016,34 +3041,11 @@ function exportExceptionImage() {
         return;
     }
 
-    // 3. Temporarily filter out unselected rows in the export target
-    // We already have exception-export-target rendered with ALL items.
-    // We need to hide the <tr> elements of unselected sessions in that container.
-    const targetNode = document.getElementById('exception-export-target');
-    const tableBody = targetNode.querySelector('tbody');
-    const allRows = Array.from(tableBody.querySelectorAll('tr'));
-    
-    // Also build a custom totalImagesHtml for ONLY selected sessions
-    // To do this strictly, it's easier to modify renderExceptionTable to accept a filter...
-    // But since we want the history to show ALL, let's just do a specialized build here.
-    
     const exceptions = ExceptionManager.getAll();
     const selectedExceptions = exceptions.filter(e => selectedSids.includes(e.sessionId));
-    
     const meta = getExceptionMeta();
-    const reportDate = meta.date ? new Date(meta.date).toLocaleDateString('th-TH') : new Date().toLocaleDateString('th-TH');
     
-    let metaHtml = '';
-    if (meta.branch || meta.reporter || meta.subject || meta.note) {
-        metaHtml += `<div style="margin-bottom:10px; font-size:0.88rem; line-height:1.7;">`;
-        if (meta.subject)  metaHtml += `<div><strong>เรื่อง:</strong> ${meta.subject}</div>`;
-        if (meta.branch)   metaHtml += `<div><strong>ที่ทำการ:</strong> ${meta.branch}</div>`;
-        if (meta.reporter) metaHtml += `<div><strong>ผู้รายงาน:</strong> ${meta.reporter}</div>`;
-        if (meta.note)     metaHtml += `<div><strong>หมายเหตุ:</strong> ${meta.note}</div>`;
-        metaHtml += `</div>`;
-    }
-
-    // Group selected only
+    // Group selected into session map
     const sessionMap = new Map();
     selectedExceptions.forEach(item => {
         const sid = item.sessionId || item.id;
@@ -3052,121 +3054,186 @@ function exportExceptionImage() {
         }
         sessionMap.get(sid).entries.push(item);
     });
-    const sessions = Array.from(sessionMap.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const allSessions = Array.from(sessionMap.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // Gather unique images from selected sessions
-    let totalImages = [];
-    sessionMap.forEach(sess => {
-        const first = sess.entries[0];
-        if (first && first.images) {
-            first.images.forEach(img => {
-                if (!totalImages.find(x => x.dataUrl === img.dataUrl)) totalImages.push(img);
-            });
-        }
-    });
+    // PAGINATION LOGIC: ~7 sessions per page is good for LINE
+    const SESSIONS_PER_PAGE = 7;
+    const totalPages = Math.ceil(allSessions.length / SESSIONS_PER_PAGE);
 
-    const scaleNode = document.getElementById('exception-img-scale');
-    const scaleVal = scaleNode ? scaleNode.value : "100";
-    const imgSize = (parseInt(scaleVal) / 100 * 200) + "px";
-    
-    let imagesHtml = '';
-    if (totalImages.length > 0) {
-        imagesHtml = `
-            <div style="margin-top:12px; padding-top:10px; border-top:1px solid #eee;">
-                <div style="font-size:0.8rem; font-weight:bold; color:#555; margin-bottom:6px;">รูปภาพประกอบ:</div>
-                <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start;">
-                    ${totalImages.map(img => `<img src="${img.dataUrl}" style="width:${imgSize}; object-fit:contain; border:1px solid #ccc; border-radius:4px;" title="${img.name}">`).join('')}
-                </div>
-            </div>`;
+    // Provide visual feedback
+    const originalBtnText = event?.target?.innerText || "สร้างรูปภาพแจ้งหัวหน้า";
+    if (event?.target) {
+        event.target.disabled = true;
+        event.target.innerText = "⏳ กำลังเตรียมไฟล์รูปภาพ...";
     }
 
-    // Reuse compressEntries from global scope if possible (it's inside renderExceptionTable currently, so we might need to extract it or copy)
-    // For now, I'll assume we duplicate it or it was defined higher up. 
-    // Wait, let me extract it to global scope in a separate chunk.
+    try {
+        for (let p = 0; p < totalPages; p++) {
+            const startIdx = p * SESSIONS_PER_PAGE;
+            const endIdx = startIdx + SESSIONS_PER_PAGE;
+            const pageSessions = allSessions.slice(startIdx, endIdx);
+            const pageNumText = totalPages > 1 ? ` (หน้า ${p + 1}/${totalPages})` : "";
+            
+            // Gather images for THIS page only
+            let pageImages = [];
+            pageSessions.forEach(sess => {
+                const first = sess.entries[0];
+                if (first && first.images) {
+                    first.images.forEach(img => {
+                        if (!pageImages.find(x => x.dataUrl === img.dataUrl)) pageImages.push(img);
+                    });
+                }
+            });
 
-    // Let's create a temporary div for export instead of modifying the live history target
-    const exportDiv = document.createElement('div');
-    exportDiv.style.position = 'absolute';
-    exportDiv.style.left = '-9999px';
-    exportDiv.style.top = '0';
-    document.body.appendChild(exportDiv);
+            // Build specialized container for this page capture
+            const exportDiv = document.createElement('div');
+            exportDiv.id = 'temp-export-div-page-' + p;
+            exportDiv.style.cssText = 'position:fixed; left:0; top:0; width:1000px; z-index:-9999; background:#fff; overflow:visible; display:block;';
+            document.body.appendChild(exportDiv);
 
-    let tableRowsHtml = '';
-    sessions.forEach((sess, idx) => {
-        const groups = compressSessEntries(sess.entries); // Need to define this globally
-        const totalCount = sess.entries.length;
-        const trackDisplay = groups.map(g => `<div style="font-family:monospace; font-weight:bold; white-space:nowrap; margin-bottom:2px;">${g.display}</div>`).join('');
-        const firstE = sess.entries[0];
-        const dispFirstStatus = firstE.firstStatus || 'ใส่ของลงถุง';
-        let dispDT = new Date(sess.timestamp).toLocaleDateString('th-TH');
-        if (firstE.dateTime) {
-            const m = firstE.dateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/);
-            if(m) { let y=parseInt(m[1]); if(y<2500)y+=543; dispDT=`${m[3]}/${m[2]}/${y} ${m[4]}`; }
-            else dispDT=firstE.dateTime;
+            const reportDateDisp = meta.date ? new Date(meta.date).toLocaleDateString('th-TH') : new Date().toLocaleDateString('th-TH');
+            
+            let metaHtml = '';
+            if (meta.branch || meta.reporter || meta.subject || meta.note) {
+                metaHtml += `<div style="margin-bottom:12px; font-size:0.9rem; line-height:1.6; color:#444;">`;
+                if (meta.subject)  metaHtml += `<div><strong>เรื่อง:</strong> ${meta.subject}${pageNumText}</div>`;
+                else if (totalPages > 1) metaHtml += `<div><strong>หัวข้อ:</strong> รายงานชิ้นงานค้าง ${pageNumText}</div>`;
+                
+                if (meta.branch)   metaHtml += `<div><strong>ที่ทำการ:</strong> ${meta.branch}</div>`;
+                if (meta.reporter) metaHtml += `<div><strong>ผู้รายงาน:</strong> ${meta.reporter}</div>`;
+                if (meta.note)     metaHtml += `<div style="margin-top:4px; padding:5px; background:#f9f9f9; border-left:3px solid #ccc;"><strong>หมายเหตุ:</strong> ${meta.note}</div>`;
+                metaHtml += `</div>`;
+            }
+
+            let tableRowsHtml = '';
+            pageSessions.forEach((sess, idx) => {
+                const groups = compressSessEntries(sess.entries);
+                const totalCount = sess.entries.length;
+                const trackDisplay = groups.map(g => `<div style="font-family:monospace; font-weight:bold; white-space:nowrap; margin-bottom:2px;">${g.display}</div>`).join('');
+                const firstE = sess.entries[0];
+                const dispFirstStatus = firstE.firstStatus || 'ใส่ของลงถุง';
+                let dispDT = new Date(sess.timestamp).toLocaleDateString('th-TH');
+                if (firstE.dateTime) {
+                    const m = firstE.dateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/);
+                    if(m) { let y=parseInt(m[1]); if(y<2500)y+=543; dispDT=`${m[3]}/${m[2]}/${y} ${m[4]}`; }
+                    else dispDT=firstE.dateTime;
+                }
+
+                tableRowsHtml += `
+                    <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
+                        <td style="padding:12px 8px; text-align:center; color:#999; vertical-align:top;">${startIdx + idx + 1}</td>
+                        <td style="padding:12px 8px; vertical-align:top;">${trackDisplay}</td>
+                        <td style="padding:12px 8px; text-align:center; font-weight:bold; color:#0288d1; vertical-align:top;">${totalCount}</td>
+                        <td style="padding:12px 8px; vertical-align:top; font-weight:500;">${sess.companyName}</td>
+                        <td style="padding:12px 8px; line-height:1.5; vertical-align:top;">
+                            <div style="color:#d32f2f; font-weight:bold; margin-bottom:6px;">${sess.reason}</div>
+                            <div style="font-size:0.85rem; color:#666; margin-bottom:2px;">สถานะ: <span style="color:#333;">${dispFirstStatus}</span></div>
+                            <div style="font-size:0.85rem; color:#666;">ข้อมูลเมื่อ: <span style="color:#0288d1;">${dispDT}</span></div>
+                        </td>
+                    </tr>`;
+            });
+
+            const scaleNode = document.getElementById('exception-img-scale');
+            const scaleVal = scaleNode ? scaleNode.value : "100";
+            const imgSize = (parseInt(scaleVal) / 100 * 220) + "px"; // Slightly larger base for export
+
+            let imagesHtml = '';
+            if (pageImages.length > 0) {
+                imagesHtml = `
+                    <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ccc;">
+                        <div style="font-size:0.85rem; font-weight:bold; color:#555; margin-bottom:10px;">รูปภาพประกอบ (สำหรับหน้านี้):</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:12px; justify-content:flex-start;">
+                            ${pageImages.map(img => `<img src="${img.dataUrl}" style="width:${imgSize}; object-fit:contain; border:1px solid #ddd; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.1);">`).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            exportDiv.innerHTML = `
+                <div style="background:white; padding:40px; width:900px; font-family:'Sarabun', sans-serif; box-sizing:border-box;">
+                    <div style="margin-bottom:20px; border-bottom:3px solid #0288d1; padding-bottom:12px; display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div>
+                            <div style="font-size:1.4rem; font-weight:bold; color:#01579b;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</div>
+                            <div style="font-size:1rem; color:#0288d1; margin-top:2px;">(Exception & Missing Items Report)</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:1rem; font-weight:bold; color:#333;">${reportDateDisp}</div>
+                            ${totalPages > 1 ? `<div style="font-size:0.9rem; color:#0288d1; font-weight:bold; margin-top:4px;">${pageNumText.trim()}</div>` : ''}
+                        </div>
+                    </div>
+                    ${metaHtml}
+                    <table style="width:100%; font-size:1rem; border-collapse:collapse; margin-top:10px; border:1px solid #eee;">
+                        <thead>
+                            <tr style="background:#f8faff; border-bottom:2px solid #0288d1;">
+                                <th style="padding:12px 8px; text-align:center; width:6%; color:#01579b;">#</th>
+                                <th style="padding:12px 8px; text-align:left; width:22%; color:#01579b;">เลขพัสดุ</th>
+                                <th style="padding:12px 8px; text-align:center; width:8%; color:#01579b;">จำนวน</th>
+                                <th style="padding:12px 8px; text-align:left; width:26%; color:#01579b;">บริษัท/ลูกค้า</th>
+                                <th style="padding:12px 8px; text-align:left; width:38%; color:#01579b;">รายละเอียดเหตุผล</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRowsHtml}</tbody>
+                    </table>
+                    ${imagesHtml}
+                    <div style="margin-top:25px; text-align:center; font-size:0.8rem; color:#999; border-top:1px solid #f0f0f0; padding-top:10px;">
+                        จัดทำโดยระบบ Tracking Analyst Helper
+                    </div>
+                </div>`;
+
+            // Wait a moment for images and fonts to render fully
+            await new Promise(r => setTimeout(r, 600));
+            // Add a tick for layout stability
+            await new Promise(r => window.requestAnimationFrame(r));
+
+            const captureNode = exportDiv.querySelector('div');
+            console.log(`Capturing Page ${p+1}, dimensions:`, captureNode.offsetWidth, 'x', captureNode.offsetHeight);
+
+            // Capture
+            const canvas = await html2canvas(captureNode, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                logging: true,
+                useCORS: true,
+                allowTaint: true,
+                width: captureNode.offsetWidth,
+                height: captureNode.offsetHeight,
+                scrollX: 0,
+                scrollY: 0,
+                onclone: (clonedDoc) => {
+                    // Force the cloned element to be visible and stable
+                    const clonedNode = clonedDoc.getElementById(exportDiv.id);
+                    if (clonedNode) {
+                        clonedNode.style.opacity = "1";
+                        clonedNode.style.visibility = "visible";
+                        clonedNode.style.zIndex = "1";
+                        clonedNode.style.left = "0";
+                    }
+                }
+            });
+
+            document.body.removeChild(exportDiv);
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            const link = document.createElement('a');
+            const suffix = totalPages > 1 ? `_Part${p + 1}` : "";
+            link.download = `Exception_Report_${new Date().toISOString().slice(0, 10)}${suffix}.jpg`;
+            link.href = imgData;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Small delay between multiple downloads to avoid browser blocks
+            if (totalPages > 1) await new Promise(r => setTimeout(r, 500));
         }
-
-        tableRowsHtml += `
-            <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
-                <td style="padding:10px 8px; text-align:center; color:#999; vertical-align:top;">${idx + 1}</td>
-                <td style="padding:10px 8px; vertical-align:top;">${trackDisplay}</td>
-                <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1; vertical-align:top;">${totalCount}</td>
-                <td style="padding:10px 8px; vertical-align:top;">${sess.companyName}</td>
-                <td style="padding:10px 8px; line-height:1.5; vertical-align:top;">
-                    <div style="color:#d32f2f; font-weight:bold; margin-bottom:6px;">${sess.reason}</div>
-                    <div style="font-size:0.85rem; color:#555; margin-bottom:2px;"><strong>สถานะแรก:</strong> <span style="color:#333;">${dispFirstStatus}</span></div>
-                    <div style="font-size:0.85rem; color:#555;"><strong>วันที่/เวลา:</strong> <span style="color:#0288d1;">${dispDT}</span></div>
-                </td>
-            </tr>`;
-    });
-
-    exportDiv.innerHTML = `
-        <div style="background:white; padding:30px; border-radius:8px; width:850px; font-family:sans-serif;">
-            <div style="margin-bottom:15px; border-bottom:2px solid #333; padding-bottom:10px; display:flex; justify-content:space-between; align-items:flex-end;">
-                <strong style="font-size:1.3rem; color:#222;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</strong>
-                <span style="font-size:0.9rem; color:#555;">${reportDate}</span>
-            </div>
-            ${metaHtml}
-            <table style="width:100%; font-size:0.95rem; border-collapse:collapse; margin-top:15px;">
-                <thead>
-                    <tr style="background:#f5f5f5;">
-                        <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:5%;">ลำดับ</th>
-                        <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:22%;">เลขพัสดุ / ช่วงเลข</th>
-                        <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:8%;">จำนวน</th>
-                        <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:25%;">ชื่อบริษัท/สังกัด</th>
-                        <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:40%;">รายละเอียดเหตุผล</th>
-                    </tr>
-                </thead>
-                <tbody>${tableRowsHtml}</tbody>
-            </table>
-            ${imagesHtml}
-        </div>`;
-
-    // Perform capture
-    const originalBackground = targetNode.style.background;
-    targetNode.style.background = '#ffffff';
-    const originalPadding = targetNode.style.padding;
-    targetNode.style.padding = '0'; // Custom content has its own padding
-
-    html2canvas(exportDiv.firstChild, {
-        scale: 3,
-        backgroundColor: '#ffffff',
-        logging: false,
-        useCORS: true
-    }).then(canvas => {
-        document.body.removeChild(exportDiv);
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.9);
-        const link = document.createElement('a');
-        link.download = `Exception_Report_${new Date().toISOString().slice(0, 10)}.jpg`;
-        link.href = imgData;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }).catch(err => {
-        document.body.removeChild(exportDiv);
+    } catch (err) {
         console.error('Error generating image:', err);
-        alert('เกิดข้อผิดพลาดในการสร้างภาพ: ' + err.message);
-    });
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        alert('เกิดข้อผิดพลาดในการสร้างภาพ: ' + errorMsg + '\n\nคำแนะนำ: ลองลดจำนวนที่เลือกลง หรือตรวจสอบว่ารูปภาพที่แนบไม่ใหญ่เกินไปครับ');
+    } finally {
+        if (event?.target) {
+            event.target.disabled = false;
+            event.target.innerText = originalBtnText;
+        }
+    }
 }
 
 function toggleHistoryImages(sid) {
