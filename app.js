@@ -44,6 +44,25 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('smart-main-input')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') unifiedMainSearch();
     });
+
+    // Real-time Check Digit Validation for Main Input
+    document.getElementById('smart-main-input')?.addEventListener('input', (e) => {
+        const val = e.target.value.trim().toUpperCase().replace(/\s+/g, '');
+        const warning = document.getElementById('smart-main-input-warning');
+        if (!warning) return;
+        
+        if (val.length === 13) {
+            const result = TrackingUtils.validateTrackingNumber(val);
+            if (!result.isValid) {
+                warning.style.display = 'block';
+                warning.innerHTML = `⚠️ เลขพัสดุผิด: ${result.error}${result.suggestion ? ' (น่าจะเป็น: ' + result.suggestion + ')' : ''}`;
+            } else {
+                warning.style.display = 'none';
+            }
+        } else {
+            warning.style.display = 'none';
+        }
+    });
 });
 
 function checkAdminUI() {
@@ -141,7 +160,6 @@ function unifiedGenerateRangeNew(center, centerInput) {
     const qty = parseInt(document.getElementById('smart-range-qty')?.value) || 0;
     const prev = parseInt(document.getElementById('smart-range-prev').value) || 0;
     const next = parseInt(document.getElementById('smart-range-next').value) || 0;
-    // qty adds equally to both sides if prev and next are both 0
     const effectivePrev = (prev === 0 && next === 0 && qty > 0) ? Math.floor(qty / 2) : prev;
     const effectiveNext = (prev === 0 && next === 0 && qty > 0) ? (qty - Math.floor(qty / 2)) : next;
     const finalPrev = Math.max(effectivePrev, prev);
@@ -163,50 +181,61 @@ function unifiedGenerateRangeNew(center, centerInput) {
     
     summaryArea.innerHTML = `<span class="badge badge-primary">${list.length} รายการ</span>`;
 
-    let html = `
-        <div style="padding:10px; background:#fff; border-bottom:1px solid #eee; position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; align-items:center;">
-            <small>สร้างจาก: ${center}</small>
-            <button class="btn" style="padding:4px 8px; font-size:0.75rem;" onclick="copyUnifiedResults()">📋 Copy All</button>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:40px;">#</th>
-                    <th>เลขพัสดุ</th>
-                    <th>สังกัด / สถานะ</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    list.forEach((item, index) => {
-        const rowStyle = item.isCenter ? 'style="background:#fff9c4; font-weight:bold;"' : '';
+    // Grouping Logic
+    const groups = {};
+    list.forEach(item => {
         const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(item.number) : null;
-        let ownerHtml = '-';
-        if (owner) {
-            ownerHtml = `<span style="color:#0d47a1; font-size:0.8rem; display:block; margin-bottom:4px;">👤 ${owner.name}</span>`;
-        }
-
-        let displayIndex = item.isCenter ? '<span style="color:#999; font-weight:bold;">-</span>' : Math.abs(item.offset);
-        let indexStyle = item.offset < 0 ? 'color:#28a745;' : (item.offset > 0 ? 'color:#d32f2f;' : '');
-
-        html += `
-            <tr ${rowStyle}>
-                <td style="${indexStyle} font-weight:bold;">${displayIndex}</td>
-                <td class="unified-id-cell" style="font-family:monospace; font-size:0.95rem;">${TrackingUtils.formatTrackingNumber(item.number)}</td>
-                <td>
-                    ${ownerHtml}
-                    <div style="display:flex; gap:5px;">
-                        <button class="btn btn-neutral" style="padding:2px 6px; font-size:0.7rem; background:#f8f9fa; border:1px solid #ddd;" onclick="navigator.clipboard.writeText('${item.number}').then(()=>alert('คัดลอก ${item.number} ลง Clipboard แล้ว!'))">📋 คัดลอก</button>
-                        <button class="btn btn-primary" style="padding:2px 6px; font-size:0.7rem;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th', '_blank')">🔍 เช็คสถานะ</button>
-                        <button class="btn btn-success" style="padding:2px 6px; font-size:0.7rem;" onclick="stagingQuickReport(['${item.number}'], '${owner ? owner.name : ''}')">🚩 รายงาน</button>
-                    </div>
-                </td>
-            </tr>
-        `;
+        const groupName = owner ? owner.name : 'ไม่มีในฐานข้อมูล (Unknown Sender)';
+        if (!groups[groupName]) groups[groupName] = [];
+        groups[groupName].push({ ...item, owner });
     });
 
-    html += `</tbody></table>`;
+    let html = `
+        <div style="padding:10px; background:linear-gradient(to bottom, #fff, #f9f9f9); border-bottom:1px solid #ddd; position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+            <small style="color:#666;">ต้นทาง: <span style="font-family:monospace; font-weight:bold; color:#0d47a1;">${TrackingUtils.formatTrackingNumber(center)}</span></small>
+            <button class="btn" style="padding:4px 12px; font-size:0.75rem; background:#fff; border:1px solid #0288d1; color:#0288d1; border-radius:4px; font-weight:bold;" onclick="copyUnifiedResults()">📋 Copy All</button>
+        </div>
+        <div style="padding:10px;">
+    `;
+
+    Object.keys(groups).forEach(company => {
+        const items = groups[company];
+        html += `
+            <div style="margin-bottom:15px; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="background:#f0f7ff; padding:6px 15px; border-bottom:1px solid #e1f5fe; font-weight:bold; color:#0277bd; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
+                    <span>🏢 ${company}</span>
+                    <span style="font-size:0.7rem; font-weight:normal; color:#888;">${items.length} รายการ</span>
+                </div>
+                <table style="width:100%; border-collapse:collapse; margin:0; font-size:0.9rem;">
+                    <tbody>
+        `;
+        
+        items.forEach((item, idx) => {
+            const rowStyle = item.isCenter ? 'style="background:#fff9c4;"' : (idx % 2 === 1 ? 'style="background:#fafafa;"' : '');
+            const indexStyle = item.offset < 0 ? 'color:#28a745;' : (item.offset > 0 ? 'color:#d32f2f;' : 'color:#999;');
+            const displayIndex = item.isCenter ? '●' : Math.abs(item.offset);
+
+            html += `
+                <tr ${rowStyle} style="border-bottom:1px solid #f0f0f0;">
+                    <td style="width:30px; text-align:center; ${indexStyle} font-weight:bold; font-size:0.75rem; padding:8px 2px;">${displayIndex}</td>
+                    <td style="width:40px; text-align:center; padding:8px 2px;">
+                        <button class="btn" style="padding:2px 5px; font-size:1rem; border:none; background:none; color:#2e7d32; cursor:pointer;" title="รายงานรายการนี้" onclick="stagingQuickReport(['${item.number}'], '${company !== 'ไม่มีในฐานข้อมูล (Unknown Sender)' ? company : ''}')">🚩</button>
+                    </td>
+                    <td style="font-family:monospace; font-weight:bold; color:#333; padding:8px 5px;">${TrackingUtils.formatTrackingNumber(item.number)}</td>
+                    <td style="text-align:right; padding:8px 10px;">
+                        <div style="display:flex; gap:4px; justify-content:flex-end;">
+                            <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${item.number}').then(()=>alert('คัดลอก ${item.number}'))">📋</button>
+                            <button class="btn btn-primary" style="padding:1px 5px; font-size:0.65rem;" title="เช็คสถานะ" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th', '_blank')">🔍</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `</tbody></table></div>`;
+    });
+
+    html += `</div>`;
     resultArea.innerHTML = html;
     lastGeneratedRange = list.map(item => item.number);
     // Show copy-all bar
@@ -273,12 +302,12 @@ function unifiedSingleCheckNew(input, inputEl) {
                 </div>
 
                 <!-- Row 3: Copy per item -->
-                <div style="padding: 12px 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-                    <span style="font-size:0.95rem; font-family:monospace; color:#333; word-break:break-all;">${validTarget}</span>
+                <div style="padding: 12px 15px; border: 1px solid #eee; border-radius: 6px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; border-left:4px solid #0d47a1;">
+                    <span style="font-size:1.15rem; font-family:monospace; color:#0d47a1; font-weight:bold;">${TrackingUtils.formatTrackingNumber(validTarget)}</span>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button class="btn btn-neutral" style="padding:5px 12px; font-size:0.85rem; background:#fff; border:1px solid #ccc; white-space:nowrap;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>{ this.textContent='\u2705 \u0e04\u0e31\u0e14\u0e25\u0e2d\u0e01\u0e41\u0e25\u0e49\u0e27!'; setTimeout(()=>this.textContent='\ud83d\udccb \u0e2a\u0e33\u0e40\u0e19\u0e32\u0e40\u0e25\u0e02', 1500); })">📋 สำเนาเลข</button>
-                        <button class="btn btn-success" style="padding:5px 12px; font-size:0.85rem; white-space:nowrap;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 เปิดเว็บ Track&Trace</button>
-                        <button class="btn btn-success" style="padding:5px 12px; font-size:0.85rem; white-space:nowrap;" onclick="stagingQuickReport(['${validTarget}'], '${owner ? owner.name : ''}')">🚩 รายงานผลตกหล่น</button>
+                        <button class="btn btn-success" style="padding:6px 15px; font-size:0.9rem; white-space:nowrap; background: #2e7d32; border:none; color:white; border-radius:6px; box-shadow:0 2px 5px rgba(46,125,50,0.2);" onclick="stagingQuickReport(['${validTarget}'], '${owner ? owner.name : ''}')">🚩 นำข้อมูลนี้ไปสร้างรายงาน</button>
+                        <button class="btn btn-neutral" style="padding:6px 12px; font-size:0.9rem; background:#fff; border:1px solid #ccc; white-space:nowrap;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>{ this.textContent='✅ คัดลอกแล้ว'; setTimeout(()=>this.textContent='📋 สำเนาเลข', 1500); })">📋 สำเนาเลข</button>
+                        <button class="btn btn-primary" style="padding:6px 12px; font-size:0.9rem; white-space:nowrap;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 สถานะ</button>
                     </div>
                 </div>
             </div>

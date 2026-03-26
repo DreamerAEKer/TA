@@ -75,9 +75,9 @@
                         </div>
                         <div class="input-group" style="margin-bottom: 10px;">
                             <input type="text" id="smart-main-input" placeholder="กรอกเลขพัสดุ (เช่น XX123456789TH)" maxlength="13" style="text-transform:uppercase;">
-                            <button class="btn btn-primary" onclick="unifiedMainSearch()">ค้นหา</button>
+                            <button class="btn btn-primary" onclick="unifiedMainSearch()" style="width:100px;">ค้นหา</button>
                         </div>
-
+                        <div id="smart-main-input-warning" style="display:none; margin-top:5px; color:#d32f2f; font-size:0.75rem; font-weight:bold; padding:4px 10px; background:#fff5f5; border-radius:4px; border-left:3px solid #d32f2f;"></div>
                         <!-- Image Upload for OCR inside Track & Trace -->
                         <div style="margin-bottom: 12px;">
                             <input type="file" id="track-ocr-upload" accept="image/*" multiple style="display:none" onchange="handleTrackOcrUpload(this.files)">
@@ -122,7 +122,7 @@
                     <div class="workspace-card" id="exception-section">
                         <div class="workspace-header">
                             <i class="icon">📝</i>
-                            <h3 class="workspace-title">สร้างรายงานชิ้นงานตกหล่น (Draft Report)</h3>
+                            <h3 class="workspace-title">สร้างรายงานสิ่งของตกหล่น (Report Draft)</h3>
                         </div>
                         
                         <!-- 1. Report Settings (Collapsible Meta) -->
@@ -272,9 +272,9 @@
                 <!-- Right Side: Results -->
                 <div class="unified-side">
                     <div class="workspace-card" style="display: flex; flex-direction: column;">
-                        <div class="workspace-header">
-                            <i class="icon">📊</i>
-                            <h3 class="workspace-title">ผลลัพธ์ (Results)</h3>
+                        <div class="workspace-header" style="background: linear-gradient(135deg, #f0f7ff, #e3f2fd);">
+                            <i class="icon">📋</i>
+                            <h3 class="workspace-title">ข้อมูลจากชุดเลข (Results)</h3>
                             <div id="smart-result-summary" style="margin-left: auto; font-size: 0.9rem; font-weight: bold;"></div>
                         </div>
                         <div id="smart-unified-results" class="unified-result-area" style="flex: 1;">
