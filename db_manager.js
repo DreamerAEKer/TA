@@ -12,6 +12,61 @@ const BATCH_KEY = 'thp_tracking_batches_v1';
 // 3. Trash DB: Deleted Batches (Soft delete)
 const TRASH_KEY = 'thp_tracking_trash_v1';
 
+/**
+ * Migration from Legacy Single Entry DB to Batch System
+ */
+function migrateLegacyData() {
+    const KEYS_TO_CHECK = ['thp_tracking_db_v1', 'thp_tracking_db'];
+    
+    KEYS_TO_CHECK.forEach(OLD_DB_KEY => {
+        const raw = localStorage.getItem(OLD_DB_KEY);
+        if (!raw) return;
+
+        try {
+            const oldDb = JSON.parse(raw);
+            const keys = Object.keys(oldDb);
+            if (keys.length === 0) return;
+
+            console.log(`Found legacy data in ${OLD_DB_KEY}! Migrating...`, keys.length);
+
+        // Group by Customer Name + Type
+        const groups = {};
+        keys.forEach(id => {
+            const info = oldDb[id];
+            const key = `${info.name}_${info.type}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    name: info.name,
+                    type: info.type,
+                    contract: info.contract || '',
+                    timestamp: info.timestamp || 0,
+                    items: []
+                };
+            }
+            groups[key].items.push(id);
+        });
+
+        // Add as batches
+        Object.values(groups).forEach(g => {
+            CustomerDB.addBatch({
+                name: g.name,
+                type: g.type,
+                contract: g.contract,
+                requestDate: '', 
+                timestamp: g.timestamp || new Date().getTime()
+            }, g.items);
+        });
+
+        // Rename old key to avoid double migration
+        localStorage.setItem(OLD_DB_KEY + '_migrated_' + Date.now(), raw);
+        localStorage.removeItem(OLD_DB_KEY);
+        console.log("Migration complete!");
+    } catch (e) {
+        console.error("Migration failed:", e);
+    }
+    });
+}
+
 const CustomerDB = {
     // --- LOOKUP OPERATIONS ---
     getLookup: () => {
@@ -919,7 +974,10 @@ function saveCustomerData() {
 }
 
 // Hook into Window Load to Init Table
-window.addEventListener('load', updateDbViews);
+window.addEventListener('load', () => {
+    migrateLegacyData();
+    updateDbViews();
+});
 
 /**
  * Exception Manager (For Tracking Errors / Reasons)
