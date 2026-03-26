@@ -199,6 +199,7 @@ function unifiedGenerateRangeNew(center, centerInput) {
                     <div style="display:flex; gap:5px;">
                         <button class="btn btn-neutral" style="padding:2px 6px; font-size:0.7rem; background:#f8f9fa; border:1px solid #ddd;" onclick="navigator.clipboard.writeText('${item.number}').then(()=>alert('คัดลอก ${item.number} ลง Clipboard แล้ว!'))">📋 คัดลอก</button>
                         <button class="btn btn-primary" style="padding:2px 6px; font-size:0.7rem;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th', '_blank')">🔍 เช็คสถานะ</button>
+                        <button class="btn btn-success" style="padding:2px 6px; font-size:0.7rem;" onclick="stagingQuickReport(['${item.number}'], '${owner ? owner.name : ''}')">🚩 รายงาน</button>
                     </div>
                 </td>
             </tr>
@@ -277,6 +278,7 @@ function unifiedSingleCheckNew(input, inputEl) {
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                         <button class="btn btn-neutral" style="padding:5px 12px; font-size:0.85rem; background:#fff; border:1px solid #ccc; white-space:nowrap;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>{ this.textContent='\u2705 \u0e04\u0e31\u0e14\u0e25\u0e2d\u0e01\u0e41\u0e25\u0e49\u0e27!'; setTimeout(()=>this.textContent='\ud83d\udccb \u0e2a\u0e33\u0e40\u0e19\u0e32\u0e40\u0e25\u0e02', 1500); })">📋 สำเนาเลข</button>
                         <button class="btn btn-success" style="padding:5px 12px; font-size:0.85rem; white-space:nowrap;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 เปิดเว็บ Track&Trace</button>
+                        <button class="btn btn-success" style="padding:5px 12px; font-size:0.85rem; white-space:nowrap;" onclick="stagingQuickReport(['${validTarget}'], '${owner ? owner.name : ''}')">🚩 รายงานผลตกหล่น</button>
                     </div>
                 </div>
             </div>
@@ -2338,29 +2340,65 @@ function draftReportFromGroup(prefix) {
     }
 }
 
+/**
+ * Pre-fills the exception form from search results.
+ */
+function stagingQuickReport(tracks, companyName) {
+    if (!tracks || tracks.length === 0) return;
+
+    // Reset form first
+    const rangeToggle = document.getElementById('exception-range-toggle');
+    if (rangeToggle && rangeToggle.checked) {
+        rangeToggle.checked = false;
+        if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
+    }
+
+    const mainInput = document.getElementById('exception-track-input');
+    if (mainInput) mainInput.value = tracks[0];
+    
+    document.getElementById('exception-extra-items').innerHTML = '';
+    if (typeof window.extraItemCount !== 'undefined') {
+        window.extraItemCount = 0; 
+    }
+
+    if (tracks.length > 1) {
+        for (let i = 1; i < tracks.length; i++) {
+            if (typeof addExceptionExtraItem === 'function') {
+                addExceptionExtraItem();
+                const extras = document.querySelectorAll('.exception-extra-track');
+                if (extras.length > 0) {
+                    extras[extras.length - 1].value = tracks[i];
+                }
+            }
+        }
+    }
+
+    // Pre-fill metadata
+    const subjectInput = document.getElementById('rpt-subject');
+    if (subjectInput && !subjectInput.value && companyName) {
+        subjectInput.value = "รายงานชิ้นงานตกหล่น: " + companyName;
+    }
+
+    const reasonInput = document.getElementById('exception-reason-input');
+    if (reasonInput && !reasonInput.value) {
+        reasonInput.value = "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
+    }
+
+    // Success feedback and scroll
+    if (mainInput) {
+        mainInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        mainInput.style.transition = "background-color 0.8s";
+        mainInput.style.backgroundColor = "#e8f5e9";
+        setTimeout(() => mainInput.style.backgroundColor = "", 2000);
+    }
+    
+    // Switch to section if needed (logic usually keeps it visible)
+}
+
 // SECTION: EXCEPTION META & IMAGE ATTACHMENT
 // ==========================================
 
 const EXCEPTION_META_KEY = 'thp_exception_meta_v1';
-
-/** Toggle collapsible meta/image panels */
-function toggleExceptionMeta() {
-    const panel = document.getElementById('exception-meta-panel');
-    const chevron = document.getElementById('exception-meta-chevron');
-    if (!panel) return;
-    const open = panel.style.display !== 'none';
-    panel.style.display = open ? 'none' : 'block';
-    if (chevron) chevron.textContent = open ? '▼ แสดง' : '▲ ซ่อน';
-}
-
-function toggleExceptionImages() {
-    const panel = document.getElementById('exception-img-panel');
-    const chevron = document.getElementById('exception-img-chevron');
-    if (!panel) return;
-    const open = panel.style.display !== 'none';
-    panel.style.display = open ? 'none' : 'block';
-    if (chevron) chevron.textContent = open ? '▼ แสดง' : '▲ ซ่อน';
-}
 
 /** Persist and restore meta fields */
 function saveExceptionMeta() {
@@ -2372,6 +2410,23 @@ function saveExceptionMeta() {
         note:     (document.getElementById('rpt-note')?.value     || '')
     };
     localStorage.setItem(EXCEPTION_META_KEY, JSON.stringify(meta));
+    
+    // Update summary hint in index.html
+    const hint = document.getElementById('meta-summary-reporter');
+    if (hint) {
+        hint.textContent = meta.reporter || '-';
+    }
+}
+
+/** Get current meta from DOM */
+function getExceptionMeta() {
+    return {
+        branch:   (document.getElementById('rpt-branch')?.value   || ''),
+        date:     (document.getElementById('rpt-date')?.value     || ''),
+        reporter: (document.getElementById('rpt-reporter')?.value || ''),
+        subject:  (document.getElementById('rpt-subject')?.value  || ''),
+        note:     (document.getElementById('rpt-note')?.value     || '')
+    };
 }
 
 function loadExceptionMeta() {
@@ -2393,14 +2448,19 @@ function loadExceptionMeta() {
         if (d) {
             const now = new Date();
             const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-            
-            // If empty or if user wants it to always be today (current requirement)
             if (!d.value || d.value === "") {
                 d.value = today;
-                saveExceptionMeta();
             }
         }
-        console.log("loadExceptionMeta completed. Current rpt-date value:", d ? d.value : "N/A");
+        
+        // Initial hint update
+        const hint = document.getElementById('meta-summary-reporter');
+        if (hint) {
+            hint.textContent = meta.reporter || '-';
+        }
+
+        // Final save to persist any defaults (like today's date)
+        saveExceptionMeta();
     } catch(e) { 
         console.error("loadExceptionMeta error:", e);
     }
@@ -2533,19 +2593,6 @@ function setExceptionDatePickerFromBE(dateTimeStr) {
 // ==========================================
 
 /**
- * Get current meta fields as an object.
- */
-function getExceptionMeta() {
-    return {
-        branch:   document.getElementById('rpt-branch')?.value.trim()   || '',
-        date:     document.getElementById('rpt-date')?.value            || '',
-        reporter: document.getElementById('rpt-reporter')?.value.trim() || '',
-        subject:  document.getElementById('rpt-subject')?.value.trim()  || '',
-        note:     document.getElementById('rpt-note')?.value.trim()     || ''
-    };
-}
-
-/**
  * Toggle between single-entry and range mode for Exception form.
  */
 function toggleExceptionRangeMode() {
@@ -2599,6 +2646,7 @@ function buildExceptionTrackNum(prefix, bodyInt, suffix) {
 function addExceptionEntry() {
     const isRange = document.getElementById('exception-range-toggle').checked;
     const reason = document.getElementById('exception-reason-input').value.trim();
+    const category = document.getElementById('exception-category').value;
 
     if (!reason) {
         alert('กรุณาระบุเหตุผลที่ตกหล่น');
@@ -2660,28 +2708,29 @@ function addExceptionEntry() {
     const dateTime = document.getElementById('exception-datetime').value.trim();
     
     const metadata = {
-        category: document.getElementById('exception-category').value,
-        branch: document.getElementById('rpt-branch').value.trim(),
+        category: category,
+        branch:   document.getElementById('rpt-branch').value.trim(),
         reporter: document.getElementById('rpt-reporter').value.trim(),
-        subject: document.getElementById('rpt-subject').value.trim(),
-        note: document.getElementById('rpt-note').value.trim()
+        subject:  document.getElementById('rpt-subject').value.trim(),
+        note:     document.getElementById('rpt-note').value.trim()
     };
 
-    // Pass images and current editing ID to save (overwrite existing if same track keys/session)
+    // Pass images and current editing ID to save
     const savedId = ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime, exceptionImages, currentEditingSessionId, metadata);
-    if (!savedId) return; // Stop if save failed (e.g. quota exceeded)
+    if (!savedId) return;
     
     // Clear state
     currentEditingSessionId = null;
     clearExceptionImages();
 
+    // Reset inputs
     document.getElementById('exception-track-input').value = '';
     document.getElementById('exception-start-input').value = '';
     document.getElementById('exception-end-input').value = '';
     document.getElementById('exception-range-preview').textContent = '';
     document.getElementById('exception-extra-items').innerHTML = '';
     
-    // Reset the date+time pickers
+    // Reset date/time pickers to empty
     const dpicker = document.getElementById('exception-date-picker');
     const tpicker = document.getElementById('exception-time-picker');
     if (dpicker) dpicker.value = '';
@@ -2691,41 +2740,54 @@ function addExceptionEntry() {
 
     renderExceptionTable();
 
-    // Visual feedback for Save button
+    // Scroll to the new entry
+    const container = document.getElementById('exception-table-container');
+    if (container) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    // Visual feedback
     const saveBtn = document.getElementById('exception-save-btn');
     if (saveBtn) {
         const originalText = saveBtn.innerHTML;
         const originalBg = saveBtn.style.background;
-        
         saveBtn.innerHTML = "✅ บันทึกรายการสำเร็จ!";
-        saveBtn.style.background = "linear-gradient(135deg,#004d40,#00695c)"; 
+        saveBtn.style.background = "linear-gradient(135deg,#2e7d32,#388e3c)"; 
         saveBtn.disabled = true;
-
         setTimeout(() => {
             saveBtn.innerHTML = originalText;
             saveBtn.style.background = originalBg;
             saveBtn.disabled = false;
-        }, 2000);
+        }, 1500);
     }
 }
 
 /**
  * Group entries by sessionId, show range display, embed meta & images in export target.
  */
+/**
+ * Render the current draft report in a clean, card-based list.
+ */
 function renderExceptionTable() {
     const container = document.getElementById('exception-table-container');
+    const exportBar = document.getElementById('exception-export-bar');
     if (!container) return;
 
-    if (typeof ExceptionManager === 'undefined') {
-        container.innerHTML = '<span style="color:red;">ExceptionManager not loaded.</span>';
-        return;
+    const exceptions = (typeof ExceptionManager !== 'undefined') ? ExceptionManager.getAll() : [];
+    
+    // Toggle Export Bar visibility
+    if (exportBar) {
+        if (exceptions.length > 0) exportBar.classList.remove('hidden');
+        else exportBar.classList.add('hidden');
     }
 
-    const exceptions = ExceptionManager.getAll();
-    const meta = getExceptionMeta();
-
     if (exceptions.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">ยังไม่มีข้อมูลประวัติการตกหล่น</p>';
+        container.innerHTML = `
+            <div style="text-align:center; padding:40px 20px; color:#999; border:2px dashed #eee; border-radius:12px; background:#fafafa;">
+                <p style="margin:0; font-size:1rem;">📭 ยังไม่มีรายการในฉบับร่างนี้</p>
+                <p style="margin:5px 0 0 0; font-size:0.85rem;">คุณสามารถระบุเลขด้านบน หรือกดปุ่ม "นำกลุ่มนี้ไปสร้างรายงาน" จากผลการค้นหาได้ครับ</p>
+            </div>
+        `;
         return;
     }
 
@@ -2739,242 +2801,106 @@ function renderExceptionTable() {
                 companyName: item.companyName,
                 reason: item.reason,
                 timestamp: item.timestamp,
-                images: item.images || [], // Ensure images are accessible at session level
                 entries: []
             });
         }
         sessionMap.get(sid).entries.push(item);
     });
 
-    const sessions = Array.from(sessionMap.values()).sort((a, b) =>
-        new Date(b.timestamp) - new Date(a.timestamp)
-    );
+    const sessions = Array.from(sessionMap.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    function fmtNum(raw) {
-        raw = raw.replace(/\s+/g, '');
-        if (raw.length === 13)
-            return `${raw.slice(0,2)} ${raw.slice(2,6)} ${raw.slice(6,10)} ${raw.slice(10,11)} ${raw.slice(11,13)}`;
-        return raw;
-    }
+    let html = '<div style="display:flex; flex-direction:column; gap:15px;">';
 
-    function compressEntries(entries) {
-        const parsed = entries.map(e => {
-            const m = e.trackNum.replace(/\s+/g,'').match(/^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/);
-            return m ? { full: e.trackNum.replace(/\s+/g,''), prefix: m[1], body: parseInt(m[2]), cd: m[3], suffix: m[4] } : { full: e.trackNum, prefix: null };
-        });
-        const sortable = parsed.filter(p => p.prefix !== null).sort((a,b) => {
-            if (a.prefix !== b.prefix || a.suffix !== b.suffix) return a.full.localeCompare(b.full);
-            return a.body - b.body;
-        });
-        const unsortable = parsed.filter(p => p.prefix === null);
-        const groups = [];
-        let i = 0;
-        while (i < sortable.length) {
-            let j = i;
-            while (j+1 < sortable.length &&
-                sortable[j+1].prefix === sortable[i].prefix &&
-                sortable[j+1].suffix === sortable[i].suffix &&
-                sortable[j+1].body === sortable[j].body + 1) { j++; }
-            if (j - i === 0) {
-                groups.push({ display: fmtNum(sortable[i].full), count: 1 });
-            } else {
-                groups.push({
-                    display: `${fmtNum(sortable[i].full)} <span style="color:#555;">ถึง</span> ${fmtNum(sortable[j].full)}`,
-                    count: j - i + 1
-                });
-            }
-            i = j + 1;
-        }
-        unsortable.forEach(p => groups.push({ display: fmtNum(p.full), count: 1 }));
-        return groups;
-    }
-
-    // ---- Build Header (meta) HTML ----
-    const reportDate = meta.date ? new Date(meta.date).toLocaleDateString('th-TH') : new Date().toLocaleDateString('th-TH');
-    let metaHtml = '';
-    if (meta.branch || meta.reporter || meta.subject || meta.note) {
-        metaHtml += `<div style="margin-bottom:10px; font-size:0.88rem; line-height:1.7;">`;
-        if (meta.subject)  metaHtml += `<div><strong>เรื่อง:</strong> ${meta.subject}</div>`;
-        if (meta.branch)   metaHtml += `<div><strong>ที่ทำการ:</strong> ${meta.branch}</div>`;
-        if (meta.reporter) metaHtml += `<div><strong>ผู้รายงาน:</strong> ${meta.reporter}</div>`;
-        if (meta.note)     metaHtml += `<div><strong>หมายเหตุ:</strong> ${meta.note}</div>`;
-        metaHtml += `</div>`;
-    }
-
-    // ---- Build Image HTML (for export) ----
-    let totalImages = [];
-    sessionMap.forEach(sess => {
-        const first = sess.entries[0];
-        if (first && first.images && Array.isArray(first.images)) {
-            first.images.forEach(img => {
-                if (!totalImages.find(x => x.dataUrl === img.dataUrl)) {
-                    totalImages.push(img);
-                }
-            });
-        }
-    });
-
-    // Also include currently unsaved images in the form (if any)
-    exceptionImages.forEach(img => {
-        if (!totalImages.find(x => x.dataUrl === img.dataUrl)) {
-            totalImages.push(img);
-        }
-    });
-
-    let imagesHtml = '';
-    if (totalImages.length > 0) {
-        const scaleNode = document.getElementById('exception-img-scale');
-        const scaleVal = scaleNode ? scaleNode.value : "100";
-        const imgSize = (parseInt(scaleVal) / 100 * 200) + "px"; // Base size 200px
-        
-        imagesHtml = `
-            <div style="margin-top:12px; padding-top:10px; border-top:1px solid #eee;" data-html2canvas-ignore>
-                <button onclick="toggleReportImages()" class="btn btn-neutral" style="font-size:0.85rem; padding:6px 14px; border:1px solid #0288d1; color:#0288d1; background:#e3f2fd; width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
-                    🖼️ <span id="btn-toggle-report-imgs-text">แสดงรูปภาพประกอบทั้งหมด (${totalImages.length} รูป)</span>
-                </button>
-            </div>
-            <div id="exception-img-summary-panel" style="display:none; margin-top:12px;">
-                <div style="font-size:0.8rem; font-weight:bold; color:#555; margin-bottom:6px;">รูปภาพประกอบ:</div>
-                <div id="exception-img-export-area" style="display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start;">
-                    ${totalImages.map(img => `<img src="${img.dataUrl}" style="width:${imgSize}; object-fit:contain; border:1px solid #ccc; border-radius:4px;" title="${img.name}">`).join('')}
-                </div>
-            </div>`;
-    }
-
-    // ---- Build Table ----
-    let tableRows = '';
     sessions.forEach((session, idx) => {
-        const firstEntry = session.entries[0] || {};
-        const sessImages = firstEntry.images || [];
-        const hasImages = sessImages.length > 0;
-        
-        const dateStr = new Date(session.timestamp).toLocaleDateString('th-TH');
-        const groups = compressEntries(session.entries);
+        const compressed = compressEntriesForDisplay(session.entries);
+        const dateStr = session.timestamp ? new Date(session.timestamp).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '-';
+        const hasImages = session.entries[0] && session.entries[0].images && session.entries[0].images.length > 0;
         const totalCount = session.entries.length;
-        const trackDisplay = groups.map(g =>
-            `<div style="font-family:monospace; font-weight:bold; white-space:nowrap; margin-bottom:2px;">${g.display}</div>`
-        ).join('');
 
-        const dispFirstStatus = firstEntry.firstStatus || 'ใส่ของลงถุง';
-        let dispDateTime = dateStr;
-        if (firstEntry.dateTime) {
-            const dtMatch = firstEntry.dateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/);
-            if (dtMatch) {
-                let yr = parseInt(dtMatch[1], 10);
-                if (yr < 2500) yr += 543; // Convert back to BE
-                dispDateTime = `${dtMatch[3]}/${dtMatch[2]}/${yr} ${dtMatch[4]}`;
-            } else {
-                dispDateTime = firstEntry.dateTime;
-            }
-        }
-
-        tableRows += `
-            <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
-                <td style="padding:10px 8px; text-align:center; vertical-align:top;" data-html2canvas-ignore>
-                    <input type="checkbox" class="sess-select" value="${session.sessionId}" checked style="width:18px; height:18px; cursor:pointer;">
-                </td>
-                <td style="padding:10px 8px; text-align:center; color:#999; vertical-align:top;">${idx + 1}</td>
-                <td style="padding:10px 8px; vertical-align:top;">${trackDisplay}</td>
-                <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#0288d1; vertical-align:top;">${totalCount}</td>
-                <td style="padding:10px 8px; vertical-align:top;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <span style="word-break:break-word;">${session.companyName}</span>
-                        <button onclick="editExceptionCompany('${session.sessionId}', '${firstEntry.trackNum}')" style="background:none; border:none; cursor:pointer; font-size:0.8rem; padding:0; margin-left:5px;" title="แก้ไขและอัปเดตฐานข้อมูล" data-html2canvas-ignore>✏️</button>
-                    </div>
-                </td>
-                <td style="padding:10px 8px; line-height:1.5; position:relative; vertical-align:top;">
-                    <button onclick="editExceptionReason('${session.sessionId}')" style="position:absolute; top:8px; right:5px; background:none; border:none; cursor:pointer; font-size:0.8rem; padding:0;" title="แก้ไขรายละเอียด" data-html2canvas-ignore>✏️</button>
-                    <div style="color:#d32f2f; font-weight:bold; margin-bottom:6px; padding-right:15px; word-break:break-word;">${session.reason}</div>
-                    <div style="font-size:0.85rem; color:#555; margin-bottom:2px;"><strong>สถานะแรก:</strong> <span style="color:#333;">${dispFirstStatus}</span></div>
-                    <div style="font-size:0.85rem; color:#555;"><strong>วันที่/เวลา:</strong> <span style="color:#0288d1;">${dispDateTime}</span></div>
-                    
-                    ${hasImages ? `
-                    <div style="margin-top:8px;" data-html2canvas-ignore>
-                        <button onclick="toggleHistoryImages('${session.sessionId}')" style="font-size:0.75rem; background:#fff2e0; border:1px solid #ffcc80; color:#e65100; padding:2px 8px; border-radius:4px; cursor:pointer;">🖼️ ดูรูปภาพ (${sessImages.length})</button>
-                        <div id="sess-imgs-${session.sessionId}" style="display:none; margin-top:5px; flex-wrap:wrap; gap:5px;">
-                            ${sessImages.map(img => `<img src="${img.dataUrl}" style="width:60px; height:60px; object-fit:cover; border:1px solid #ddd; border-radius:3px;">`).join('')}
+        html += `
+            <div class="report-card" style="background:white; border:1px solid #e0e0e0; border-radius:10px; padding:15px; position:relative; box-shadow:0 2px 5px rgba(0,0,0,0.03); transition:all 0.2s; display:flex; gap:12px; align-items:flex-start;">
+                <input type="checkbox" class="sess-select" value="${session.sessionId}" checked style="margin-top:5px; transform:scale(1.2); cursor:pointer;">
+                <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                    <div>
+                        <div style="font-weight:bold; color:#333; font-size:1.05rem; margin-bottom:2px;">
+                            🏢 ${session.entries[0].metadata?.companyName || session.companyName || 'รายการชุดที่ ' + (sessions.length - idx)}
                         </div>
-                    </div>` : ''}
-                </td>
-                <td style="padding:10px 8px; text-align:center; vertical-align:top;" data-html2canvas-ignore>
-                    <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
-                        <button class="btn" style="padding:4px 10px; font-size:0.8rem; background:#e3f2fd; border:1px solid #90caf9; color:#0277bd; border-radius:4px;" onclick="openHistoryImageEditor('${session.sessionId}')" title="แก้ไข/เพิ่มรูปภาพของรายการนี้">🖼️ แก้ไขรูป</button>
-                        <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteExceptionSession('${session.sessionId}')">🗑️ ลบ</button>
+                        <div style="font-size:0.85rem; color:#666;">
+                            🕒 ${dateStr} • 📦 ${totalCount} ชิ้น • 📂 ${session.entries[0].category || 'เงินสด'}
+                        </div>
                     </div>
-                </td>
-            </tr>`;
-    });
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-neutral" style="padding:5px 10px; font-size:0.75rem; border:1px solid #ddd; background:#fff; border-radius:6px;" onclick="editExceptionSession('${session.sessionId}')">✏️ แก้ไข</button>
+                        <button class="btn btn-neutral" style="padding:5px 10px; font-size:0.75rem; border:1px solid #ffcdd2; color:#d32f2f; background:#fff; border-radius:6px;" onclick="deleteExceptionSession('${session.sessionId}')">🗑️ ลบ</button>
+                    </div>
+                </div>
 
-    let html = `
-        <div style="width:100%; min-width:0; overflow-x:auto;">
-            <div id="exception-export-target" style="background:white; padding:25px; border-radius:8px; min-width:850px; font-family:sans-serif;">
-                <div style="margin-bottom:15px; border-bottom:2px solid #333; padding-bottom:10px; display:flex; justify-content:space-between; align-items:flex-end;">
-                    <strong style="font-size:1.3rem; color:#222;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</strong>
-                    <span style="font-size:0.9rem; color:#555;">${reportDate}</span>
-                </div>
-                ${metaHtml}
-                <table style="width:100%; font-size:0.95rem; border-collapse:collapse; margin-top:15px;">
-                    <thead>
-                        <tr style="background:#f5f5f5;">
-                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:40px;" data-html2canvas-ignore>
-                                <input type="checkbox" id="sess-master-select" checked onclick="toggleAllSessions(this.checked)" title="เลือกทั้งหมด">
-                            </th>
-                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:5%; color:#333;">ลำดับ</th>
-                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:22%; color:#333;">เลขพัสดุ / ช่วงเลข</th>
-                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:8%; color:#333;">จำนวน</th>
-                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:25%; color:#333;">ชื่อบริษัท/สังกัด</th>
-                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:left; width:30%; color:#333;">รายละเอียดการตกหล่น</th>
-                            <th style="padding:12px 8px; border-bottom:2px solid #ccc; text-align:center; width:10%;" data-html2canvas-ignore>จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody>${tableRows}</tbody>
-                </table>
-                <div id="exception-img-summary-export-only" style="display:none;">
-                    <div style="font-size:0.8rem; font-weight:bold; color:#555; margin-top:15px; margin-bottom:6px; border-top:1px dashed #ccc; padding-top:10px;">รูปภาพประกอบ:</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                        ${totalImages.map(img => `<img src="${img.dataUrl}" style="width:200px; object-fit:contain; border:1px solid #ccc; border-radius:4px;">`).join('')}
+                <div style="background:#f9f9f9; border-radius:8px; padding:12px; margin-bottom:12px; border:1px solid #f0f0f0;">
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; font-family:monospace; font-size:1rem;">
+                        ${compressed.map(g => `<span style="background:#fff; border:1px solid #eee; padding:4px 10px; border-radius:6px; color:#0277bd; box-shadow:0 1px 2px rgba(0,0,0,0.02);">${g.display}</span>`).join('')}
                     </div>
                 </div>
-                ${imagesHtml}
+
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <div style="font-size:1rem; color:#d32f2f; font-weight:500;">
+                        <span style="color:#666; font-size:0.85rem; font-weight:normal;">สาเหตุ:</span> ${session.reason || '-'}
+                    </div>
+                    ${hasImages ? `<span style="font-size:0.75rem; color:#2e7d32; background:#e8f5e9; border:1px solid #c8e6c9; padding:3px 10px; border-radius:20px; display:flex; align-items:center; gap:4px;">🖼️ มีรูปประกอบ</span>` : ''}
+                </div>
             </div>
-        </div>
-
-        <div style="margin-top:10px; text-align:right;">
-            <button class="btn btn-neutral" onclick="clearAllExceptions()">🗑️ ล้างประวัติทั้งหมด</button>
         </div>
     `;
+    });
 
+    html += '</div>';
     container.innerHTML = html;
 }
 
-function toggleReportImages() {
-    const panel = document.getElementById('exception-img-summary-panel');
-    const text = document.getElementById('btn-toggle-report-imgs-text');
-    if (!panel) return;
-    
-    if (panel.style.display === 'none') {
-        panel.style.display = 'block';
-        if (text) text.textContent = text.textContent.replace('แสดง', 'ซ่อน');
-    } else {
-        panel.style.display = 'none';
-        if (text) text.textContent = text.textContent.replace('ซ่อน', 'แสดง');
-    }
+/**
+ * Helper to format tracking numbers consistently for UI.
+ */
+function formatTrackingForUI(raw) {
+    if (!raw) return "";
+    raw = raw.replace(/\s+/g, '');
+    if (raw.length === 13)
+        return `${raw.slice(0,2)} ${raw.slice(2,6)} ${raw.slice(6,10)} ${raw.slice(10,11)} ${raw.slice(11,13)}`;
+    return raw;
 }
 
-let isHistoryTableVisible = true;
-function toggleHistoryReport() {
-    const container = document.getElementById('exception-table-container');
-    const btn = document.getElementById('btn-toggle-history-report');
-    if (!container) return;
-
-    isHistoryTableVisible = !isHistoryTableVisible;
-    container.style.display = isHistoryTableVisible ? 'block' : 'none';
-    
-    if (btn) {
-        btn.innerHTML = isHistoryTableVisible 
-            ? '👁️ ซ่อนประวัติรายงาน (Hide History)' 
-            : '👁️ แสดงประวัติรายงาน (Show History)';
+/**
+ * Helper to compress continuous tracking ranges for compact display in Draft view.
+ */
+function compressEntriesForDisplay(entries) {
+    const parsed = entries.map(e => {
+        const m = (e.trackNum || "").replace(/\s+/g,'').match(/^([A-Z]{2})(\d{8})(\d)([A-Z]{2})$/);
+        return m ? { full: (e.trackNum||"").replace(/\s+/g,''), prefix: m[1], body: parseInt(m[2]), cd: m[3], suffix: m[4] } : { full: (e.trackNum||""), prefix: null };
+    });
+    const sortable = parsed.filter(p => p.prefix !== null).sort((a,b) => {
+        if (a.prefix !== b.prefix || a.suffix !== b.suffix) return (a.full||"").localeCompare(b.full||"");
+        return a.body - b.body;
+    });
+    const unsortable = parsed.filter(p => p.prefix === null);
+    const groups = [];
+    let i = 0;
+    while (i < sortable.length) {
+        let j = i;
+        while (j+1 < sortable.length &&
+            sortable[j+1].prefix === sortable[i].prefix &&
+            sortable[j+1].suffix === sortable[i].suffix &&
+            sortable[j+1].body === sortable[j].body + 1) { j++; }
+        if (j - i === 0) {
+            groups.push({ display: formatTrackingForUI(sortable[i].full), count: 1 });
+        } else {
+            groups.push({
+                display: `${formatTrackingForUI(sortable[i].full)} ~ ${formatTrackingForUI(sortable[j].full)}`,
+                count: j - i + 1
+            });
+        }
+        i = j + 1;
     }
+    unsortable.forEach(p => groups.push({ display: formatTrackingForUI(p.full), count: 1 }));
+    return groups;
 }
 
 function deleteExceptionSession(sessionId) {
@@ -2991,7 +2917,7 @@ function deleteException(id) {
     }
 }
 
-function openHistoryImageEditor(sessionId) {
+function editExceptionSession(sessionId) {
     const exceptions = ExceptionManager.getAll();
     const sessionItems = exceptions.filter(e => e.sessionId === sessionId);
     if (sessionItems.length === 0) return;

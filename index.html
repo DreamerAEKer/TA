@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracking Analyst v1.40</title>
+    <title>Tracking Analyst v1.45</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=14">
     <style>
@@ -112,202 +112,147 @@
                         </div>
                     </div>
 
-                    <!-- Tool 4: Exception Log (Moved from Admin) -->
-                    <div class="workspace-card">
+                    <!-- Tool 4: Exception Log (Simplified Report Builder) -->
+                    <div class="workspace-card" id="exception-section">
                         <div class="workspace-header">
-                            <i class="icon">⚠️</i>
-                            <h3 class="workspace-title">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</h3>
+                            <i class="icon">📝</i>
+                            <h3 class="workspace-title">สร้างรายงานชิ้นงานตกหล่น (Draft Report)</h3>
                         </div>
-                        <p style="font-size:0.9rem; color:#666; margin-bottom:10px;">บันทึกเลขพัสดุที่ไม่สามารถหาข้อมูลพบหรือมีปัญหา พร้อมระบุสาเหตุ เพื่อเก็บเป็นประวัติและส่งรายงานผ่านไลน์</p>
-
-                        <!-- ===== QMS Staging Area (Admin Only) ===== -->
-                        <div id="qms-staging-section" style="margin-bottom:15px; border:1px solid #ff9800; border-radius:6px; background:#fff8e1; overflow:hidden;">
-                            <div style="padding:10px 15px; background:#ffe0b2; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleQmsStaging()">
-                                <strong style="color:#e65100; font-size:0.9rem;">📥 นำเข้าข้อมูลจาก QMS (Auto-Group)</strong>
-                                <span id="qms-staging-chevron" style="color:#e65100; font-size:0.8rem;">▼ เปิด</span>
+                        
+                        <!-- 1. Report Settings (Collapsible Meta) -->
+                        <details id="exception-meta-details" style="background:#f5faff; border:1px solid #d0e1f9; border-radius:8px; margin-bottom:15px; overflow:hidden;">
+                            <summary style="padding:10px 15px; cursor:pointer; font-weight:bold; color:#0277bd; list-style:none; display:flex; justify-content:space-between; align-items:center;">
+                                <span>⚙️ ตั้งค่าหัวรายงาน (Report Header Settings)</span>
+                                <span id="meta-summary-hint" style="font-size:0.75rem; font-weight:normal; color:#666;">ผู้รายงาน: <span id="meta-summary-reporter">-</span></span>
+                                <span class="chevron">▼</span>
+                            </summary>
+                            <div style="padding:15px; border-top:1px solid #d0e1f9; background:white;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                                    <div>
+                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:4px;">🏢 ที่ทำการ / สาขา</label>
+                                        <input type="text" id="rpt-branch" placeholder="เช่น ปณ.ลาดพร้าว 19" oninput="saveExceptionMeta()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:4px;">📅 วันที่รายงาน</label>
+                                        <input type="date" id="rpt-date" oninput="saveExceptionMeta()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:4px;">👤 ชื่อผู้รายงาน</label>
+                                        <input type="text" id="rpt-reporter" placeholder="ชื่อ-นามสกุล / รหัสวิเศษ" oninput="saveExceptionMeta()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:4px;">🔖 หัวข้อรายงาน</label>
+                                        <input type="text" id="rpt-subject" placeholder="รายงานชิ้นงานตกหล่นประจำวัน" oninput="saveExceptionMeta()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
+                                    </div>
+                                </div>
+                                <div style="margin-bottom:0;">
+                                    <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:4px;">📌 หมายเหตุท้ายรายงาน</label>
+                                    <textarea id="rpt-note" rows="2" placeholder="ระบุเพิ่มเติม เช่น ข้อมูล ณ เวลา..." oninput="saveExceptionMeta()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box; resize:vertical;"></textarea>
+                                </div>
                             </div>
-                            <div id="qms-staging-panel" style="display:none; padding:15px;">
-                                <p style="font-size:0.8rem; color:#666; margin-top:0;">วางข้อมูลจาก QMS (เลขพัสดุหลายรายการปะปนกันได้) ระบบจะดึงเฉพาะเลข 13 หลักมาจัดกลุ่มตาม 4 หลักแรก และตรวจสอบบริษัทให้</p>
-                                <textarea id="qms-import-text" rows="4" placeholder="EQ123456785TH&#10;EQ123456799TH" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box; margin-bottom:10px; resize:vertical;"></textarea>
-                                <button type="button" class="btn btn-primary" onclick="processQmsImport()" style="background-color:#ff9800; border-color:#f57c00; font-size:0.85rem; width:100%; padding:8px;">
-                                    🔄 ประมวลผลและจัดกลุ่มพัสดุ
+                        </details>
+
+                        <!-- 2. Entry Form (Compact) -->
+                        <div style="background:#fff; border:2px solid #0288d1; border-radius:10px; padding:15px; margin-bottom:20px; box-shadow:0 1px 1px rgba(0,0,0,0.05);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <strong style="color:#0288d1; font-size:1.05rem;">📥 เพิ่มรายการใหม่ลงในรายงาน</strong>
+                                <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="exception-range-toggle" onchange="toggleExceptionRangeMode()">
+                                    ช่วงเลขต่อเนื่อง
+                                </label>
+                            </div>
+
+                            <div id="exception-single-mode" style="margin-bottom:12px;">
+                                <input type="text" id="exception-track-input" placeholder="วางเลขพัสดุ 13 หลักที่นี่..." style="text-transform:uppercase; width:100%; padding:12px; border:1px solid #ccc; border-radius:6px; font-size:1.1rem; box-sizing:border-box; font-family:monospace; text-align:center;">
+                            </div>
+
+                            <div id="exception-range-mode" style="display:none; margin-bottom:12px;">
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <input type="text" id="exception-start-input" placeholder="เลขเริ่มต้น" maxlength="13" style="text-transform:uppercase; flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+                                    <span style="color:#999;">ถึง</span>
+                                    <input type="text" id="exception-end-input" placeholder="เลขสุดท้าย" maxlength="13" style="text-transform:uppercase; flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+                                </div>
+                                <div id="exception-range-preview" style="margin-top:5px; font-size:0.8rem; color:#0288d1; text-align:center;"></div>
+                            </div>
+
+                            <div id="exception-extra-container" style="margin-bottom:12px;">
+                                <div id="exception-extra-items"></div>
+                                <button type="button" class="btn btn-neutral" onclick="addExceptionExtraItem()" style="font-size:0.8rem; padding:4px 10px; border:1px dashed #999; background:#fafafa; width:100%;">
+                                    ➕ เพิ่มเลขอื่นๆ ในบริษัทเดียวกัน
                                 </button>
-                                <div id="qms-staging-results" style="margin-top:15px;"></div>
                             </div>
-                        </div>
 
-                        <!-- Mode Toggle -->
-                        <div style="margin-bottom:12px;">
-                            <label style="font-size:0.85rem; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
-                                <input type="checkbox" id="exception-range-toggle" onchange="toggleExceptionRangeMode()">
-                                <span>📋 ระบุแบบ <strong>ช่วงเลข</strong> (กรณีต่อเนื่องกัน)</span>
-                            </label>
-                        </div>
-
-                        <!-- Single Mode (default) -->
-                        <div id="exception-single-mode" style="display:flex; gap:10px; margin-bottom:10px; align-items:flex-end; flex-wrap:wrap;">
-                            <div style="flex:1; min-width:200px;">
-                                <label style="font-size:0.8rem; display:block; margin-bottom:5px;">เลขพัสดุ (Tracking Number)</label>
-                                <input type="text" id="exception-track-input" placeholder="เช่น EQ123456785TH" style="text-transform:uppercase; width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                            </div>
-                        </div>
-
-                        <!-- Range Mode (hidden by default) -->
-                        <div id="exception-range-mode" style="display:none; margin-bottom:10px;">
-                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                                <div style="flex:1; min-width:180px;">
-                                    <label style="font-size:0.8rem; display:block; margin-bottom:5px;">🔢 เลขที่ <strong>เริ่มต้น</strong> (Start)</label>
-                                    <input type="text" id="exception-start-input" placeholder="เช่น EQ123456001TH" maxlength="13" style="text-transform:uppercase; width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                                </div>
-                                <div style="font-size:1.2rem; padding-top:18px; color:#666; flex:0 0 auto;">ถึง</div>
-                                <div style="flex:1; min-width:180px;">
-                                    <label style="font-size:0.8rem; display:block; margin-bottom:5px;">🔢 เลขที่ <strong>สุดท้าย</strong> (End)</label>
-                                    <input type="text" id="exception-end-input" placeholder="เช่น EQ123456050TH" maxlength="13" style="text-transform:uppercase; width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                                </div>
-                            </div>
-                            <div id="exception-range-preview" style="margin-top:6px; font-size:0.8rem; color:#0288d1;"></div>
-                        </div>
-
-                        <!-- Extra (Non-consecutive) Items -->
-                        <div id="exception-extra-container" style="margin-bottom:10px;">
-                            <div id="exception-extra-items"></div>
-                            <button type="button" class="btn btn-neutral" onclick="addExceptionExtraItem()" style="font-size:0.8rem; padding:5px 12px; border:1px dashed #999; background:#f9f9f9; margin-top:4px;">
-                                ➕ เพิ่มเลขที่ไม่ต่อเนื่อง
-                            </button>
-                            <div style="font-size:0.75rem; color:#999; margin-top:4px;">กรณีบริษัทเดียวแต่มีหมายเลขหลายชุด</div>
-                        </div>
-
-
-                        <!-- Category + Reason + Status -->
-                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
-                            <div>
-                                <label style="font-size:0.8rem; display:block; margin-bottom:5px;">📂 หมวดงาน (Type)</label>
-                                <select id="exception-category" style="width:100%; padding:9px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; background:white; font-size:0.9rem;">
-                                    <option value="เงินสด">เงินสด (Cash)</option>
-                                    <option value="เครื่องประทับ">เครื่องประทับ (Stamp)</option>
-                                    <option value="รายเดือน">รายเดือน (Monthly)</option>
-                                    <option value="อื่นๆ">อื่นๆ (Others)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size:0.8rem; display:block; margin-bottom:5px;">เหตุผล (Reason)</label>
-                                <input type="text" id="exception-reason-input" placeholder="เช่น ของยังไม่มาส่ง..." list="exception-reason-list" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                                <datalist id="exception-reason-list">
-                                    <option value="บันทึกข้อมูลไม่ตรงตามจริง">
-                                    <option value="ไม่ได้บันทึกข้อมูลในระบบ New CA">
-                                    <option value="ของยังไม่มาส่งที่ ปณ.">
-                                    <option value="รอแก้จ่าหน้า">
-                                    <option value="สลับของกับบริษัทอื่น">
-                                    <option value="ชำรุด/กล่องแตก">
-                                </datalist>
-                            </div>
-                            <div>
-                                <label style="font-size:0.8rem; display:block; margin-bottom:5px;">สถานะแรก (First Status)</label>
-                                <input type="text" id="exception-first-status" value="ใส่ของลงถุง" placeholder="เช่น ใส่ของลงถุง" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                            </div>
-                        </div>
-                        <!-- Date & Time Block (no save button here) -->
-                        <div style="background:#f0f7ff; border:1px solid #c2d9f2; border-radius:8px; padding:12px; margin-top:4px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <label style="font-size:0.85rem; font-weight:bold; color:#0277bd; margin:0;">📅 วันที่และเวลาสแกน (Date & Time)</label>
-                                <span id="exception-be-display" style="font-size:0.85rem; color:#01579b; font-weight:bold; background:#e3f2fd; padding:2px 8px; border-radius:12px;"></span>
-                            </div>
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                                <input type="date" id="exception-date-picker" style="flex:1; min-width:140px; padding:9px; border:1px solid #90caf9; border-radius:6px; font-size:0.95rem; box-sizing:border-box; background:white;" oninput="updateBEDisplay()">
-                                <input type="time" id="exception-time-picker" style="flex:0 0 105px; padding:9px; border:1px solid #90caf9; border-radius:6px; font-size:0.95rem; box-sizing:border-box; background:white;" oninput="updateBEDisplay()">
-                            </div>
-                            <input type="hidden" id="exception-datetime">
-                        </div>
-
-
-                        <!-- ===== REPORT META SECTION ===== -->
-                        <div style="margin-top:18px; border-top:1px dashed #ddd; padding-top:14px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; margin-bottom:8px;" onclick="toggleExceptionMeta()">
-                                <span style="font-size:0.85rem; font-weight:bold; color:#444;">📝 ข้อมูลประกอบรายงาน (หัวรายงาน)</span>
-                                <span id="exception-meta-chevron" style="font-size:0.8rem; color:#888;">▼ แสดง</span>
-                            </div>
-                            <div id="exception-meta-panel" style="display:none;">
-                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
-                                    <div>
-                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px;">🏢 ชื่อที่ทำการ / สาขา</label>
-                                        <input type="text" id="rpt-branch" placeholder="เช่น ปณ.ลาดพร้าว 19" oninput="saveExceptionMeta()"
-                                            style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px;">📅 วันที่รายงาน</label>
-                                        <input type="date" id="rpt-date" oninput="saveExceptionMeta()"
-                                            style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px;">👤 ผู้รายงาน</label>
-                                        <input type="text" id="rpt-reporter" placeholder="เช่น นายสมชาย รักงาน" oninput="saveExceptionMeta()"
-                                            style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px;">🔖 หัวข้อ / เรื่อง</label>
-                                        <input type="text" id="rpt-subject" placeholder="เช่น รายงานชิ้นงานค้างไม่รับฝาก" oninput="saveExceptionMeta()"
-                                            style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
-                                    </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                                <div>
+                                    <label style="font-size:0.75rem; color:#666;">📁 หมวดงาน</label>
+                                    <select id="exception-category" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px; font-size:0.9rem;">
+                                        <option value="เงินสด">เงินสด</option>
+                                        <option value="เครื่องประทับ">เครื่องประทับ</option>
+                                        <option value="รายเดือน">รายเดือน</option>
+                                        <option value="อื่นๆ">อื่นๆ</option>
+                                    </select>
                                 </div>
                                 <div>
-                                    <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px;">📌 หมายเหตุเพิ่มเติม</label>
-                                    <textarea id="rpt-note" rows="2" placeholder="รายละเอียดเพิ่มเติม..." oninput="saveExceptionMeta()"
-                                        style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box; resize:vertical;"></textarea>
+                                    <label style="font-size:0.75rem; color:#666;">💡 สาเหตุที่เว้นว่าง/ตกหล่น</label>
+                                    <input type="text" id="exception-reason-input" placeholder="เช่น ไม่พบบันทึก..." list="exception-reason-list" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px; font-size:0.9rem;">
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- ===== IMAGE ATTACHMENT SECTION ===== -->
-                        <div style="margin-top:14px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; margin-bottom:8px;" onclick="toggleExceptionImages()">
-                                <span style="font-size:0.85rem; font-weight:bold; color:#444;">🖼️ รูปภาพประกอบรายงาน</span>
-                                <span id="exception-img-chevron" style="font-size:0.8rem; color:#888;">▼ แสดง</span>
+                            <div style="background:#f0f7ff; padding:10px; border-radius:6px; margin-bottom:12px; display:flex; gap:10px; align-items:center;">
+                                <div style="flex:1;">
+                                    <label style="font-size:0.7rem; color:#0277bd; display:block; margin-bottom:2px;">📅 วันที่/เวลาที่สแกนล่าสุด</label>
+                                    <div style="display:flex; gap:5px;">
+                                        <input type="date" id="exception-date-picker" style="flex:1.5; padding:6px; border:1px solid #90caf9; border-radius:4px; font-size:0.85rem;" oninput="updateBEDisplay()">
+                                        <input type="time" id="exception-time-picker" style="flex:1; padding:6px; border:1px solid #90caf9; border-radius:4px; font-size:0.85rem;" oninput="updateBEDisplay()">
+                                    </div>
+                                    <input type="hidden" id="exception-datetime">
+                                </div>
+                                <div style="flex:0 0 100px;">
+                                    <label style="font-size:0.7rem; color:#0277bd; display:block; margin-bottom:2px;">สถานะ</label>
+                                    <input type="text" id="exception-first-status" value="ใส่ของลงถุง" style="width:100%; padding:6px; border:1px solid #90caf9; border-radius:4px; font-size:0.85rem;">
+                                </div>
                             </div>
-                            <div id="exception-img-panel" style="display:none;">
-                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
-                                    <button type="button" class="btn btn-neutral" onclick="document.getElementById('exception-img-upload').click()"
-                                        style="font-size:0.85rem; padding:6px 14px; border:1px dashed #0288d1; color:#0288d1; background:#e3f2fd;">
-                                        📎 แนบรูปภาพ
-                                    </button>
-                                    <input type="file" id="exception-img-upload" accept="image/*" multiple style="display:none" onchange="handleExceptionImageUpload(this.files)">
-                                    <button type="button" class="btn btn-neutral" onclick="if(confirm('ยืนยันที่จะล้างรูปภาพทั้งหมดหรือไม่?')) clearExceptionImages()"
-                                        style="font-size:0.8rem; padding:5px 10px; border:1px solid #ccc; color:#d32f2f; background:#fff;">
-                                        🗑️ ล้างรูปทั้งหมด
-                                    </button>
-                                    <div style="display:flex; align-items:center; gap:5px; margin-left:auto;">
-                                        <label for="exception-img-scale" style="font-size:0.75rem; color:#666;">ขนาดรูป:</label>
-                                        <input type="range" id="exception-img-scale" min="50" max="250" value="100" oninput="updateExceptionImageScale()" style="width:80px; accent-color:#0288d1;">
+
+                            <div style="margin-bottom:12px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <span style="font-size:0.8rem; font-weight:bold; color:#555;">🖼️ แนบรูปภาพ (ถ้ามี)</span>
+                                    <div style="display:flex; align-items:center; gap:5px;">
+                                        <input type="range" id="exception-img-scale" min="50" max="250" value="100" oninput="updateExceptionImageScale()" style="width:60px;">
                                     </div>
                                 </div>
-                                <div id="exception-img-preview" style="display:flex; flex-wrap:wrap; gap:8px; min-height:0;"></div>
+                                <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:5px;" id="exception-img-preview">
+                                    <div onclick="document.getElementById('exception-img-upload').click()" style="flex:0 0 60px; height:60px; border:1px dashed #0288d1; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:#e3f2fd; color:#0288d1; font-size:1.5rem;">+</div>
+                                </div>
+                                <input type="file" id="exception-img-upload" accept="image/*" multiple style="display:none" onchange="handleExceptionImageUpload(this.files)">
                             </div>
+
+                            <button id="exception-save-btn" class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; padding:12px; font-size:1.05rem; border-radius:8px; background:linear-gradient(135deg,#0288d1,#0277bd); color:white; border:none; box-shadow:0 3px 8px rgba(2,119,189,0.2);">
+                                ➕ เพิ่มรายการลงในรายงาน (Add to Draft)
+                            </button>
                         </div>
 
-                        <!-- ===== SAVE BUTTON (after images) ===== -->
-                        <button id="exception-save-btn" class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; margin-top:10px; padding:13px; font-size:1.05rem; border-radius:8px; background:linear-gradient(135deg,#1b5e20,#2e7d32,#43a047); color:white; border:none; cursor:pointer; letter-spacing:0.5px; box-shadow:0 3px 10px rgba(46,125,50,0.35); transition: all 0.2s ease;">
-                            ✅ บันทึกรายการลงประวัติ
-                        </button>
+                        <!-- 3. Current Report List & Export -->
+                        <div style="margin-top:25px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                                <h4 style="margin:0; font-size:1.1rem; color:#333;">📦 รายการที่พร้อมแจ้งผล (Current Draft)</h4>
+                                <div style="display:flex; gap:8px;">
+                                    <button class="btn btn-neutral" onclick="if(confirm('ล้างรายการทั้งหมดในฉบับร่างนี้?')) { ExceptionManager.clearAll(); renderExceptionTable(); }" style="font-size:0.75rem; padding:4px 8px; border:1px solid #ffcdd2; color:#d32f2f; background:none;">
+                                        🗑️ ล้างทั้งหมด
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="exception-table-container" style="width:100%; min-width:0;">
+                                <p style="text-align:center; color:#999; padding:20px;">ยังไม่มีข้อมูลรายการตกหล่น...</p>
+                            </div>
 
-                        <!-- Moved Export Button to Bottom of History -->
-                        <div style="margin-top:5px; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-                            <h4 style="margin:0; font-size:1rem; color:#333;">ประวัติ / ตารางรายงาน</h4>
-                            <div style="display:flex; gap:8px;">
-                                <button id="btn-toggle-history-report" class="btn btn-neutral" onclick="toggleHistoryReport()" 
-                                    style="font-size:0.75rem; padding:4px 8px; border:1px solid #ccc; background:#f5f5f5; border-radius:4px;">
-                                    👁️ ซ่อนประวัติรายงาน (Hide History)
-                                </button>
-                                <button class="btn btn-neutral" onclick="if(confirm('ยืนยันที่จะลบประวัติรายงานชุดนี้ทั้งหมดหรือไม่?\\n(ข้อมูลที่บันทึกไว้จะหายไปทั้งหมด)')) { ExceptionManager.clearAll(); renderExceptionTable(); }" 
-                                    style="font-size:0.75rem; padding:4px 8px; border:1px solid #ffcdd2; color:#d32f2f; background:#fff5f5; border-radius:4px;">
-                                    🗑️ ล้างประวัติทั้งหมด
+                            <!-- Final Export Button (Visible only when needed) -->
+                            <div id="exception-export-bar" class="hidden" style="margin-top:20px; padding:20px; background:#fff9c4; border-radius:12px; border:2px dashed #fbc02d; text-align:center;">
+                                <p style="margin:0 0 15px 0; font-weight:bold; color:#856404;">✨ ตรวจสอบข้อมูลครบถ้วนแล้ว? สร้างรูปภาพเพื่อส่งเข้ากลุ่ม LINE ได้เลย!</p>
+                                <button class="btn btn-primary" onclick="exportExceptionImage()" style="background:linear-gradient(135deg,#e65100,#ef6c00); border:none; color:white; font-size:1.1rem; padding:12px 30px; border-radius:30px; width:100%; max-width:400px; box-shadow:0 10px 20px rgba(230,81,0,0.2); cursor:pointer;">
+                                    📸 สร้างรูปภาพแจ้งหัวหน้า (Create Image)
                                 </button>
                             </div>
-                        </div>
-                        <!-- TABLE CONTAINER -->
-                        <div id="exception-table-container" style="width:100%; min-width:0; overflow-x:auto;">
-                            <p style="text-align:center; color:#999; padding:20px;">กำลังโหลดตารางรายงาน...</p>
-                        </div>
-                        <div style="margin-top:15px; text-align:center;">
-                            <button class="btn btn-primary" onclick="exportExceptionImage()" style="background:linear-gradient(135deg,#0288d1,#039bec); border:none; color:white; font-size:1rem; padding:12px 24px; border-radius:8px; width:100%; box-shadow:0 4px 12px rgba(2,136,209,0.3);">📸 สร้างรูปภาพแจ้งหัวหน้า (รวมรายการทั้งหมดตามสเปกรายงาน)</button>
                         </div>
                     </div>
                 </div>
