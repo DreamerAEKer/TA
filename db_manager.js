@@ -126,9 +126,18 @@ const CustomerDB = {
 
     // Add a new Batch
     addBatch: (batchInfo, trackingList) => {
-        const batchId = Date.now().toString(); // Use timestamp as ID
         const batches = CustomerDB.getBatches();
         const lookup = CustomerDB.getLookup();
+
+        // --- NEW: DUPLICATE CHECK ---
+        // Check if a batch with the exact same tracking numbers already exists
+        const existingBatchId = CustomerDB.checkBatchExists(trackingList);
+        if (existingBatchId) {
+            console.warn(`Duplicate batch detected: ${existingBatchId}`);
+            return { error: 'DUPLICATE', id: existingBatchId, count: trackingList.length };
+        }
+
+        const batchId = Date.now().toString(); // Use timestamp as ID
 
         // 1. Save Batch Info
         batches[batchId] = {
@@ -153,6 +162,66 @@ const CustomerDB = {
         CustomerDB.saveBatches(batches);
         CustomerDB.saveLookup(lookup);
         return { count: trackingList.length, id: batchId };
+    },
+
+    // Helper to check if a batch with same items exists
+    checkBatchExists: (trackingList) => {
+        const lookup = CustomerDB.getLookup();
+        if (trackingList.length === 0) return null;
+        
+        // Find batchId of the first item
+        const first = lookup[trackingList[0]];
+        if (!first) return null;
+        
+        const candidateBatchId = first.batchId;
+        const batches = CustomerDB.getBatches();
+        const candidateBatch = batches[candidateBatchId];
+        
+        if (!candidateBatch || candidateBatch.count !== trackingList.length) return null;
+        
+        // Verify ALL items match (Strict check)
+        // We can't easily get the list of items from a batch without scanning lookup,
+        // but we know it's a duplicate if the lookup for ALL items in trackingList points to candidateBatchId.
+        const allMatch = trackingList.every(id => lookup[id] && lookup[id].batchId === candidateBatchId);
+        return allMatch ? candidateBatchId : null;
+    },
+
+    // Automatic silent deduplication (Keep only one of identical batches)
+    deduplicate: () => {
+        const batches = CustomerDB.getBatches();
+        const lookup = CustomerDB.getLookup();
+        const batchArray = Object.values(batches);
+        const seenSignatures = new Set();
+        const toDeleteIds = [];
+
+        // Sort by timestamp (keep oldest first to maintain history)
+        batchArray.sort((a, b) => a.timestamp - b.timestamp);
+
+        batchArray.forEach(batch => {
+            // Create a signature of the batch content
+            // We need the items. We can get them from lookup.
+            const items = Object.keys(lookup).filter(k => lookup[k].batchId === batch.id).sort();
+            const signature = `${batch.name}|${batch.type}|${items.join(',')}`;
+
+            if (seenSignatures.has(signature)) {
+                toDeleteIds.push(batch.id);
+            } else {
+                seenSignatures.add(signature);
+            }
+        });
+
+        if (toDeleteIds.length > 0) {
+            console.log(`Auto-Deduplicate: Removing ${toDeleteIds.length} duplicate batches...`);
+            toDeleteIds.forEach(id => {
+                delete batches[id];
+                // Remove from lookup if it points to this batch
+                Object.keys(lookup).forEach(k => {
+                    if (lookup[k].batchId === id) delete lookup[k];
+                });
+            });
+            CustomerDB.saveBatches(batches);
+            CustomerDB.saveLookup(lookup);
+        }
     },
 
     // Delete a Batch (Move to Trash)
@@ -959,23 +1028,40 @@ function saveCustomerData() {
         return;
     }
 
-    const count = CustomerDB.addBatch(batchInfo, numbersToAdd);
-    alert(`บันทึกเรียบร้อย! เพิ่ม ${count} รายการ (เป็น 1 ชุด)`);
-
-    // Reset inputs & hide edit section
-    document.getElementById('db-name').value = '';
-    document.getElementById('db-contract').value = '';
-    document.getElementById('db-request-date').value = '';
-    document.getElementById('db-tracking-list').value = '';
-    document.getElementById('db-edit-section').classList.add('hidden');
+    // Save to DB
+    const btn = event?.target || document.querySelector('button[onclick="saveCustomerData()"]');
+    const originalHtml = btn ? btn.innerHTML : 'บันทึกข้อมูลที่แก้ไข (Save Edit)';
     
-    currentDbView = 'recent';
-    updateDbViews();
+    if (btn) window.setButtonLoading(btn, true);
+
+    setTimeout(() => {
+        const result = CustomerDB.addBatch(batchInfo, numbersToAdd);
+        
+        if (btn) window.setButtonLoading(btn, false, originalHtml);
+
+        if (result && result.error === 'DUPLICATE') {
+            window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'info');
+        } else {
+            const count = typeof result === 'object' ? result.count : result;
+            window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${count} รายการ`);
+        }
+
+        // Reset inputs & hide edit section
+        document.getElementById('db-name').value = '';
+        document.getElementById('db-contract').value = '';
+        document.getElementById('db-request-date').value = '';
+        document.getElementById('db-tracking-list').value = '';
+        document.getElementById('db-edit-section').classList.add('hidden');
+        
+        currentDbView = 'recent';
+        updateDbViews();
+    }, 500); 
 }
 
 // Hook into Window Load to Init Table
 window.addEventListener('load', () => {
     migrateLegacyData();
+    CustomerDB.deduplicate(); // Clean existing duplicates once on load
     updateDbViews();
 });
 

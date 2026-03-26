@@ -556,5 +556,60 @@ window.TrackingUtils = {
     extractPrices,
     summarizePrices,
     getWeightFromPriceA3,
-    extractHandwrittenTable
+    extractHandwrittenTable,
+    formatTrackingNumber
+};
+
+/**
+ * UI Utilities
+ */
+
+// Simple Toast Notification System
+window.showToast = function(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#f39c12'};
+        color: white;
+        border-radius: 50px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: toastFadeIn 0.3s ease;
+    `;
+    
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️';
+    toast.innerHTML = `<span>${icon}</span> ${message}`;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(20px)';
+        toast.style.transition = 'all 0.5s ease';
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
+};
+
+// Button Loading State Helper
+window.setButtonLoading = function(btn, isLoading, originalHtml) {
+    if (!btn) return;
+    if (isLoading) {
+        btn.disabled = true;
+        btn.dataset.originalHtml = btn.innerHTML;
+        btn.innerHTML = `<span class="spinner"></span> กำลังบันทึก...`;
+        btn.style.opacity = '0.7';
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml || btn.dataset.originalHtml || 'บันทึก';
+        btn.style.opacity = '1';
+    }
 };

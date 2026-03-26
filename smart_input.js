@@ -304,20 +304,33 @@ function addSmartEntryAndSave() {
     if(itemsToAdd.length === 0) return;
 
     // Save to DB directly
-    const batchInfo = { name, type, contract, requestDate, timestamp: new Date().getTime() };
-    const savedCount = CustomerDB.addBatch(batchInfo, itemsToAdd);
+    const btn = document.querySelector('button[onclick="addSmartEntryAndSave()"]');
+    const originalText = btn ? btn.innerHTML : '💾 บันทึกข้อมูล (Save)';
+    if (btn) window.setButtonLoading(btn, true);
 
-    alert(`บันทึกเรียบร้อย! เพิ่ม ${savedCount} รายการ สำเร็จ`);
+    setTimeout(() => {
+        const batchInfo = { name, type, contract, requestDate, timestamp: new Date().getTime() };
+        const result = CustomerDB.addBatch(batchInfo, itemsToAdd);
 
-    // Complete cleanup for UI
-    document.getElementById('db-name').value = '';
-    document.getElementById('db-contract').value = '';
-    document.getElementById('db-request-date').value = '';
-    document.getElementById('smart-block2').value = '';
-    document.getElementById('smart-check-digit').value = '-';
-    
-    // Refresh tables
-    if(typeof updateDbViews === 'function') updateDbViews();
+        if (btn) window.setButtonLoading(btn, false, originalText);
+
+        if (result && result.error === 'DUPLICATE') {
+            window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'warning');
+            return;
+        }
+
+        window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${itemsToAdd.length} รายการ สำเร็จ`);
+
+        // Complete cleanup for UI
+        document.getElementById('db-name').value = '';
+        document.getElementById('db-contract').value = '';
+        document.getElementById('db-request-date').value = '';
+        document.getElementById('smart-block2').value = '';
+        document.getElementById('smart-check-digit').value = '-';
+        
+        // Refresh tables
+        if(typeof updateDbViews === 'function') updateDbViews();
+    }, 500);
 }
 
 async function handleImageSelection(files) {

@@ -998,31 +998,38 @@ function saveImportedBatch(isAuto = false) {
         ranges: rangesMeta
     };
 
-    // Save
-    const result = CustomerDB.addBatch(batchInfo, allItemsToSave);
-    const addedCount = typeof result === 'object' ? result.count : result;
-    const newBatchId = typeof result === 'object' ? result.id : null;
+    const btn = document.querySelector('button[onclick="saveImportedBatch()"]');
+    const originalHtml = btn ? btn.innerHTML : '💾 บันทึกข้อมูล';
+    if (btn) window.setButtonLoading(btn, true);
 
-    if (isAuto) {
-        // alert(`✅ ระบบบันทึกข้อมูลอัตโนมัติเรียบร้อย!\n(Optimized ${rangesMeta.length} Groups)`);
-        // Silent or small notification? User wants to SEE it.
-    } else {
-        alert(`บันทึกเรียบร้อย!`);
-    }
+    setTimeout(() => {
+        // Save
+        const result = CustomerDB.addBatch(batchInfo, allItemsToSave);
+        const addedCount = typeof result === 'object' ? result.count : result;
+        const newBatchId = typeof result === 'object' ? result.id : null;
 
-    // Reset inputs
-    document.getElementById('excel-upload').value = '';
-    document.getElementById('import-preview').classList.add('hidden');
-    currentImportedBatches = [];
+        if (btn) window.setButtonLoading(btn, false, originalHtml);
 
-    // DIRECTLY VIEW THE REPORT
-    if (newBatchId && typeof loadBatchToView === 'function') {
-        loadBatchToView(newBatchId);
-    } else {
-        // Fallback
-        switchTab('customer');
-        if (typeof renderDBTable === 'function') renderDBTable();
-    }
+        if (result && result.error === 'DUPLICATE') {
+            window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'info');
+        } else {
+            window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${addedCount} รายการ`);
+        }
+
+        // Reset inputs
+        document.getElementById('excel-upload').value = '';
+        document.getElementById('import-preview').classList.add('hidden');
+        currentImportedBatches = [];
+
+        // DIRECTLY VIEW THE REPORT
+        if (newBatchId && typeof loadBatchToView === 'function') {
+            loadBatchToView(newBatchId);
+        } else {
+            // Fallback
+            switchTab('customer');
+            if (typeof renderDBTable === 'function') renderDBTable();
+        }
+    }, 500);
 }
 
 function toggleImportHistory() {
@@ -2725,29 +2732,40 @@ function addExceptionEntry() {
     };
 
     // Pass images and current editing ID to save
-    const savedId = ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime, exceptionImages, currentEditingSessionId, metadata);
-    if (!savedId) return;
-    
-    // Clear state
-    currentEditingSessionId = null;
-    clearExceptionImages();
+    const btn = document.getElementById('exception-save-btn');
+    const originalHtml = btn ? btn.innerHTML : 'บันทึก (Save)';
+    if (btn) window.setButtonLoading(btn, true);
 
-    // Reset inputs
-    document.getElementById('exception-track-input').value = '';
-    document.getElementById('exception-start-input').value = '';
-    document.getElementById('exception-end-input').value = '';
-    document.getElementById('exception-range-preview').textContent = '';
-    document.getElementById('exception-extra-items').innerHTML = '';
-    
-    // Reset date/time pickers to empty
-    const dpicker = document.getElementById('exception-date-picker');
-    const tpicker = document.getElementById('exception-time-picker');
-    if (dpicker) dpicker.value = '';
-    if (tpicker) tpicker.value = '';
-    updateBEDisplay();
-    extraItemCount = 0;
+    setTimeout(() => {
+        const savedId = ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime, exceptionImages, currentEditingSessionId, metadata);
+        
+        if (btn) window.setButtonLoading(btn, false, originalHtml);
 
-    renderExceptionTable();
+        if (!savedId) return;
+        
+        window.showToast(`บันทึกเรียบร้อย! (${trackNums.length} รายการ)`);
+        
+        // Clear state
+        currentEditingSessionId = null;
+        clearExceptionImages();
+
+        // Reset inputs
+        document.getElementById('exception-track-input').value = '';
+        document.getElementById('exception-start-input').value = '';
+        document.getElementById('exception-end-input').value = '';
+        document.getElementById('exception-range-preview').textContent = '';
+        document.getElementById('exception-extra-items').innerHTML = '';
+        
+        // Reset date/time pickers to empty
+        const dpicker = document.getElementById('exception-date-picker');
+        const tpicker = document.getElementById('exception-time-picker');
+        if (dpicker) dpicker.value = '';
+        if (tpicker) tpicker.value = '';
+        updateBEDisplay();
+        extraItemCount = 0;
+
+        renderExceptionTable();
+    }, 500);
 
     // Scroll to the new entry
     const container = document.getElementById('exception-table-container');
