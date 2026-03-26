@@ -943,7 +943,7 @@ const ExceptionManager = {
      * @param {string} companyName - Company name
      * @param {string} reason - Reason
      */
-    saveSession: (trackNums, companyName, reason, firstStatus = 'ใส่ของลงถุง', dateTime = '', images = [], existingSessionId = null) => {
+    saveSession: (trackNums, companyName, reason, firstStatus = 'ใส่ของลงถุง', dateTime = '', images = [], existingSessionId = null, metadata = {}) => {
         const exceptions = ExceptionManager.getAll();
         const sessionId = existingSessionId || Date.now().toString();
 
@@ -958,9 +958,15 @@ const ExceptionManager = {
                 reason: reason,
                 firstStatus: firstStatus,
                 dateTime: dateTime,
-                images: images, // Store images array { dataUrl, name }
+                images: images, 
                 timestamp: new Date().toISOString(),
-                sessionId: sessionId
+                sessionId: sessionId,
+                // New metadata fields
+                category: metadata.category || 'เงินสด',
+                branch: metadata.branch || '',
+                reporter: metadata.reporter || '',
+                subject: metadata.subject || '',
+                note: metadata.note || ''
             });
         });
 

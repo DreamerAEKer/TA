@@ -2637,9 +2637,17 @@ function addExceptionEntry() {
 
     const firstStatus = document.getElementById('exception-first-status').value.trim();
     const dateTime = document.getElementById('exception-datetime').value.trim();
+    
+    const metadata = {
+        category: document.getElementById('exception-category').value,
+        branch: document.getElementById('rpt-branch').value.trim(),
+        reporter: document.getElementById('rpt-reporter').value.trim(),
+        subject: document.getElementById('rpt-subject').value.trim(),
+        note: document.getElementById('rpt-note').value.trim()
+    };
 
     // Pass images and current editing ID to save (overwrite existing if same track keys/session)
-    const savedId = ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime, exceptionImages, currentEditingSessionId);
+    const savedId = ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime, exceptionImages, currentEditingSessionId, metadata);
     if (!savedId) return; // Stop if save failed (e.g. quota exceeded)
     
     // Clear state
@@ -3031,10 +3039,8 @@ function clearAllExceptions() {
 }
 
 async function exportExceptionImage() {
-    // 1. Re-render to ensure current selection state and DOM is ready
     renderExceptionTable();
 
-    // 2. Identify selected sessions
     const selectedSids = Array.from(document.querySelectorAll('.sess-select:checked')).map(cb => cb.value);
     if (selectedSids.length === 0) {
         alert('กรุณาเลือกอย่างน้อย 1 รายการเพื่อออกรายงานครับ');
@@ -3042,23 +3048,52 @@ async function exportExceptionImage() {
     }
 
     const exceptions = ExceptionManager.getAll();
-    const selectedExceptions = exceptions.filter(e => selectedSids.includes(e.sessionId));
+    const selectedItems = exceptions.filter(e => selectedSids.includes(e.sessionId));
     const meta = getExceptionMeta();
-    
-    // Group selected into session map
-    const sessionMap = new Map();
-    selectedExceptions.forEach(item => {
-        const sid = item.sessionId || item.id;
-        if (!sessionMap.has(sid)) {
-            sessionMap.set(sid, { sessionId: sid, companyName: item.companyName, reason: item.reason, timestamp: item.timestamp, entries: [] });
-        }
-        sessionMap.get(sid).entries.push(item);
-    });
-    const allSessions = Array.from(sessionMap.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // PAGINATION LOGIC: ~7 sessions per page is good for LINE
-    const SESSIONS_PER_PAGE = 7;
-    const totalPages = Math.ceil(allSessions.length / SESSIONS_PER_PAGE);
+    // 1. Grouping Logic
+    // Structure: Category -> Company -> Sessions
+    const groups = {}; 
+
+    selectedItems.forEach(item => {
+        const cat = item.category || 'อื่นๆ';
+        const com = item.companyName || '-';
+        const sid = item.sessionId || item.id;
+
+        if (!groups[cat]) groups[cat] = {};
+        if (!groups[cat][com]) groups[cat][com] = {};
+        if (!groups[cat][com][sid]) {
+            groups[cat][com][sid] = { sessionId: sid, entries: [], first: item, timestamp: item.timestamp };
+        }
+        groups[cat][com][sid].entries.push(item);
+    });
+
+    // 2. Prepare Summary Data
+    const summaryRows = [];
+    Object.keys(groups).sort().forEach(cat => {
+        Object.keys(groups[cat]).sort().forEach(com => {
+            let total = 0;
+            Object.values(groups[cat][com]).forEach(sess => total += sess.entries.length);
+            summaryRows.push({ category: cat, company: com, count: total });
+        });
+    });
+
+    // 3. Prepare Flat List for Pagination (Group Headers + Session Blocks)
+    const exportBlocks = [];
+    Object.keys(groups).sort().forEach(cat => {
+        exportBlocks.push({ type: 'categoryHeader', title: cat });
+        Object.keys(groups[cat]).sort().forEach(com => {
+            exportBlocks.push({ type: 'companyHeader', title: com });
+            const sids = Object.values(groups[cat][com]).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+            sids.forEach(sess => {
+                exportBlocks.push({ type: 'session', data: sess });
+            });
+        });
+    });
+
+    // Pagination: Approx 12 items/headers per page
+    const ITEMS_PER_PAGE = 12;
+    const totalPages = Math.ceil(exportBlocks.length / ITEMS_PER_PAGE);
 
     // Provide visual feedback
     const originalBtnText = event?.target?.innerText || "สร้างรูปภาพแจ้งหัวหน้า";
@@ -3067,115 +3102,177 @@ async function exportExceptionImage() {
         event.target.innerText = "⏳ กำลังเตรียมไฟล์รูปภาพ...";
     }
 
+    const reportDateDisp = meta.date ? new Date(meta.date).toLocaleDateString('th-TH') : new Date().toLocaleDateString('th-TH');
+    
+    // Create temporary export container
+    const exportDiv = document.createElement('div');
+    exportDiv.id = 'temp-export-container';
+    exportDiv.style.position = 'fixed';
+    exportDiv.style.top = '0';
+    exportDiv.style.left = '-9999px'; // Hide off-screen
+    exportDiv.style.background = 'white';
+    document.body.appendChild(exportDiv);
+
     try {
         for (let p = 0; p < totalPages; p++) {
-            const startIdx = p * SESSIONS_PER_PAGE;
-            const endIdx = startIdx + SESSIONS_PER_PAGE;
-            const pageSessions = allSessions.slice(startIdx, endIdx);
+            const pageBlocks = exportBlocks.slice(p * ITEMS_PER_PAGE, (p + 1) * ITEMS_PER_PAGE);
             const pageNumText = totalPages > 1 ? ` (หน้า ${p + 1}/${totalPages})` : "";
             
-            // Gather images for THIS page only
-            let pageImages = [];
-            pageSessions.forEach(sess => {
-                const first = sess.entries[0];
-                if (first && first.images) {
-                    first.images.forEach(img => {
-                        if (!pageImages.find(x => x.dataUrl === img.dataUrl)) pageImages.push(img);
-                    });
+            let pageSessions = [];
+            pageBlocks.forEach(block => {
+                if (block.type === 'session') {
+                    pageSessions.push(block.data);
                 }
             });
 
-            // Build specialized container for this page capture
-            const exportDiv = document.createElement('div');
-            exportDiv.id = 'temp-export-div-page-' + p;
-            exportDiv.style.cssText = 'position:fixed; left:0; top:0; width:1000px; z-index:-9999; background:#fff; overflow:visible; display:block;';
-            document.body.appendChild(exportDiv);
+            // Header (Show on every page)
+            let headerHtml = `
+                <div style="margin-bottom:20px; border-bottom:3px solid #0288d1; padding-bottom:12px; display:flex; justify-content:space-between; align-items:flex-end;">
+                    <div>
+                        <div style="font-size:1.4rem; font-weight:bold; color:#01579b;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</div>
+                        <div style="font-size:1rem; color:#0288d1; margin-top:2px;">(Exception & Missing Items Report)</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:1rem; font-weight:bold; color:#333;">${reportDateDisp}</div>
+                        ${totalPages > 1 ? `<div style="font-size:0.9rem; color:#0288d1; font-weight:bold; margin-top:4px;">${pageNumText.trim()}</div>` : ''}
+                    </div>
+                </div>
+                <div style="margin-bottom:15px; font-size:0.9rem; line-height:1.6; color:#444; display:grid; grid-template-columns: 1.5fr 1fr; gap:20px;">
+                    <div>
+                        ${meta.subject ? `<div><strong>เรื่อง:</strong> ${meta.subject}${pageNumText}</div>` : `<div><strong>เรื่อง:</strong> รายงานชิ้นงานค้าง ${pageNumText}</div>`}
+                        ${meta.branch ? `<div><strong>ที่ทำการ:</strong> ${meta.branch}</div>` : ''}
+                        ${meta.reporter ? `<div><strong>ผู้รายงาน:</strong> ${meta.reporter}</div>` : ''}
+                    </div>
+                    <div style="padding:8px; background:#f5faff; border:1px solid #d1e3f8; border-radius:6px;">
+                        <strong>หมายเหตุส่วนกลาง:</strong><br>
+                        <span style="font-size:0.85rem; color:#666;">${meta.note || '-'}</span>
+                    </div>
+                </div>`;
 
-            const reportDateDisp = meta.date ? new Date(meta.date).toLocaleDateString('th-TH') : new Date().toLocaleDateString('th-TH');
-            
-            let metaHtml = '';
-            if (meta.branch || meta.reporter || meta.subject || meta.note) {
-                metaHtml += `<div style="margin-bottom:12px; font-size:0.9rem; line-height:1.6; color:#444;">`;
-                if (meta.subject)  metaHtml += `<div><strong>เรื่อง:</strong> ${meta.subject}${pageNumText}</div>`;
-                else if (totalPages > 1) metaHtml += `<div><strong>หัวข้อ:</strong> รายงานชิ้นงานค้าง ${pageNumText}</div>`;
-                
-                if (meta.branch)   metaHtml += `<div><strong>ที่ทำการ:</strong> ${meta.branch}</div>`;
-                if (meta.reporter) metaHtml += `<div><strong>ผู้รายงาน:</strong> ${meta.reporter}</div>`;
-                if (meta.note)     metaHtml += `<div style="margin-top:4px; padding:5px; background:#f9f9f9; border-left:3px solid #ccc;"><strong>หมายเหตุ:</strong> ${meta.note}</div>`;
-                metaHtml += `</div>`;
-            }
-
-            let tableRowsHtml = '';
-            pageSessions.forEach((sess, idx) => {
-                const groups = compressSessEntries(sess.entries);
-                const totalCount = sess.entries.length;
-                const trackDisplay = groups.map(g => `<div style="font-family:monospace; font-weight:bold; white-space:nowrap; margin-bottom:2px;">${g.display}</div>`).join('');
-                const firstE = sess.entries[0];
-                const dispFirstStatus = firstE.firstStatus || 'ใส่ของลงถุง';
-                let dispDT = new Date(sess.timestamp).toLocaleDateString('th-TH');
-                if (firstE.dateTime) {
-                    const m = firstE.dateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/);
-                    if(m) { let y=parseInt(m[1]); if(y<2500)y+=543; dispDT=`${m[3]}/${m[2]}/${y} ${m[4]}`; }
-                    else dispDT=firstE.dateTime;
-                }
-
-                tableRowsHtml += `
-                    <tr style="border-bottom: 1px solid #eee; vertical-align:top;">
-                        <td style="padding:12px 8px; text-align:center; color:#999; vertical-align:top;">${startIdx + idx + 1}</td>
-                        <td style="padding:12px 8px; vertical-align:top;">${trackDisplay}</td>
-                        <td style="padding:12px 8px; text-align:center; font-weight:bold; color:#0288d1; vertical-align:top;">${totalCount}</td>
-                        <td style="padding:12px 8px; vertical-align:top; font-weight:500;">${sess.companyName}</td>
-                        <td style="padding:12px 8px; line-height:1.5; vertical-align:top;">
-                            <div style="color:#d32f2f; font-weight:bold; margin-bottom:6px;">${sess.reason}</div>
-                            <div style="font-size:0.85rem; color:#666; margin-bottom:2px;">สถานะ: <span style="color:#333;">${dispFirstStatus}</span></div>
-                            <div style="font-size:0.85rem; color:#666;">ข้อมูลเมื่อ: <span style="color:#0288d1;">${dispDT}</span></div>
-                        </td>
-                    </tr>`;
-            });
-
-            const scaleNode = document.getElementById('exception-img-scale');
-            const scaleVal = scaleNode ? scaleNode.value : "100";
-            const imgSize = (parseInt(scaleVal) / 100 * 220) + "px"; // Slightly larger base for export
-
-            let imagesHtml = '';
-            if (pageImages.length > 0) {
-                imagesHtml = `
-                    <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ccc;">
-                        <div style="font-size:0.85rem; font-weight:bold; color:#555; margin-bottom:10px;">รูปภาพประกอบ (สำหรับหน้านี้):</div>
-                        <div style="display:flex; flex-wrap:wrap; gap:12px; justify-content:flex-start;">
-                            ${pageImages.map(img => `<img src="${img.dataUrl}" style="width:${imgSize}; object-fit:contain; border:1px solid #ddd; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.1);">`).join('')}
-                        </div>
+            // Summary Table (ONLY Page 1)
+            let summaryHtml = '';
+            if (p === 0) {
+                summaryHtml = `
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:1.1rem; font-weight:bold; color:#0d47a1; margin-bottom:8px;">📊 ตารางสรุปภาพรวม (Summary)</div>
+                        <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #eee; font-size:0.95rem;">
+                            <thead>
+                                <tr style="background:#e3f2fd; border-bottom:2px solid #0288d1;">
+                                    <th style="padding:8px; text-align:left; border:1px solid #eee;">หมวดงาน</th>
+                                    <th style="padding:8px; text-align:left; border:1px solid #eee;">ชื่อบริษัท / ลูกค้า</th>
+                                    <th style="padding:8px; text-align:center; border:1px solid #eee; width:15%;">รวม (ชิ้น)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${summaryRows.map(row => `
+                                    <tr>
+                                        <td style="padding:8px; border:1px solid #eee; font-weight:bold; color:#01579b;">${row.category}</td>
+                                        <td style="padding:8px; border:1px solid #eee;">${row.company}</td>
+                                        <td style="padding:8px; border:1px solid #eee; text-align:center; font-weight:bold; font-size:1.1rem; color:#0288d1;">${row.count}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr style="background:#f1f8e9; font-weight:bold;">
+                                    <td colspan="2" style="padding:10px; text-align:right; border:1px solid #eee;">รวมทั้งสิ้น (Total)</td>
+                                    <td style="padding:10px; text-align:center; border:1px solid #eee; font-size:1.2rem; color:#2e7d32;">${summaryRows.reduce((a,b) => a + b.count, 0)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>`;
             }
 
+            // Detail Table
+            let detailRowsHtml = '';
+            let sessionInReportIdx = 0; // Total index in the entire report
+
+            exportBlocks.forEach((block, globalIdx) => {
+                const isCurrentPage = (globalIdx >= p * ITEMS_PER_PAGE && globalIdx < (p + 1) * ITEMS_PER_PAGE);
+                
+                if (block.type === 'session') sessionInReportIdx++;
+
+                if (!isCurrentPage) return;
+
+                if (block.type === 'categoryHeader') {
+                    detailRowsHtml += `
+                        <tr style="background:#0288d1; color:#fff; font-weight:bold;">
+                            <td colspan="3" style="padding:10px 15px; font-size:1.1rem;">📁 หมวด: ${block.title}</td>
+                        </tr>`;
+                } else if (block.type === 'companyHeader') {
+                    detailRowsHtml += `
+                        <tr style="background:#e1f5fe; color:#01579b; font-weight:bold; border-bottom:1px solid #b3e5fc;">
+                            <td colspan="3" style="padding:8px 15px;">🏢 บริษัท: ${block.title}</td>
+                        </tr>`;
+                } else if (block.type === 'session') {
+                    const sess = block.data;
+                    const compressed = compressSessEntries(sess.entries);
+                    const totalCount = sess.entries.length;
+                    const trackDisplay = compressed.map(g => `<div style="font-family:monospace; font-weight:bold; white-space:nowrap; margin-bottom:2px;">${g.display}</div>`).join('');
+                    
+                    const firstE = sess.entries[0];
+                    let dispDT = new Date(sess.timestamp).toLocaleDateString('th-TH');
+                    if (firstE.dateTime) {
+                        const m = firstE.dateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/);
+                        if(m) { let y=parseInt(m[1]); if(y<2500)y+=543; dispDT=`${m[3]}/${m[2]}/${y} ${m[4]}`; }
+                    }
+
+                    const isLast = (globalIdx === exportBlocks.length - 1);
+                    const dispIdx = isLast ? '🏁' : sessionInReportIdx;
+
+                    // Per-session images
+                    let sessImagesHtml = '';
+                    const sessImgs = sess.entries[0].images || [];
+                    if (sessImgs.length > 0) {
+                        const scaleNode = document.getElementById('exception-img-scale');
+                        const scaleVal = scaleNode ? scaleNode.value : "100";
+                        const imgSize = (parseInt(scaleVal) / 100 * 180) + "px"; // 180px base for inline
+                        
+                        sessImagesHtml = `
+                            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
+                                ${sessImgs.map(img => `<img src="${img.dataUrl}" style="width:${imgSize}; border:1px solid #ddd; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">`).join('')}
+                            </div>`;
+                    }
+
+                    detailRowsHtml += `
+                        <tr style="border-bottom: 2px solid #eee; vertical-align:top;">
+                            <td style="padding:12px 5px; text-align:center; width:8%; font-weight:bold; color:#666; font-size:1.1rem; background:#f9f9f9; border-right:1px solid #eee;">
+                                ${isLast ? `<div style="font-size:0.7rem; color:#d32f2f; margin-bottom:2px;">ท้ายสุด</div>` : ''}
+                                ${dispIdx}
+                            </td>
+                            <td style="padding:12px 15px; width:40%;">${trackDisplay}</td>
+                            <td style="padding:12px 15px; width:52%;">
+                                <div style="color:#d32f2f; font-weight:bold; margin-bottom:6px; font-size:1.1rem;">${firstE.reason}</div>
+                                <div style="font-size:0.85rem; color:#666; margin-bottom:4px;">
+                                    ${firstE.firstStatus ? `<span>สถานะ: ${firstE.firstStatus}</span> | ` : ''}
+                                    <span>${dispDT}</span>
+                                </div>
+                                <div style="background:#fff9c4; color:#5d4037; font-size:0.8rem; padding:2px 6px; border-radius:4px; display:inline-block; margin-bottom:5px;">
+                                    👥 ${sess.companyName} | 📦 ${totalCount} ชิ้น | 📂 ${block.title || (exportBlocks.find(b => b.type === 'categoryHeader')?.title) || '-'}
+                                </div>
+                                ${sessImagesHtml}
+                            </td>
+                        </tr>`;
+                }
+            });
+
+            let detailTableHtml = `
+                <div style="font-size:1.1rem; font-weight:bold; color:#0d47a1; margin-bottom:8px;">🔍 รายละเอียดแยกตามรายการ (Itemized Details)</div>
+                <table style="width:100%; border-collapse:collapse; border:1px solid #ccc; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+                    <thead>
+                        <tr style="background:#01579b; border-bottom:3px solid #014175;">
+                            <th style="padding:12px 5px; text-align:center; border:1px solid #0277bd; color:white; font-size:0.9rem;">ลำดับ</th>
+                            <th style="padding:12px 10px; text-align:left; border:1px solid #0277bd; color:white; font-size:0.9rem;">หมายเลขพัสดุ</th>
+                            <th style="padding:12px 10px; text-align:left; border:1px solid #0277bd; color:white; font-size:0.9rem;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
+                        </tr>
+                    </thead>
+                    <tbody>${detailRowsHtml}</tbody>
+                </table>`;
+
             exportDiv.innerHTML = `
-                <div style="background:white; padding:40px; width:900px; font-family:'Sarabun', sans-serif; box-sizing:border-box;">
-                    <div style="margin-bottom:20px; border-bottom:3px solid #0288d1; padding-bottom:12px; display:flex; justify-content:space-between; align-items:flex-end;">
-                        <div>
-                            <div style="font-size:1.4rem; font-weight:bold; color:#01579b;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</div>
-                            <div style="font-size:1rem; color:#0288d1; margin-top:2px;">(Exception & Missing Items Report)</div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:1rem; font-weight:bold; color:#333;">${reportDateDisp}</div>
-                            ${totalPages > 1 ? `<div style="font-size:0.9rem; color:#0288d1; font-weight:bold; margin-top:4px;">${pageNumText.trim()}</div>` : ''}
-                        </div>
-                    </div>
-                    ${metaHtml}
-                    <table style="width:100%; font-size:1rem; border-collapse:collapse; margin-top:10px; border:1px solid #eee;">
-                        <thead>
-                            <tr style="background:#f8faff; border-bottom:2px solid #0288d1;">
-                                <th style="padding:12px 8px; text-align:center; width:6%; color:#01579b;">#</th>
-                                <th style="padding:12px 8px; text-align:left; width:22%; color:#01579b;">เลขพัสดุ</th>
-                                <th style="padding:12px 8px; text-align:center; width:8%; color:#01579b;">จำนวน</th>
-                                <th style="padding:12px 8px; text-align:left; width:26%; color:#01579b;">บริษัท/ลูกค้า</th>
-                                <th style="padding:12px 8px; text-align:left; width:38%; color:#01579b;">รายละเอียดเหตุผล</th>
-                            </tr>
-                        </thead>
-                        <tbody>${tableRowsHtml}</tbody>
-                    </table>
-                    ${imagesHtml}
-                    <div style="margin-top:25px; text-align:center; font-size:0.8rem; color:#999; border-top:1px solid #f0f0f0; padding-top:10px;">
-                        จัดทำโดยระบบ Tracking Analyst Helper
+                <div style="background:white; padding:40px; width:1000px; font-family:'Sarabun', sans-serif; box-sizing:border-box;">
+                    ${headerHtml}
+                    ${summaryHtml}
+                    ${detailTableHtml}
+                    <div style="margin-top:30px; text-align:center; font-size:0.85rem; color:#aaa; border-top:1px solid #f0f0f0; padding-top:10px;">
+                        จัดทำโดยระบบ Tracking Analyst Helper | หน้า ${p+1} จากทั้งหมด ${totalPages} หน้า
                     </div>
                 </div>`;
 
@@ -3185,8 +3282,6 @@ async function exportExceptionImage() {
             await new Promise(r => window.requestAnimationFrame(r));
 
             const captureNode = exportDiv.querySelector('div');
-            console.log(`Capturing Page ${p+1}, dimensions:`, captureNode.offsetWidth, 'x', captureNode.offsetHeight);
-
             // Capture
             const canvas = await html2canvas(captureNode, {
                 scale: 2,
@@ -3196,10 +3291,7 @@ async function exportExceptionImage() {
                 allowTaint: true,
                 width: captureNode.offsetWidth,
                 height: captureNode.offsetHeight,
-                scrollX: 0,
-                scrollY: 0,
                 onclone: (clonedDoc) => {
-                    // Force the cloned element to be visible and stable
                     const clonedNode = clonedDoc.getElementById(exportDiv.id);
                     if (clonedNode) {
                         clonedNode.style.opacity = "1";
@@ -3210,9 +3302,7 @@ async function exportExceptionImage() {
                 }
             });
 
-            document.body.removeChild(exportDiv);
-
-            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            const imgData = canvas.toDataURL('image/jpeg', 0.85); // Use JPEG for better performance
             const link = document.createElement('a');
             const suffix = totalPages > 1 ? `_Part${p + 1}` : "";
             link.download = `Exception_Report_${new Date().toISOString().slice(0, 10)}${suffix}.jpg`;
@@ -3221,14 +3311,15 @@ async function exportExceptionImage() {
             link.click();
             document.body.removeChild(link);
 
-            // Small delay between multiple downloads to avoid browser blocks
-            if (totalPages > 1) await new Promise(r => setTimeout(r, 500));
+            if (totalPages > 1) await new Promise(r => setTimeout(r, 600));
         }
     } catch (err) {
-        console.error('Error generating image:', err);
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        alert('เกิดข้อผิดพลาดในการสร้างภาพ: ' + errorMsg + '\n\nคำแนะนำ: ลองลดจำนวนที่เลือกลง หรือตรวจสอบว่ารูปภาพที่แนบไม่ใหญ่เกินไปครับ');
+        console.error("Error generating image:", err);
+        alert("ขออภัย! เกิดข้อผิดพลาดในการสร้างรูปภาพ: " + (err.message || err));
     } finally {
+        if (exportDiv && exportDiv.parentNode) {
+            document.body.removeChild(exportDiv);
+        }
         if (event?.target) {
             event.target.disabled = false;
             event.target.innerText = originalBtnText;

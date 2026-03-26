@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracking Analyst v1.20</title>
+    <title>Tracking Analyst v1.40</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=14">
     <style>
@@ -178,11 +178,20 @@
                         </div>
 
 
-                        <!-- Reason + Status + Save -->
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <!-- Category + Reason + Status -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+                            <div>
+                                <label style="font-size:0.8rem; display:block; margin-bottom:5px;">📂 หมวดงาน (Type)</label>
+                                <select id="exception-category" style="width:100%; padding:9px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; background:white; font-size:0.9rem;">
+                                    <option value="เงินสด">เงินสด (Cash)</option>
+                                    <option value="เครื่องประทับ">เครื่องประทับ (Stamp)</option>
+                                    <option value="รายเดือน">รายเดือน (Monthly)</option>
+                                    <option value="อื่นๆ">อื่นๆ (Others)</option>
+                                </select>
+                            </div>
                             <div>
                                 <label style="font-size:0.8rem; display:block; margin-bottom:5px;">เหตุผล (Reason)</label>
-                                <input type="text" id="exception-reason-input" placeholder="เช่น ของยังไม่มาส่ง, จ่าหน้าไม่ชัดเจน..." list="exception-reason-list" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                                <input type="text" id="exception-reason-input" placeholder="เช่น ของยังไม่มาส่ง..." list="exception-reason-list" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                                 <datalist id="exception-reason-list">
                                     <option value="บันทึกข้อมูลไม่ตรงตามจริง">
                                     <option value="ไม่ได้บันทึกข้อมูลในระบบ New CA">
@@ -689,7 +698,7 @@
 
     <div id="app-version"
         style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
-        v1.35</div>
+        v1.40</div>
 
     <!-- IMAGE EDITOR MODAL -->
     <div id="img-editor-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:10px; box-sizing:border-box;">
