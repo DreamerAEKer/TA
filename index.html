@@ -243,13 +243,13 @@
                                 <div style="display:flex; align-items:center; gap:12px;">
                                     <h4 style="margin:0; font-size:1.1rem; color:#333;">📦 รายการที่พร้อมแจ้งผล (Drafts)</h4>
                                     <div class="btn-group" style="display:flex; background:#f0f0f0; padding:3px; border-radius:8px; gap:2px;">
-                                        <button id="filter-today" class="btn btn-neutral active" onclick="setExceptionFilter('today')" style="padding:4px 10px; font-size:0.75rem; border:none; border-radius:6px; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.05);">วันนี้</button>
-                                        <button id="filter-history" class="btn btn-neutral" onclick="setExceptionFilter('history')" style="padding:4px 10px; font-size:0.75rem; border:none; border-radius:6px; background:none; color:#666;">ประวัติ</button>
+                                        <button id="filter-today" class="btn btn-neutral active" onclick="setExceptionFilter('today')" style="padding:4px 14px; font-size:0.75rem; border:none; border-radius:6px; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.05); white-space:nowrap; min-width:60px;">วันนี้</button>
+                                        <button id="filter-history" class="btn btn-neutral" onclick="setExceptionFilter('history')" style="padding:4px 14px; font-size:0.75rem; border:none; border-radius:6px; background:none; color:#666; white-space:nowrap; min-width:60px;">ประวัติ</button>
                                     </div>
                                 </div>
                                 <div style="display:flex; gap:8px;">
-                                    <button class="btn btn-neutral" onclick="if(confirm('ล้างรายการแสดงผลปัจจุบันตามตัวกรองนี้?')) { clearFilteredExceptions(); }" style="font-size:0.75rem; padding:4px 8px; border:1px solid #ffcdd2; color:#d32f2f; background:none;">
-                                        🗑️ ล้างรายการที่ลึก
+                                    <button class="btn btn-neutral" onclick="if(confirm('ล้างรายการแสดงผลปัจจุบันตามตัวกรองนี้?')) { clearFilteredExceptions(); }" style="font-size:0.7rem; padding:4px 8px; border:none; color:#999; background:none; text-decoration:underline;">
+                                        ล้างรายการที่แสดง
                                     </button>
                                 </div>
                             </div>
