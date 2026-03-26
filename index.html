@@ -23,6 +23,12 @@
             .tab-btn { width: auto !important; border-left: none !important; border-bottom: 3px solid transparent !important; }
             .tab-btn.active { border-bottom-color: var(--primary-color) !important; }
         }
+        .btn-group button.active {
+            background: white !important;
+            color: #333 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            font-weight: bold;
+        }
     </style>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src='https://unpkg.com/tesseract.js@v5.0.0/dist/tesseract.min.js'></script>
@@ -234,10 +240,16 @@
                         <!-- 3. Current Report List & Export -->
                         <div style="margin-top:25px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
-                                <h4 style="margin:0; font-size:1.1rem; color:#333;">📦 รายการที่พร้อมแจ้งผล (Current Draft)</h4>
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <h4 style="margin:0; font-size:1.1rem; color:#333;">📦 รายการที่พร้อมแจ้งผล (Drafts)</h4>
+                                    <div class="btn-group" style="display:flex; background:#f0f0f0; padding:3px; border-radius:8px; gap:2px;">
+                                        <button id="filter-today" class="btn btn-neutral active" onclick="setExceptionFilter('today')" style="padding:4px 10px; font-size:0.75rem; border:none; border-radius:6px; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.05);">วันนี้</button>
+                                        <button id="filter-history" class="btn btn-neutral" onclick="setExceptionFilter('history')" style="padding:4px 10px; font-size:0.75rem; border:none; border-radius:6px; background:none; color:#666;">ประวัติ</button>
+                                    </div>
+                                </div>
                                 <div style="display:flex; gap:8px;">
-                                    <button class="btn btn-neutral" onclick="if(confirm('ล้างรายการทั้งหมดในฉบับร่างนี้?')) { ExceptionManager.clearAll(); renderExceptionTable(); }" style="font-size:0.75rem; padding:4px 8px; border:1px solid #ffcdd2; color:#d32f2f; background:none;">
-                                        🗑️ ล้างทั้งหมด
+                                    <button class="btn btn-neutral" onclick="if(confirm('ล้างรายการแสดงผลปัจจุบันตามตัวกรองนี้?')) { clearFilteredExceptions(); }" style="font-size:0.75rem; padding:4px 8px; border:1px solid #ffcdd2; color:#d32f2f; background:none;">
+                                        🗑️ ล้างรายการที่ลึก
                                     </button>
                                 </div>
                             </div>
@@ -665,7 +677,13 @@
     </div>
 
     <!-- Scripts -->
-    <script src="utils.js?v=65"></script>
+    <footer style="position:fixed; bottom:15px; right:15px; z-index:9999; display:flex; gap:10px; align-items:center;">
+        <div style="background:rgba(255,255,255,0.9); border:1px solid #ddd; padding:4px 12px; border-radius:20px; font-size:0.75rem; color:#888; box-shadow:0 2px 10px rgba(0,0,0,0.05); font-family:monospace;">
+            Tracking Analyst v1.46
+        </div>
+    </footer>
+
+    <script src="utils.js"></script>
     <script src="db_manager.js?v=65"></script>
     <script src="smart_input.js?v=65"></script>
     <script src="app.js?v=65"></script>

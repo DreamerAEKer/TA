@@ -2763,8 +2763,76 @@ function addExceptionEntry() {
 }
 
 /**
- * Group entries by sessionId, show range display, embed meta & images in export target.
+ * Filter state for Draft Reports
  */
+let exceptionFilterMode = 'today'; // 'today' or 'history'
+
+function setExceptionFilter(mode) {
+    exceptionFilterMode = mode;
+    
+    // UI Update
+    const bToday = document.getElementById('filter-today');
+    const bHistory = document.getElementById('filter-history');
+    
+    if (bToday && bHistory) {
+        if (mode === 'today') {
+            bToday.classList.add('active');
+            bToday.style.background = '#fff';
+            bToday.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+            bToday.style.color = '#333';
+            
+            bHistory.classList.remove('active');
+            bHistory.style.background = 'none';
+            bHistory.style.boxShadow = 'none';
+            bHistory.style.color = '#666';
+        } else {
+            bHistory.classList.add('active');
+            bHistory.style.background = '#fff';
+            bHistory.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+            bHistory.style.color = '#333';
+            
+            bToday.classList.remove('active');
+            bToday.style.background = 'none';
+            bToday.style.boxShadow = 'none';
+            bToday.style.color = '#666';
+        }
+    }
+    
+    renderExceptionTable();
+}
+
+/**
+ * Clear only items visible in the current filter
+ */
+function clearFilteredExceptions() {
+    const all = ExceptionManager.getAll();
+    const today = new Date().toISOString().split('T')[0];
+    
+    let toKeep = [];
+    if (exceptionFilterMode === 'today') {
+        toKeep = all.filter(item => {
+            const itemDate = new Date(item.timestamp).toISOString().split('T')[0];
+            return itemDate !== today;
+        });
+    } else {
+        toKeep = all.filter(item => {
+            const itemDate = new Date(item.timestamp).toISOString().split('T')[0];
+            return itemDate === today;
+        });
+    }
+    
+    localStorage.setItem('thp_exception_db_v1', JSON.stringify(toKeep));
+    renderExceptionTable();
+}
+
+function validateCheckDigitUI(trackNum) {
+    if (!trackNum || trackNum.length !== 13) return true;
+    const body = trackNum.substring(2, 10);
+    const cd = trackNum.substring(10, 11);
+    const expected = TrackingUtils.calculateS10CheckDigit(body);
+    return cd === String(expected);
+}
+
 /**
  * Render the current draft report in a clean, card-based list.
  */
@@ -2773,8 +2841,22 @@ function renderExceptionTable() {
     const exportBar = document.getElementById('exception-export-bar');
     if (!container) return;
 
-    const exceptions = (typeof ExceptionManager !== 'undefined') ? ExceptionManager.getAll() : [];
+    let exceptions = (typeof ExceptionManager !== 'undefined') ? ExceptionManager.getAll() : [];
     
+    // Apply Filter
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (exceptionFilterMode === 'today') {
+        exceptions = exceptions.filter(item => {
+            const d = new Date(item.timestamp).toISOString().split('T')[0];
+            return d === todayStr;
+        });
+    } else {
+        exceptions = exceptions.filter(item => {
+            const d = new Date(item.timestamp).toISOString().split('T')[0];
+            return d !== todayStr;
+        });
+    }
+
     // Toggle Export Bar visibility
     if (exportBar) {
         if (exceptions.length > 0) exportBar.classList.remove('hidden');
@@ -2782,10 +2864,11 @@ function renderExceptionTable() {
     }
 
     if (exceptions.length === 0) {
+        const msg = exceptionFilterMode === 'today' ? '📭 ยังไม่มีรายการของวันนี้' : '📭 ไม่มีประวัติรายการเก่า';
         container.innerHTML = `
             <div style="text-align:center; padding:40px 20px; color:#999; border:2px dashed #eee; border-radius:12px; background:#fafafa;">
-                <p style="margin:0; font-size:1rem;">📭 ยังไม่มีรายการในฉบับร่างนี้</p>
-                <p style="margin:5px 0 0 0; font-size:0.85rem;">คุณสามารถระบุเลขด้านบน หรือกดปุ่ม "นำกลุ่มนี้ไปสร้างรายงาน" จากผลการค้นหาได้ครับ</p>
+                <p style="margin:0; font-size:1rem;">${msg}</p>
+                <p style="margin:5px 0 0 0; font-size:0.85rem;">ระบุเลขด้านบนเพื่อเริ่มรายงานใหม่ครับ</p>
             </div>
         `;
         return;
@@ -2809,52 +2892,151 @@ function renderExceptionTable() {
 
     const sessions = Array.from(sessionMap.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    let html = '<div style="display:flex; flex-direction:column; gap:15px;">';
+    let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
 
     sessions.forEach((session, idx) => {
         const compressed = compressEntriesForDisplay(session.entries);
-        const dateStr = session.timestamp ? new Date(session.timestamp).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '-';
-        const hasImages = session.entries[0] && session.entries[0].images && session.entries[0].images.length > 0;
+        const dObj = new Date(session.timestamp);
+        const timeStr = dObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = dObj.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+        
+        const firstEntry = session.entries[0];
+        const images = firstEntry.images || [];
+        const hasImages = images.length > 0;
         const totalCount = session.entries.length;
+        const isUnknownComp = !session.companyName || session.companyName === '-' || session.companyName === 'Unknown';
+
+        // Check digit validation for alert
+        const invalidTracks = session.entries.filter(e => !validateCheckDigitUI(e.trackNum)).map(e => e.trackNum);
+        const cdWarning = invalidTracks.length > 0 
+            ? `<div style="background:#fff3e0; color:#e65100; font-size:0.75rem; padding:4px 8px; border-radius:4px; margin-top:6px; display:inline-flex; align-items:center; gap:5px; border:1px solid #ffe0b2;">
+                 ⚠️ เลข Check Digit ไม่ถูกต้อง: ${invalidTracks.join(', ')}
+               </div>` 
+            : '';
 
         html += `
-            <div class="report-card" style="background:white; border:1px solid #e0e0e0; border-radius:10px; padding:15px; position:relative; box-shadow:0 2px 5px rgba(0,0,0,0.03); transition:all 0.2s; display:flex; gap:12px; align-items:flex-start;">
+            <div class="report-card" style="background:white; border:1px solid #e0e0e0; border-radius:10px; padding:15px; position:relative; box-shadow:0 2px 5px rgba(0,0,0,0.03); display:flex; gap:12px; align-items:flex-start;">
                 <input type="checkbox" class="sess-select" value="${session.sessionId}" checked style="margin-top:5px; transform:scale(1.2); cursor:pointer;">
                 <div style="flex:1;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-                    <div>
-                        <div style="font-weight:bold; color:#333; font-size:1.05rem; margin-bottom:2px;">
-                            🏢 ${session.entries[0].metadata?.companyName || session.companyName || 'รายการชุดที่ ' + (sessions.length - idx)}
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <strong style="font-size:1.05rem; color:#333;">🏢 ${session.companyName || 'ทั่วไป'}</strong>
+                                ${isUnknownComp ? `<button class="btn btn-neutral" style="padding:2px 8px; font-size:0.7rem; border:1px solid #0288d1; color:#0288d1; background:#e1f5fe; border-radius:12px;" onclick="saveSessionAsCompany('${session.sessionId}')">💾 บันทึก บ.</button>` : ''}
+                            </div>
+                            <div style="font-size:0.8rem; color:#777; margin-top:2px;">
+                                🕒 ${dateStr} ${timeStr} • 📦 ${totalCount} ชิ้น • 📂 ${firstEntry.category || 'เงินสด'}
+                            </div>
                         </div>
-                        <div style="font-size:0.85rem; color:#666;">
-                            🕒 ${dateStr} • 📦 ${totalCount} ชิ้น • 📂 ${session.entries[0].category || 'เงินสด'}
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.75rem; border:1px solid #ddd; background:#fff; border-radius:4px;" title="Layout Edit" onclick="editExceptionSession('${session.sessionId}')">✏️</button>
+                            <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.75rem; border:1px solid #ffcdd2; color:#d32f2f; background:#fff; border-radius:4px;" title="Delete" onclick="deleteExceptionSession('${session.sessionId}')">🗑️</button>
                         </div>
                     </div>
-                    <div style="display:flex; gap:6px;">
-                        <button class="btn btn-neutral" style="padding:5px 10px; font-size:0.75rem; border:1px solid #ddd; background:#fff; border-radius:6px;" onclick="editExceptionSession('${session.sessionId}')">✏️ แก้ไข</button>
-                        <button class="btn btn-neutral" style="padding:5px 10px; font-size:0.75rem; border:1px solid #ffcdd2; color:#d32f2f; background:#fff; border-radius:6px;" onclick="deleteExceptionSession('${session.sessionId}')">🗑️ ลบ</button>
-                    </div>
-                </div>
 
-                <div style="background:#f9f9f9; border-radius:8px; padding:12px; margin-bottom:12px; border:1px solid #f0f0f0;">
-                    <div style="display:flex; flex-wrap:wrap; gap:6px; font-family:monospace; font-size:1rem;">
-                        ${compressed.map(g => `<span style="background:#fff; border:1px solid #eee; padding:4px 10px; border-radius:6px; color:#0277bd; box-shadow:0 1px 2px rgba(0,0,0,0.02);">${g.display}</span>`).join('')}
+                    <div style="background:#fcfcfc; border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid #f0f0f0; position:relative;">
+                        <button style="position:absolute; top:8px; right:8px; background:none; border:none; color:#0288d1; font-size:0.75rem; cursor:pointer;" onclick="copySessionTracks('${session.sessionId}')">📋 คัดลอก</button>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; font-family:monospace; font-size:0.95rem;">
+                            ${compressed.map(g => `<span style="background:#fff; border:1px solid #eee; padding:2px 8px; border-radius:4px; color:#0277bd;">${g.display}</span>`).join('')}
+                        </div>
+                        ${cdWarning}
                     </div>
-                </div>
 
-                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div style="font-size:1rem; color:#d32f2f; font-weight:500;">
-                        <span style="color:#666; font-size:0.85rem; font-weight:normal;">สาเหตุ:</span> ${session.reason || '-'}
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-size:0.95rem; color:#d32f2f; font-weight:500;">
+                            <span style="color:#888; font-size:0.8rem; font-weight:normal;">สาเหตุ:</span> ${session.reason || '-'}
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            ${hasImages ? `
+                                <div style="display:flex; gap:4px;" id="imgs-preview-${session.sessionId}">
+                                    ${images.slice(0, 3).map(img => `<img src="${img.dataUrl}" style="width:32px; height:32px; object-fit:cover; border-radius:4px; border:1px solid #ddd; cursor:pointer;" onclick="toggleCardImages('${session.sessionId}')">`).join('')}
+                                    ${images.length > 3 ? `<span style="font-size:0.7rem; color:#666;">+${images.length - 3}</span>` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
-                    ${hasImages ? `<span style="font-size:0.75rem; color:#2e7d32; background:#e8f5e9; border:1px solid #c8e6c9; padding:3px 10px; border-radius:20px; display:flex; align-items:center; gap:4px;">🖼️ มีรูปประกอบ</span>` : ''}
+
+                    <div id="imgs-full-${session.sessionId}" style="display:none; margin-top:10px; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:8px; border-top:1px dashed #eee; padding-top:10px;">
+                        ${images.map(img => `
+                            <div style="position:relative;">
+                                <img src="${img.dataUrl}" style="width:100%; border-radius:6px; border:1px solid #eee;">
+                                <div style="font-size:0.6rem; color:#999; text-align:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${img.name}</div>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
     });
 
     html += '</div>';
     container.innerHTML = html;
+}
+
+/**
+ * Toggle between thumbnails and full image list in a card
+ */
+function toggleCardImages(sessionId) {
+    const full = document.getElementById(`imgs-full-${sessionId}`);
+    const preview = document.getElementById(`imgs-preview-${sessionId}`);
+    if (!full) return;
+    
+    if (full.style.display === 'none') {
+        full.style.display = 'grid';
+        if (preview) preview.style.opacity = '0.3';
+    } else {
+        full.style.display = 'none';
+        if (preview) preview.style.opacity = '1';
+    }
+}
+
+/**
+ * Copy all tracking numbers in a session to clipboard
+ */
+function copySessionTracks(sessionId) {
+    const sessions = ExceptionManager.getAll();
+    const tracks = sessions.filter(e => e.sessionId === sessionId).map(e => e.trackNum);
+    if (tracks.length === 0) return;
+    
+    const text = tracks.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        alert(`คัดลอก ${tracks.length} รายการแล้ว`);
+    }).catch(err => {
+        console.error('Copy failed:', err);
+    });
+}
+
+/**
+ * Save the company name of a session into the database permanently
+ */
+function saveSessionAsCompany(sessionId) {
+    const sessionItems = ExceptionManager.getAll().filter(e => e.sessionId === sessionId);
+    if (sessionItems.length === 0) return;
+    
+    const track = sessionItems[0].trackNum;
+    const currentName = sessionItems[0].companyName || "-";
+    
+    const newName = prompt("ระบุชื่อบริษัท/ลูกค้า สำหรับเลขพัสดุนี้:", currentName === "-" ? "" : currentName);
+    if (!newName || newName.trim() === "") return;
+    
+    // Save to CustomerDB
+    if (typeof CustomerDB !== 'undefined') {
+        CustomerDB.set(track, newName.trim());
+        alert("บันทึกข้อมูลบริษัทสำเร็จ");
+        
+        // Update all items in this session to reflect the new name in UI
+        const all = ExceptionManager.getAll();
+        all.forEach(item => {
+            if (item.sessionId === sessionId) {
+                item.companyName = newName.trim();
+                if (!item.metadata) item.metadata = {};
+                item.metadata.companyName = newName.trim();
+            }
+        });
+        localStorage.setItem('thp_exception_db_v1', JSON.stringify(all));
+        
+        renderExceptionTable();
+    }
 }
 
 /**
@@ -3064,7 +3246,8 @@ async function exportExceptionImage() {
     try {
         for (let p = 0; p < totalPages; p++) {
             const pageBlocks = exportBlocks.slice(p * ITEMS_PER_PAGE, (p + 1) * ITEMS_PER_PAGE);
-            const pageNumText = totalPages > 1 ? ` (หน้า ${p + 1}/${totalPages})` : "";
+            // Label as (1/5) etc as requested
+            const pageNumText = totalPages > 1 ? ` (ชุดที่ ${p + 1}/${totalPages})` : "";
             
             let pageSessions = [];
             pageBlocks.forEach(block => {
@@ -3220,7 +3403,7 @@ async function exportExceptionImage() {
                     ${summaryHtml}
                     ${detailTableHtml}
                     <div style="margin-top:30px; text-align:center; font-size:0.85rem; color:#aaa; border-top:1px solid #f0f0f0; padding-top:10px;">
-                        จัดทำโดยระบบ Tracking Analyst Helper | หน้า ${p+1} จากทั้งหมด ${totalPages} หน้า
+                        จัดทำโดยระบบ Tracking Analyst Helper | ชุดที่ ${p+1} จากทั้งหมด ${totalPages} ชุด
                     </div>
                 </div>`;
 
