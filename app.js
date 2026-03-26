@@ -3162,10 +3162,10 @@ function editExceptionSession(sessionId) {
         saveBtn.style.background = "linear-gradient(135deg,#ef6c00,#e65100)"; // Orange for edit
     }
 
-    // Scroll to the Form card specifically
-    const formCard = document.getElementById('exception-reporting-card');
-    if (formCard) {
-        formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scroll to the Form Header specifically
+    const formHeader = document.getElementById('exception-form-title');
+    if (formHeader) {
+        formHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
