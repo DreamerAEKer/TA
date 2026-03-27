@@ -277,6 +277,7 @@ function unifiedSingleCheckNew(input, inputEl) {
             </div>
         `;
         lastGeneratedRange = [validTarget];
+    } else {
         // NOT FOUND in DB: Show Range View (2 before, 1 after) as requested
         const cleanTarget = validTarget.replace(/\s+/g, '');
         const list = TrackingUtils.generateTrackingRange(cleanTarget, 2, 1);
