@@ -360,7 +360,7 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
                 <div style="background:#f0f7ff; padding:8px 15px; border-bottom:1px solid #e1f5fe; font-weight:bold; color:#0277bd; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
                     <div style="display:flex; align-items:center; gap:10px;">
                         <span>🏢 ${company}</span>
-                        <button class="btn btn-success" style="padding:2px 8px; font-size:0.75rem; background:#2e7d32; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="stagingQuickReport(${allNumsJson}, '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">✅ เลือกทั้งหมดในบริษัทนี้</button>
+                        <button class="btn btn-success" style="padding:2px 12px; font-size:0.75rem; background:#2e7d32; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="stagingQuickReport(${allNumsJson}, '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">✅ เลือกทั้งหมด</button>
                     </div>
                     <span style="font-size:0.7rem; font-weight:normal; color:#888;">${groupItems.length} รายการ</span>
                 </div>
@@ -2426,30 +2426,74 @@ function stagingQuickReport(tracks, companyName) {
         }
     }
 
+    // --- Smart Range Detection (New) ---
+    const isConsecutive = (nums) => {
+        if (nums.length < 2) return false;
+        const parsed = nums.map(n => parseExceptionTrackNum(n));
+        if (parsed.some(p => !p)) return false;
+        
+        // Same Prefix/Suffix?
+        const prefix = parsed[0].prefix;
+        const suffix = parsed[0].suffix;
+        if (parsed.some(p => p.prefix !== prefix || p.suffix !== suffix)) return false;
+        
+        // Consecutive bodies?
+        for (let i = 1; i < parsed.length; i++) {
+            if (parsed[i].bodyInt !== parsed[i-1].bodyInt + 1) return false;
+        }
+        return true;
+    };
+
     const mainInput = document.getElementById('exception-track-input');
-    
-    // Logic: Append instead of reset
-    tracks.forEach(track => {
-        // Find existing empty fields
-        const allInputs = [mainInput, ...document.querySelectorAll('.exception-extra-track')];
-        let targetField = allInputs.find(input => input && !input.value.trim());
 
-        if (!targetField) {
-            // No empty fields? Add one
-            if (typeof addExceptionExtraItem === 'function') {
-                addExceptionExtraItem();
-                const updatedExtras = document.querySelectorAll('.exception-extra-track');
-                targetField = updatedExtras[updatedExtras.length - 1];
+    if (isConsecutive(tracks)) {
+        // Toggle to Range Mode
+        const rangeToggle = document.getElementById('exception-range-toggle');
+        if (rangeToggle && !rangeToggle.checked) {
+            rangeToggle.checked = true;
+            if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
+        }
+        
+        const startInput = document.getElementById('exception-start-input');
+        const endInput = document.getElementById('exception-end-input');
+        if (startInput) startInput.value = tracks[0];
+        if (endInput) endInput.value = tracks[tracks.length - 1];
+        
+        // Visual feedback
+        [startInput, endInput].forEach(el => {
+            if (el) {
+                el.style.backgroundColor = "#fff9c4";
+                setTimeout(() => el.style.backgroundColor = "", 1000);
             }
+        });
+    } else {
+        // Discrete Mode (Append)
+        // Ensure Range Mode is OFF if we are adding discrete items
+        const rangeToggle = document.getElementById('exception-range-toggle');
+        if (rangeToggle && rangeToggle.checked) {
+            rangeToggle.checked = false;
+            if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
         }
 
-        if (targetField) {
-            targetField.value = track;
-            // Trigger visual feedback on the field
-            targetField.style.backgroundColor = "#fff9c4";
-            setTimeout(() => targetField.style.backgroundColor = "", 1000);
-        }
-    });
+        tracks.forEach(track => {
+            const allInputs = [mainInput, ...document.querySelectorAll('.exception-extra-track')];
+            let targetField = allInputs.find(input => input && !input.value.trim());
+
+            if (!targetField) {
+                if (typeof addExceptionExtraItem === 'function') {
+                    addExceptionExtraItem();
+                    const updatedExtras = document.querySelectorAll('.exception-extra-track');
+                    targetField = updatedExtras[updatedExtras.length - 1];
+                }
+            }
+
+            if (targetField) {
+                targetField.value = track;
+                targetField.style.backgroundColor = "#fff9c4";
+                setTimeout(() => targetField.style.backgroundColor = "", 1000);
+            }
+        });
+    }
 
     // Pre-fill metadata only if empty
     const subjectInput = document.getElementById('rpt-subject');
@@ -2462,7 +2506,7 @@ function stagingQuickReport(tracks, companyName) {
         reasonInput.value = "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
     }
 
-    // Success feedback and scroll to form
+    // Success feedback and scroll
     if (mainInput) {
         mainInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
         if (typeof showToast === 'function') showToast(`เพิ่ม ${tracks.length} รายการเข้าสู่รายงานแล้ว`, 'success');
