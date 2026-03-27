@@ -3031,8 +3031,14 @@ function renderExceptionTable() {
         const timeStr = dObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
         const dateStr = dObj.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
         
-        const firstEntry = session.entries[0];
-        const images = firstEntry.images || [];
+        // Find images (v1.55 deduplication: images might be on any entry in the session, usually the first)
+        let images = [];
+        for (const entry of session.entries) {
+            if (entry.images && entry.images.length > 0) {
+                images = entry.images;
+                break;
+            }
+        }
         const hasImages = images.length > 0;
         const totalCount = session.entries.length;
         const isUnknownComp = !session.companyName || session.companyName === '-' || session.companyName === 'Unknown';

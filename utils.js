@@ -550,7 +550,7 @@ function getWeightFromPriceA3(price) {
  * @param {number} quality - JPEG quality (0.0 to 1.0).
  * @returns {Promise<string>} - Promise resolving to compressed data URL.
  */
-async function compressImage(dataUrl, maxWidth = 1200, quality = 0.8) {
+async function compressImage(dataUrl, maxWidth = 1000, quality = 0.7) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => {

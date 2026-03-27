@@ -1118,7 +1118,7 @@ const ExceptionManager = {
                 reason: reason,
                 firstStatus: firstStatus,
                 dateTime: dateTime,
-                images: images, 
+                images: i === 0 ? images : [], // Store images ONLY on the first item to save massive space
                 timestamp: new Date().toISOString(),
                 sessionId: sessionId,
                 // New metadata fields
@@ -1129,6 +1129,29 @@ const ExceptionManager = {
                 note: (metadata && metadata.note) || ''
             });
         });
+
+        // HISTORY CAPPING: Keep only the last 30 unique sessions to prevent Storage Full
+        const sessionIds = [...new Set(filtered.map(e => e.sessionId || e.id))];
+        if (sessionIds.length > 30) {
+            // Sort by timestamp or just take the last 30 (sessionIds are timestamps or strings)
+            // But sessions are usually added to the end, however 'filtered' might be mixed.
+            // Better map and sort by actual entry timestamps.
+            const sessionTimes = [];
+            const sessionsMap = {};
+            filtered.forEach(e => {
+                const sid = e.sessionId || e.id;
+                if (!sessionsMap[sid]) {
+                    sessionsMap[sid] = true;
+                    sessionTimes.push({ id: sid, time: new Date(e.timestamp).getTime() });
+                }
+            });
+            
+            if (sessionTimes.length > 30) {
+                sessionTimes.sort((a, b) => b.time - a.time); // Descending (newest first)
+                const keepIds = sessionTimes.slice(0, 30).map(s => s.id);
+                filtered = filtered.filter(e => keepIds.includes(e.sessionId || e.id));
+            }
+        }
 
         try {
             localStorage.setItem(EXCEPTION_KEY, JSON.stringify(filtered));
