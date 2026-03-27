@@ -544,45 +544,41 @@ function getWeightFromPriceA3(price) {
 }
 
 /**
- * Compresses an image file using Canvas.
- * @param {File} file - The original image file.
+ * Compresses an image based on dataUrl.
+ * @param {string} dataUrl - Base64 data URL.
  * @param {number} maxWidth - Maximum width (or height) in pixels.
  * @param {number} quality - JPEG quality (0.0 to 1.0).
- * @returns {Promise<string>} - Promise resolving to base64 data URL.
+ * @returns {Promise<string>} - Promise resolving to compressed data URL.
  */
-async function compressImage(file, maxWidth = 1200, quality = 0.7) {
+async function compressImage(dataUrl, maxWidth = 1200, quality = 0.8) {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
 
-                if (width > height) {
-                    if (width > maxWidth) {
-                        height *= maxWidth / width;
-                        width = maxWidth;
-                    }
-                } else {
-                    if (height > maxWidth) {
-                        width *= maxWidth / height;
-                        height = maxWidth;
-                    }
+            if (width > height) {
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
                 }
+            } else {
+                if (height > maxWidth) {
+                    width *= maxWidth / height;
+                    height = maxWidth;
+                }
+            }
 
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', quality));
-            };
-            img.onerror = reject;
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            // Export as compressed JPEG
+            resolve(canvas.toDataURL('image/jpeg', quality));
         };
-        reader.onerror = reject;
+        img.onerror = () => resolve(dataUrl); // Fallback to original
+        img.src = dataUrl;
     });
 }
 

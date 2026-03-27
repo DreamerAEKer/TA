@@ -357,12 +357,16 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
 
         html += `
             <div style="margin-bottom:15px; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                <div style="background:#f0f7ff; padding:8px 15px; border-bottom:1px solid #e1f5fe; font-weight:bold; color:#0277bd; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
-                    <div style="display:flex; align-items:center; gap:10px;">
+                <div style="background:#f0f7ff; padding:8px 15px; border-bottom:1px solid #e1f5fe; font-weight:bold; color:#0277bd; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem; gap:10px;">
+                    <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${company}">
                         <span>🏢 ${company}</span>
-                        <button class="btn btn-success" style="padding:4px 16px; min-width:120px; font-size:0.75rem; border:none; border-radius:4px; cursor:pointer; white-space:nowrap;" onclick="stagingQuickReport(${allNumsJson}, '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">✅ เลือกทั้งหมด</button>
                     </div>
-                    <span style="font-size:0.7rem; font-weight:normal; color:#888;">${groupItems.length} รายการ</span>
+                    <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+                        <span style="font-size:0.75rem; font-weight:normal; color:#888;">${groupItems.length} รายการ</span>
+                        <button class="btn btn-success" style="padding:5px 12px; font-size:0.75rem; border:none; border-radius:4px; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:4px;" onclick="stagingQuickReport(${allNumsJson}, '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">
+                           <span>✅ เลือกทั้งหมด</span>
+                        </button>
+                    </div>
                 </div>
                 <table style="width:100%; border-collapse:collapse; margin:0; font-size:0.9rem;">
                     <tbody>
@@ -2591,7 +2595,7 @@ let currentEditingSessionId = null; // Track if we are editing an existing histo
 /**
  * Compress image before storing to localStorage to avoid QuotaExceededError (5MB limit).
  */
-function compressExceptionImage(dataUrl, maxWidth = 1000, quality = 0.5) {
+function compressExceptionImage(dataUrl, maxWidth = 1200, quality = 0.8) {
     if (typeof TrackingUtils !== 'undefined' && typeof TrackingUtils.compressImage === 'function') {
         return TrackingUtils.compressImage(dataUrl, maxWidth, quality);
     }
