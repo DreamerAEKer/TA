@@ -360,7 +360,7 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
                 <div style="background:#f0f7ff; padding:8px 15px; border-bottom:1px solid #e1f5fe; font-weight:bold; color:#0277bd; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
                     <div style="display:flex; align-items:center; gap:10px;">
                         <span>🏢 ${company}</span>
-                        <button class="btn btn-success" style="padding:2px 12px; font-size:0.75rem; background:#2e7d32; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="stagingQuickReport(${allNumsJson}, '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">✅ เลือกทั้งหมด</button>
+                        <button class="btn btn-success" style="padding:4px 16px; min-width:120px; font-size:0.75rem; border:none; border-radius:4px; cursor:pointer; white-space:nowrap;" onclick="stagingQuickReport(${allNumsJson}, '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">✅ เลือกทั้งหมด</button>
                     </div>
                     <span style="font-size:0.7rem; font-weight:normal; color:#888;">${groupItems.length} รายการ</span>
                 </div>
@@ -389,7 +389,7 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
                     <td style="text-align:right; padding:8px 10px;">
                         <div style="display:flex; gap:4px; justify-content:flex-end;">
                             <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${item.number}').then(()=>alert('คัดลอก ${item.number}'))">📋</button>
-                            <button class="btn btn-primary" style="padding:1px 5px; font-size:0.65rem;" title="เช็คสถานะ" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th', '_blank')">🔍</button>
+                            <button class="btn btn-trace" style="padding:1px 5px; font-size:0.65rem;" title="เช็คสถานะ" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th', '_blank')">🔍</button>
                         </div>
                     </td>
                 </tr>

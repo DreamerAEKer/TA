@@ -172,12 +172,52 @@ textarea {
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, #0288d1 0%, #01579b 100%);
     color: white;
+    box-shadow: 0 2px 5px rgba(1, 87, 155, 0.2);
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-hover);
+    background: linear-gradient(135deg, #039be5 0%, #0277bd 100%);
+    box-shadow: 0 4px 8px rgba(1, 87, 155, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+    color: white;
+    box-shadow: 0 2px 5px rgba(46, 125, 50, 0.2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+    box-shadow: 0 4px 8px rgba(46, 125, 50, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-search {
+    background: linear-gradient(135deg, #37474f 0%, #263238 100%);
+    color: white;
+    font-weight: bold;
+}
+
+.btn-search:hover {
+    background: linear-gradient(135deg, #455a64 0%, #37474f 100%);
+}
+
+.btn-trace {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+}
+
+.btn-trace:hover {
+    background: #bbdefb;
+    color: #0d47a1;
 }
 
 .btn-danger {
