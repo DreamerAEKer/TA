@@ -189,8 +189,10 @@ textarea {
     box-shadow: 0 2px 5px rgba(46, 125, 50, 0.2);
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 5px;
+    gap: 8px;
+    padding: 12px 24px;
+    font-size: 1.05rem;
+    font-weight: 600;
 }
 
 .btn-success:hover {
@@ -200,15 +202,18 @@ textarea {
 }
 
 .btn-search {
-    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+    background: linear-gradient(135deg, #0288d1 0%, #00acc1 100%);
     color: white;
     font-weight: bold;
-    box-shadow: 0 2px 5px rgba(25, 118, 210, 0.2);
+    box-shadow: 0 4px 10px rgba(2, 136, 209, 0.2);
+    border-radius: 6px;
+    transition: all 0.2s ease;
 }
 
 .btn-search:hover {
-    background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
-    box-shadow: 0 4px 8px rgba(25, 118, 210, 0.3);
+    background: linear-gradient(135deg, #039be5 0%, #00bcd4 100%);
+    box-shadow: 0 6px 15px rgba(2, 136, 209, 0.3);
+    transform: translateY(-1px);
 }
 
 .btn-trace {

@@ -277,9 +277,9 @@ function unifiedSingleCheckNew(input, inputEl) {
             </div>
         `;
         lastGeneratedRange = [validTarget];
-    } else {
         // NOT FOUND in DB: Show Range View (2 before, 1 after) as requested
-        const list = TrackingUtils.generateTrackingRange(validTarget, 2, 1);
+        const cleanTarget = validTarget.replace(/\s+/g, '');
+        const list = TrackingUtils.generateTrackingRange(cleanTarget, 2, 1);
         lastGeneratedRange = list.map(item => item.number);
         
         // Construct the single validation box at the top
@@ -2591,31 +2591,12 @@ let currentEditingSessionId = null; // Track if we are editing an existing histo
 /**
  * Compress image before storing to localStorage to avoid QuotaExceededError (5MB limit).
  */
-function compressExceptionImage(dataUrl, maxWidth = 1200, quality = 0.6) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let width = img.width;
-            let height = img.height;
-
-            if (width > maxWidth) {
-                height = (maxWidth / width) * height;
-                width = maxWidth;
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-
-            // Export as compressed JPEG
-            resolve(canvas.toDataURL('image/jpeg', quality));
-        };
-        img.onerror = () => resolve(dataUrl); // Fallback to original
-        img.src = dataUrl;
-    });
+function compressExceptionImage(dataUrl, maxWidth = 1000, quality = 0.5) {
+    if (typeof TrackingUtils !== 'undefined' && typeof TrackingUtils.compressImage === 'function') {
+        return TrackingUtils.compressImage(dataUrl, maxWidth, quality);
+    }
+    // Fallback if utils not loaded
+    return Promise.resolve(dataUrl);
 }
 
 function handleExceptionImageUpload(files) {

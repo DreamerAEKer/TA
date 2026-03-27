@@ -74,7 +74,15 @@ const CustomerDB = {
         return raw ? JSON.parse(raw) : {};
     },
     saveLookup: (data) => {
-        localStorage.setItem(LOOKUP_KEY, JSON.stringify(data));
+        try {
+            localStorage.setItem(LOOKUP_KEY, JSON.stringify(data));
+        } catch (e) {
+            console.error("saveLookup error:", e);
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                alert("⚠️ พื้นที่จัดเก็บข้อมูลพัสดุเต็ม! (Storage Full)\nไม่สามารถบันทึกประวัติเพิ่มได้ กรุณา Backup และ Clear ข้อมูลเก่าออกบ้างครับ");
+            }
+            throw e; // Rethrow to let caller handle if needed
+        }
     },
 
     // --- BATCH OPERATIONS ---
@@ -83,7 +91,15 @@ const CustomerDB = {
         return raw ? JSON.parse(raw) : {}; // { batchId: { ...info } }
     },
     saveBatches: (data) => {
-        localStorage.setItem(BATCH_KEY, JSON.stringify(data));
+        try {
+            localStorage.setItem(BATCH_KEY, JSON.stringify(data));
+        } catch (e) {
+            console.error("saveBatches error:", e);
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                alert("⚠️ พื้นที่จัดเก็บชุดข้อมูลเต็ม! (Storage Full)\nไม่สามารถบันทึกประวัติเพิ่มได้ กรุณา Backup และ Clear ข้อมูลเก่าออกบ้างครับ");
+            }
+            throw e;
+        }
     },
 
     // --- TRASH OPERATIONS ---

@@ -309,27 +309,33 @@ function addSmartEntryAndSave() {
     if (btn) window.setButtonLoading(btn, true);
 
     setTimeout(() => {
-        const batchInfo = { name, type, contract, requestDate, timestamp: new Date().getTime() };
-        const result = CustomerDB.addBatch(batchInfo, itemsToAdd);
+        try {
+            const batchInfo = { name, type, contract, requestDate, timestamp: new Date().getTime() };
+            const result = CustomerDB.addBatch(batchInfo, itemsToAdd);
 
-        if (btn) window.setButtonLoading(btn, false, originalText);
+            if (result && result.error === 'DUPLICATE') {
+                window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'warning');
+                return;
+            }
 
-        if (result && result.error === 'DUPLICATE') {
-            window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'warning');
-            return;
+            window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${itemsToAdd.length} รายการ สำเร็จ`);
+
+            // Complete cleanup for UI
+            document.getElementById('db-name').value = '';
+            document.getElementById('db-contract').value = '';
+            document.getElementById('db-request-date').value = '';
+            document.getElementById('smart-block2').value = '';
+            document.getElementById('smart-check-digit').value = '-';
+            
+            // Refresh tables
+            if(typeof updateDbViews === 'function') updateDbViews();
+            
+        } catch (err) {
+            console.error("addSmartEntryAndSave Error:", err);
+            // Storage Full or other Error is handled inside CustomerDB.addBatch
+        } finally {
+            if (btn) window.setButtonLoading(btn, false, originalText);
         }
-
-        window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${itemsToAdd.length} รายการ สำเร็จ`);
-
-        // Complete cleanup for UI
-        document.getElementById('db-name').value = '';
-        document.getElementById('db-contract').value = '';
-        document.getElementById('db-request-date').value = '';
-        document.getElementById('smart-block2').value = '';
-        document.getElementById('smart-check-digit').value = '-';
-        
-        // Refresh tables
-        if(typeof updateDbViews === 'function') updateDbViews();
     }, 500);
 }
 
