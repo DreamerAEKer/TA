@@ -341,20 +341,24 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
         });
     });
 
+    // Update global list for "Copy All" - ONLY center (Main) numbers
+    lastGeneratedRange = items.filter(i => typeof i === 'object' ? i.isCenter : true).map(i => typeof i === 'object' ? i.number : i);
+
     summaryArea.innerHTML = `<span class="badge badge-primary">${items.length} รายการ${isOcr ? ' (OCR)' : ''}</span>`;
 
     let html = `
         <div style="padding:10px; background:linear-gradient(to bottom, #fff, #f9f9f9); border-bottom:1px solid #ddd; position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
             <small style="color:#666;">${title}</small>
-            <button class="btn" style="padding:4px 12px; font-size:0.75rem; background:#fff; border:1px solid #0288d1; color:#0288d1; border-radius:4px; font-weight:bold;" onclick="copyUnifiedResults()">📋 Copy All</button>
+            <button class="btn" style="padding:4px 12px; font-size:0.75rem; background:#fff; border:1px solid #0288d1; color:#0288d1; border-radius:4px; font-weight:bold;" onclick="copyAllUnifiedNumbers()">📋 Copy All</button>
         </div>
         <div style="padding:10px;">
     `;
 
     Object.keys(groups).forEach(company => {
         const groupItems = groups[company];
-        const allNums = groupItems.map(i => i.number);
-        const allNumsJson = JSON.stringify(allNums).replace(/"/g, "'");
+        // FIX: Filter ONLY center (Main) numbers for "Select All" as per user request
+        const mainNums = groupItems.filter(i => i.isCenter).map(i => i.number);
+        const mainNumsJson = JSON.stringify(mainNums).replace(/"/g, "'");
 
         html += `
             <div style="margin-bottom:15px; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
@@ -364,7 +368,7 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
                     </div>
                     <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
                         <span style="font-size:0.75rem; font-weight:normal; color:#888;">${groupItems.length} รายการ</span>
-                        <button class="btn btn-success" style="padding:5px 12px; font-size:0.75rem; border:none; border-radius:4px; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:4px;" onclick="stagingQuickReport(${allNumsJson}, '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">
+                        <button class="btn btn-success" style="padding:5px 12px; font-size:0.75rem; border:none; border-radius:4px; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:4px;" onclick="stagingQuickReport(${mainNumsJson}, '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">
                            <span>✅ เลือกทั้งหมด</span>
                         </button>
                     </div>
