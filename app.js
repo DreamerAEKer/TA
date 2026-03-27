@@ -63,7 +63,33 @@ document.addEventListener('DOMContentLoaded', () => {
             warning.style.display = 'none';
         }
     });
+
+    // 5. Exception Report Inputs -> DB Warning
+    document.getElementById('exception-track-input')?.addEventListener('input', (e) => {
+        if (typeof checkDbWarningForReport === 'function') checkDbWarningForReport(e.target);
+    });
 });
+
+/**
+ * Real-time warning for Report Draft inputs if number exists in DB
+ */
+function checkDbWarningForReport(el) {
+    const val = el.value.trim().toUpperCase().replace(/\s+/g, '');
+    if (val.length === 13) {
+        const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(val) : null;
+        if (owner) {
+            el.style.backgroundColor = "#ffebee";
+            el.style.border = "1px solid #f44336";
+            if (typeof showToast === 'function') showToast(`⚠️ เลขนี้มีในฐานข้อมูลแล้ว (${owner.name})`, 'error');
+        } else {
+            el.style.backgroundColor = "";
+            el.style.border = "";
+        }
+    } else {
+        el.style.backgroundColor = "";
+        el.style.border = "";
+    }
+}
 
 function checkAdminUI() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -193,12 +219,10 @@ function unifiedSingleCheckNew(input, inputEl) {
     const resultArea = document.getElementById('smart-unified-results');
     const summaryArea = document.getElementById('smart-result-summary');
     
-    summaryArea.innerHTML = `<span class="badge badge-primary">ผลลัพธ์ 1 รายการ</span>`;
-    
     const validation = TrackingUtils.validateTrackingNumber(input);
     const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(input) : null;
     
-    // Row 1 Logic
+    // Row 1 Logic (Always show for the main searched number)
     let row1Html = '';
     let validTarget = input;
     if (validation.isValid) {
@@ -219,49 +243,63 @@ function unifiedSingleCheckNew(input, inputEl) {
         }
     }
 
-    // Row 2 Logic
-    let row2Html = '';
     if (owner) {
-        // Safe access if timestamp exists
+        // FOUND in DB: Show Premium Single Result View
+        summaryArea.innerHTML = `<span class="badge badge-primary">พบในฐานข้อมูล 1 รายการ</span>`;
+        
         const dateStr = owner.timestamp ? `(บันทึกเมื่อ ${new Date(owner.timestamp).toLocaleDateString('th-TH')})` : '';
-        row2Html = `<span style="color:#0056b3; font-size:1.05rem;">🏢 พบในฐานข้อมูลของคุณ: <strong>${owner.name}</strong> <span style="font-size:0.85rem; color:#666;">${dateStr}</span></span>`;
-    } else {
-        row2Html = `<span style="color:#666;">⚪ ไม่พบประวัติผู้ส่งในฐานข้อมูลของเครื่องคุณ</span>`;
-    }
+        const row2Html = `<span style="color:#0056b3; font-size:1.05rem;">🏢 พบในฐานข้อมูลของคุณ: <strong>${owner.name}</strong> <span style="font-size:0.85rem; color:#666;">${dateStr}</span></span>`;
 
-    // Prepare UI Container
-    resultArea.innerHTML = `
-        <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-            <h4 style="margin: 0 0 15px 0; font-size: 1.2rem; display:flex; justify-content:space-between; align-items:center;">
-                <span>ผลการตรวจสอบ: <span style="font-family:monospace; color:#0d47a1; background:#f0f7ff; padding:2px 6px; border-radius:4px;">${TrackingUtils.formatTrackingNumber(input)}</span></span>
-            </h4>
-            
-            <div style="display:flex; flex-direction:column; gap: 15px;">
-                <!-- Row 1: Check Digit -->
-                <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center;">
-                    ${row1Html}
-                </div>
+        resultArea.innerHTML = `
+            <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h4 style="margin: 0 0 15px 0; font-size: 1.2rem; display:flex; justify-content:space-between; align-items:center;">
+                    <span>ผลการตรวจสอบ: <span style="font-family:monospace; color:#0d47a1; background:#f0f7ff; padding:2px 6px; border-radius:4px;">${TrackingUtils.formatTrackingNumber(input)}</span></span>
+                </h4>
                 
-                <!-- Row 2: Customer DB -->
-                <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center;">
-                    ${row2Html}
-                </div>
+                <div style="display:flex; flex-direction:column; gap: 15px;">
+                    <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center;">
+                        ${row1Html}
+                    </div>
+                    
+                    <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center;">
+                        ${row2Html}
+                    </div>
 
-                <!-- Row 3: Copy per item -->
-                <div style="padding: 12px 15px; border: 1px solid #eee; border-radius: 6px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; border-left:4px solid #0d47a1;">
-                    <span style="font-size:1.15rem; font-family:monospace; color:#0d47a1; font-weight:bold;">${TrackingUtils.formatTrackingNumber(validTarget)}</span>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button class="btn btn-success" style="padding:6px 15px; font-size:0.9rem; white-space:nowrap; background: #2e7d32; border:none; color:white; border-radius:6px; box-shadow:0 2px 5px rgba(46,125,50,0.2);" onclick="stagingQuickReport(['${validTarget}'], '${owner ? owner.name : ''}')">🚩 นำข้อมูลนี้ไปสร้างรายงาน</button>
-                        <button class="btn btn-neutral" style="padding:6px 12px; font-size:0.9rem; background:#fff; border:1px solid #ccc; white-space:nowrap;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>{ this.textContent='✅ คัดลอกแล้ว'; setTimeout(()=>this.textContent='📋 สำเนาเลข', 1500); })">📋 สำเนาเลข</button>
-                        <button class="btn btn-primary" style="padding:6px 12px; font-size:0.9rem; white-space:nowrap;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 สถานะ</button>
+                    <div style="padding: 12px 15px; border: 1px solid #eee; border-radius: 6px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; border-left:4px solid #0d47a1;">
+                        <span style="font-size:1.15rem; font-family:monospace; color:#0d47a1; font-weight:bold;">${TrackingUtils.formatTrackingNumber(validTarget)}</span>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="btn btn-success" style="padding:6px 15px; font-size:0.9rem; white-space:nowrap; background: #2e7d32; border:none; color:white; border-radius:6px; box-shadow:0 2px 5px rgba(46,125,50,0.2);" onclick="stagingQuickReport(['${validTarget}'], '${owner.name}')">🚩 นำข้อมูลนี้ไปสร้างรายงาน</button>
+                            <button class="btn btn-neutral" style="padding:6px 12px; font-size:0.9rem; background:#fff; border:1px solid #ccc; white-space:nowrap;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>{ this.textContent='✅ คัดลอกแล้ว'; setTimeout(()=>this.textContent='📋 สำเนาเลข', 1500); })">📋 สำเนาเลข</button>
+                            <button class="btn btn-primary" style="padding:6px 12px; font-size:0.9rem; white-space:nowrap;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 สถานะ</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
+        lastGeneratedRange = [validTarget];
+    } else {
+        // NOT FOUND in DB: Show Range View (2 before, 1 after) as requested
+        const list = TrackingUtils.generateTrackingRange(validTarget, 2, 1);
+        lastGeneratedRange = list.map(item => item.number);
+        
+        // Construct the single validation box at the top
+        const headerHtml = `
+            <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <div style="margin-bottom:10px; font-size:0.9rem; color:#666;">ผลตรวจสอบเลขหลัก: <span style="font-family:monospace; font-weight:bold;">${TrackingUtils.formatTrackingNumber(validTarget)}</span></div>
+                ${row1Html}
+                <div style="margin-top:10px; color:#d32f2f; font-size:0.9rem; font-weight:bold;">⚪ ไม่พบในฐานข้อมูล: ระบบแสดงเลขข้างเคียงให้เลือก</div>
+            </div>
+        `;
 
-    // Show copy-all bar (for single item too)
-    lastGeneratedRange = [validTarget];
+        // Render the list using the shared renderer
+        renderUnifiedNumbers(`เลขข้างเคียงสำหรับ: ${validTarget}`, list, false);
+        
+        // Prepend the validation header
+        resultArea.innerHTML = headerHtml + resultArea.innerHTML;
+        
+        summaryArea.innerHTML = `<span class="badge badge-warning">ไม่พบข้อมูล (แสดงเลขใกล้เคียง ${list.length} รายการ)</span>`;
+    }
+
     const copyBar = document.getElementById('smart-copy-all-bar');
     if (copyBar) copyBar.classList.remove('hidden');
 }
@@ -283,6 +321,7 @@ function copyAllUnifiedNumbers() {
  * Groups by Company and adds the "Add to Report" (🚩) action on the left.
  */
 function renderUnifiedNumbers(title, items, isOcr = false) {
+    console.log("DEBUG: renderUnifiedNumbers called with:", title, items.length, "items");
     const resultArea = document.getElementById('smart-unified-results');
     const summaryArea = document.getElementById('smart-result-summary');
     
@@ -313,10 +352,16 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
 
     Object.keys(groups).forEach(company => {
         const groupItems = groups[company];
+        const allNums = groupItems.map(i => i.number);
+        const allNumsJson = JSON.stringify(allNums).replace(/"/g, "'");
+
         html += `
             <div style="margin-bottom:15px; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                <div style="background:#f0f7ff; padding:6px 15px; border-bottom:1px solid #e1f5fe; font-weight:bold; color:#0277bd; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
-                    <span>🏢 ${company}</span>
+                <div style="background:#f0f7ff; padding:8px 15px; border-bottom:1px solid #e1f5fe; font-weight:bold; color:#0277bd; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span>🏢 ${company}</span>
+                        <button class="btn btn-success" style="padding:2px 8px; font-size:0.75rem; background:#2e7d32; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="stagingQuickReport(${allNumsJson}, '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">✅ เลือกทั้งหมดในบริษัทนี้</button>
+                    </div>
                     <span style="font-size:0.7rem; font-weight:normal; color:#888;">${groupItems.length} รายการ</span>
                 </div>
                 <table style="width:100%; border-collapse:collapse; margin:0; font-size:0.9rem;">
@@ -338,7 +383,7 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
                 <tr ${rowStyle} style="border-bottom:1px solid #f0f0f0;">
                     <td style="width:35px; text-align:center; ${indexStyle} font-weight:bold; font-size:0.75rem; padding:8px 2px;">${indexLabel}</td>
                     <td style="width:40px; text-align:center; padding:8px 2px;">
-                        <button class="btn" style="padding:2px 5px; font-size:1rem; border:none; background:none; color:#2e7d32; cursor:pointer;" title="รายงานรายการนี้" onclick="stagingQuickReport(['${item.number}'], '${company !== 'ไม่มีในฐานข้อมูล (Unknown Sender)' ? company : ''}')">🚩</button>
+                        <button class="btn" style="padding:2px 5px; font-size:1rem; border:none; background:none; color:#2e7d32; cursor:pointer;" title="รายงานรายการนี้" onclick="stagingQuickReport(['${item.number}'], '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">🚩</button>
                     </td>
                     <td style="font-family:monospace; font-weight:bold; color:#333; padding:8px 5px;">${TrackingUtils.formatTrackingNumber(item.number)}</td>
                     <td style="text-align:right; padding:8px 10px;">
@@ -2360,36 +2405,53 @@ function draftReportFromGroup(prefix) {
  * Pre-fills the exception form from search results.
  */
 function stagingQuickReport(tracks, companyName) {
+    console.log("DEBUG: stagingQuickReport called with:", tracks.length, "tracks for", companyName);
     if (!tracks || tracks.length === 0) return;
 
-    // Reset form first
-    const rangeToggle = document.getElementById('exception-range-toggle');
-    if (rangeToggle && rangeToggle.checked) {
-        rangeToggle.checked = false;
-        if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
-    }
+    // --- DB Warning Check ---
+    let knownCount = 0;
+    let knownNames = new Set();
+    tracks.forEach(num => {
+        const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(num) : null;
+        if (owner) {
+            knownCount++;
+            knownNames.add(owner.name);
+        }
+    });
 
-    const mainInput = document.getElementById('exception-track-input');
-    if (mainInput) mainInput.value = tracks[0];
-    
-    document.getElementById('exception-extra-items').innerHTML = '';
-    if (typeof window.extraItemCount !== 'undefined') {
-        window.extraItemCount = 0; 
-    }
-
-    if (tracks.length > 1) {
-        for (let i = 1; i < tracks.length; i++) {
-            if (typeof addExceptionExtraItem === 'function') {
-                addExceptionExtraItem();
-                const extras = document.querySelectorAll('.exception-extra-track');
-                if (extras.length > 0) {
-                    extras[extras.length - 1].value = tracks[i];
-                }
-            }
+    if (knownCount > 0) {
+        const names = Array.from(knownNames).join(', ');
+        if (!confirm(`⚠️ คำเตือน: พบ ${knownCount} เลขที่มีในฐานข้อมูลแล้ว (${names})\nไม่แนะนำให้นำเลขปกติมาทำรายงานรวมกับชิ้นงานตกหล่น\n\nต้องการดำเนินการต่อหรือไม่?`)) {
+            return;
         }
     }
 
-    // Pre-fill metadata
+    const mainInput = document.getElementById('exception-track-input');
+    
+    // Logic: Append instead of reset
+    tracks.forEach(track => {
+        // Find existing empty fields
+        const allInputs = [mainInput, ...document.querySelectorAll('.exception-extra-track')];
+        let targetField = allInputs.find(input => input && !input.value.trim());
+
+        if (!targetField) {
+            // No empty fields? Add one
+            if (typeof addExceptionExtraItem === 'function') {
+                addExceptionExtraItem();
+                const updatedExtras = document.querySelectorAll('.exception-extra-track');
+                targetField = updatedExtras[updatedExtras.length - 1];
+            }
+        }
+
+        if (targetField) {
+            targetField.value = track;
+            // Trigger visual feedback on the field
+            targetField.style.backgroundColor = "#fff9c4";
+            setTimeout(() => targetField.style.backgroundColor = "", 1000);
+        }
+    });
+
+    // Pre-fill metadata only if empty
     const subjectInput = document.getElementById('rpt-subject');
     if (subjectInput && !subjectInput.value && companyName) {
         subjectInput.value = "รายงานชิ้นงานตกหล่น: " + companyName;
@@ -2400,15 +2462,11 @@ function stagingQuickReport(tracks, companyName) {
         reasonInput.value = "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
     }
 
-    // Success feedback and scroll
+    // Success feedback and scroll to form
     if (mainInput) {
         mainInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        mainInput.style.transition = "background-color 0.8s";
-        mainInput.style.backgroundColor = "#e8f5e9";
-        setTimeout(() => mainInput.style.backgroundColor = "", 2000);
+        if (typeof showToast === 'function') showToast(`เพิ่ม ${tracks.length} รายการเข้าสู่รายงานแล้ว`, 'success');
     }
-    
-    // Switch to section if needed (logic usually keeps it visible)
 }
 
 // SECTION: EXCEPTION META & IMAGE ATTACHMENT
@@ -2630,6 +2688,7 @@ function addExceptionExtraItem() {
     div.style.cssText = 'display:flex; gap:10px; margin-top:10px; align-items:center;';
     div.innerHTML = `
         <input type="text" class="exception-extra-track" placeholder="เลขที่เพิ่มเติม (เช่น EQ123499999TH)" maxlength="13"
+            oninput="checkDbWarningForReport(this)"
             style="flex:1; text-transform:uppercase; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; font-family:inherit; font-size:inherit;">
         <button type="button" onclick="document.getElementById('extra-item-${extraItemCount}').remove()"
             style="padding:10px 14px; border:1px solid #ffcdd2; border-radius:4px; background:#ffebee; color:#d32f2f; cursor:pointer;">✕</button>
