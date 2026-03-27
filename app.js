@@ -439,9 +439,22 @@ async function handleTrackOcrUpload(files) {
             statusEl.textContent = `✅ พบเลข: ${numbers[0]} กำลังค้นหา...`;
             unifiedMainSearch();
         } else {
-            // Multiple numbers -> show results list using shared renderer
-            lastGeneratedRange = numbers;
-            renderUnifiedNumbers(`สแกนจากรูป ${files.length} รูป`, numbers, true);
+            // Multiple numbers -> Expand unknowns and show results
+            const expandedItems = [];
+            numbers.forEach(num => {
+                const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(num) : null;
+                if (!owner) {
+                    // Expand Unknown to 4 items (-2, -1, 0, +1)
+                    const range = TrackingUtils.generateTrackingRange(num, 2, 1);
+                    expandedItems.push(...range);
+                } else {
+                    // Keep Known as single item (using the object format expected by renderUnifiedNumbers)
+                    expandedItems.push({ number: num, owner, offset: 0, isCenter: true });
+                }
+            });
+            
+            lastGeneratedRange = expandedItems.map(item => item.number);
+            renderUnifiedNumbers(`สแกนจากรูป ${files.length} รูป`, expandedItems, true);
 
             // --- QMS AUTO-FILL LINK (Optional helper) ---
             const qmsTextarea = document.getElementById('qms-import-text');
