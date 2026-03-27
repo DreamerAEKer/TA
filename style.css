@@ -200,13 +200,15 @@ textarea {
 }
 
 .btn-search {
-    background: linear-gradient(135deg, #37474f 0%, #263238 100%);
+    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
     color: white;
     font-weight: bold;
+    box-shadow: 0 2px 5px rgba(25, 118, 210, 0.2);
 }
 
 .btn-search:hover {
-    background: linear-gradient(135deg, #455a64 0%, #37474f 100%);
+    background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
+    box-shadow: 0 4px 8px rgba(25, 118, 210, 0.3);
 }
 
 .btn-trace {
