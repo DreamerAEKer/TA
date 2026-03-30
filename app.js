@@ -495,7 +495,7 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
  */
 function renderUnifiedRow(row, groupId, companyEscaped) {
     const rowStyle = row.isCenter ? 'background:#fff9c4;' : 'background:#fff;';
-    const indexLabel = row.isCenter ? '🚩' : Math.abs(row.offset);
+    const indexLabel = row.isCenter ? '0' : Math.abs(row.offset);
     const indexColor = row.isCenter ? '#d32f2f' : '#bbb';
     const trackColor = row.isCenter ? '#333' : '#999';
     const opacity    = row.isCenter ? '1' : '0.85';
