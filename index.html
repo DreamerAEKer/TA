@@ -29,6 +29,18 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
             font-weight: bold;
         }
+        .btn-flag-green {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        .btn-flag-green:hover { transform: scale(1.2); }
+        .btn-flag-green svg path { fill: #2e7d32; stroke: #1b5e20; stroke-width: 1.5; }
     </style>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src='https://unpkg.com/tesseract.js@v5.0.0/dist/tesseract.min.js'></script>
@@ -654,7 +666,7 @@
     </main>
 
     <footer style="text-align:center; padding:20px; color:#ccc; font-size:0.75rem; font-family:monospace;">
-        Tracking Analyst v1.62
+        Tracking Analyst v1.63
     </footer>
 
     <!-- IMAGE EDITOR MODAL -->
@@ -677,10 +689,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="utils.js?v=1.62"></script>
-    <script src="db_manager.js?v=1.62"></script>
-    <script src="smart_input.js?v=1.62"></script>
-    <script src="app.js?v=1.62"></script>
+    <script src="utils.js?v=1.63"></script>
+    <script src="db_manager.js?v=1.63"></script>
+    <script src="smart_input.js?v=1.63"></script>
+    <script src="app.js?v=1.63"></script>
 </body>
 
 </html>

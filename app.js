@@ -344,7 +344,9 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
     // Update global list for "Copy All" - ONLY center (Main) numbers
     lastGeneratedRange = items.filter(i => typeof i === 'object' ? i.isCenter : true).map(i => typeof i === 'object' ? i.number : i);
 
-    summaryArea.innerHTML = `<span class="badge badge-primary">${items.length} รายการ${isOcr ? ' (OCR)' : ''}</span>`;
+    // v1.63: Count only "Main" items (centers) for the badge
+    const mainCount = items.filter(i => i.isCenter).length || items.length;
+    summaryArea.innerHTML = `<span class="badge badge-primary">${mainCount} รายการ${isOcr ? ' (OCR)' : ''}</span>`;
 
     let html = `
         <div style="padding:10px; background:linear-gradient(to bottom, #fff, #f9f9f9); border-bottom:1px solid #ddd; position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -511,7 +513,11 @@ function renderUnifiedRow(row, groupId, companyEscaped) {
             </div>
             <div style="width:30px; text-align:center; font-weight:bold; font-size:0.7rem; color:${indexColor};">${indexLabel}</div>
             <div style="width:35px; text-align:center;">
-                <button class="btn" style="padding:2px 5px; font-size:1rem; border:none; background:none; color:#2e7d32; cursor:pointer;" title="รายงานรายการนี้" onclick="stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
+                <button class="btn btn-flag-green" title="รายงานรายการนี้" onclick="stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 21V4.5C5 4.22386 5.22386 4 5.5 4H13.5L14.5 6H19.5C19.7761 6 20 6.22386 20 6.5V14.5C20 14.7761 19.7761 15 19.5 15H14.5L13.5 13H6V21H5Z" fill="#2e7d32" stroke="#1b5e20" stroke-width="1.5" stroke-linejoin="round"/>
+                    </svg>
+                </button>
             </div>
             <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
                 ${TrackingUtils.formatTrackingNumber(row.number)}

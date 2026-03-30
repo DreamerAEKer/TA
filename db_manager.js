@@ -113,10 +113,80 @@ const CustomerDB = {
 
     // --- MAIN ACTIONS ---
 
-    // Compatibility for app.js
+    // Compatibility for app.js (v1.63: Smart Range Lookup)
     get: (id) => {
+        if (!id) return null;
         const lookup = CustomerDB.getLookup();
-        return lookup[id] || null;
+        
+        // 1. Try Exact Match (Fastest)
+        if (lookup[id]) return lookup[id];
+
+        // 2. Try Range Match (New in v1.63: Fixes 'Storage Full' missed items)
+        const batches = CustomerDB.getBatches();
+        const searchId = id.replace(/\s+/g, '').toUpperCase();
+        
+        // Extract sequence for comparison
+        const m = searchId.match(/([A-Z]{2})(\d{8})(\d)([A-Z]{2})/);
+        if (!m) return null;
+
+        const prefix = m[1];
+        const body = parseInt(m[2], 10);
+        const suffix = m[4];
+
+        // Iterate through batches to find a range match
+        for (const bid in batches) {
+            const batch = batches[bid];
+            if (!batch.rangeDesc || !batch.rangeDesc.includes(' - ')) continue;
+
+            const [startId, endId] = batch.rangeDesc.split(' - ');
+            const mStart = startId.match(/([A-Z]{2})(\d{8})(\d)([A-Z]{2})/);
+            const mEnd = endId.match(/([A-Z]{2})(\d{8})(\d)([A-Z]{2})/);
+
+            if (mStart && mEnd) {
+                const sPrefix = mStart[1];
+                const sSuffix = mStart[4];
+                const sBody = parseInt(mStart[2], 10);
+                const eBody = parseInt(mEnd[2], 10);
+
+                if (prefix === sPrefix && suffix === sSuffix && body >= sBody && body <= eBody) {
+                    // Match found in range!
+                    return {
+                        batchId: batch.id,
+                        name: batch.name,
+                        type: batch.type,
+                        isRangeMatch: true
+                    };
+                }
+            }
+        }
+        return null;
+    },
+
+    // New in v1.63: Clear up individual lookup items that are already part of a batch range
+    optimizeStorage: () => {
+        const lookup = CustomerDB.getLookup();
+        const batches = CustomerDB.getBatches();
+        let removedCount = 0;
+
+        Object.keys(lookup).forEach(id => {
+            const entry = lookup[id];
+            const batch = batches[entry.batchId];
+            if (batch && batch.rangeDesc && batch.rangeDesc.includes(' - ')) {
+                // Check if this ID is part of the batch range
+                const [start, end] = batch.rangeDesc.split(' - ');
+                // If it is a range, we can safely remove the individual lookup key 
+                // because the new CustomerDB.get() will find it via range matching.
+                delete lookup[id];
+                removedCount++;
+            }
+        });
+
+        if (removedCount > 0) {
+            CustomerDB.saveLookup(lookup);
+            console.log(`v1.63 Optimizer: Removed ${removedCount} redundant lookup entries.`);
+            return removedCount;
+        }
+        return 0;
     },
 
     // Group batches by company
@@ -166,17 +236,23 @@ const CustomerDB = {
                 : trackingList[0] || 'No Data'
         };
 
-        // 2. Save Lookup (ID -> Batch ID)
-        trackingList.forEach(id => {
-            lookup[id] = {
-                batchId: batchId,
-                name: batchInfo.name,
-                type: batchInfo.type
-            };
-        });
+        // 2. Save Lookup (v1.63: Smart Storage - Only save individual IDs for small batches)
+        const isSmallBatch = trackingList.length <= 100;
+        
+        if (isSmallBatch) {
+            trackingList.forEach(id => {
+                lookup[id] = {
+                    batchId: batchId,
+                    name: batchInfo.name,
+                    type: batchInfo.type
+                };
+            });
+            CustomerDB.saveLookup(lookup);
+        } else {
+            console.log(`v1.63 Smart Storage: Skipping individual lookup for large batch (${trackingList.length} items)`);
+        }
 
         CustomerDB.saveBatches(batches);
-        CustomerDB.saveLookup(lookup);
         return { count: trackingList.length, id: batchId };
     },
 
