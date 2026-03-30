@@ -431,44 +431,64 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
 
             if (!isSingleSerie) {
                 // --- BRIDGE RENDERING FOR CONSECUTIVE SERIES ---
-                // Avoid duplication in clusters within a series box.
-                // Just render one clean sequential list within the series-box.
-                html += `<div style="border:1px solid #eee; border-radius:6px; background:white; overflow:hidden;">`;
-                
                 const firstMain = series[0].main;
                 const lastMain  = series[series.length - 1].main;
                 const pFirst = parseExceptionTrackNum(firstMain.number);
                 const pLast  = parseExceptionTrackNum(lastMain.number);
 
-                // Collect only leading satellites from first, and trailing from last
                 const leadingSats = series[0].satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt < pFirst.bodyInt);
                 const trailingSats = series[series.length - 1].satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt > pLast.bodyInt);
-                
                 const allMains = series.map(s => s.main);
-                
-                // Combine and render (Deduplicate)
-                [...leadingSats, ...allMains, ...trailingSats].forEach(row => {
-                    if (displayedInGroup.has(row.number)) return;
-                    displayedInGroup.add(row.number);
-                    html += renderUnifiedRow(row, groupId, companyEscaped);
-                });
-                
-                html += `</div>`; // End Bridge box
-            } else {
-                // --- ISOLATED CLUSTER RENDERING ---
-                const { main, satellites } = series[0];
-                const clusterStyle = 'margin-bottom:8px; border:1px solid #eee; border-radius:6px; background:white; overflow:hidden;';
-                
-                html += `<div style="${clusterStyle}">`;
-                const allRowsInCluster = [...satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt < parseExceptionTrackNum(main.number).bodyInt), 
-                                 main, 
-                                 ...satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt > parseExceptionTrackNum(main.number).bodyInt)];
 
-                allRowsInCluster.forEach(row => {
-                    if (displayedInGroup.has(row.number)) return;
-                    displayedInGroup.add(row.number);
-                    html += renderUnifiedRow(row, groupId, companyEscaped);
-                });
+                // Group all into one toggleable block for the series
+                const hasAnySats = leadingSats.length > 0 || trailingSats.length > 0;
+                
+                // Show a combined "Summary" row for the whole series that can toggle sats
+                const seriesTitleRow = { 
+                    number: `${firstMain.number.substring(0,10)}...${lastMain.number.substring(10)}`, 
+                    isCenter: true, offset: 0, status: 'ชุดเลขรันต่อเนื่อง' 
+                };
+
+                html += `
+                    <div style="border:1px solid #90caf9; border-radius:8px; overflow:hidden; background:white;">
+                        ${renderUnifiedRow(seriesTitleRow, groupId, companyEscaped, hasAnySats)}
+                        <div class="satellite-wrapper">
+                             ${allMains.map(m => {
+                                 displayedInGroup.add(m.number);
+                                 return renderUnifiedRow(m, groupId, companyEscaped);
+                             }).join('')}
+                             ${[...leadingSats, ...trailingSats].map(s => {
+                                 displayedInGroup.add(s.number);
+                                 return renderUnifiedRow(s, groupId, companyEscaped);
+                             }).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                // --- ISOLATED CLUSTER RENDERING (v1.65 Toggle) ---
+                const { main, satellites } = series[0];
+                const clusterStyle = 'margin-bottom:8px; border:1px solid #eee; border-radius:10px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.03);';
+                
+                const beforeSats = satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt < parseExceptionTrackNum(main.number).bodyInt);
+                const afterSats = satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt > parseExceptionTrackNum(main.number).bodyInt);
+                const hasSats = beforeSats.length > 0 || afterSats.length > 0;
+
+                html += `<div style="${clusterStyle}">`;
+                
+                // 1. Render Main Row (The Toggle)
+                displayedInGroup.add(main.number);
+                html += renderUnifiedRow(main, groupId, companyEscaped, hasSats);
+
+                // 2. Wrap Satellites in animated container
+                if (hasSats) {
+                    html += `<div class="satellite-wrapper">`;
+                    [...beforeSats, ...afterSats].forEach(row => {
+                        displayedInGroup.add(row.number);
+                        html += renderUnifiedRow(row, groupId, companyEscaped);
+                    });
+                    html += `</div>`;
+                }
+
                 html += `</div>`; // End Cluster
             }
 
@@ -499,8 +519,9 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
 /**
  * Helper to render a single row in the Results Sidebar.
  */
-function renderUnifiedRow(row, groupId, companyEscaped) {
-    const rowStyle = row.isCenter ? 'background:#fff9c4;' : 'background:#fff;';
+function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
+    const rowClass = row.isCenter ? 'unified-row center-row' : 'unified-row satellite-row';
+    const rowBg = row.isCenter ? '#fff9c4' : '#fff';
     const indexLabel = row.isCenter ? '•' : Math.abs(row.offset);
     const indexColor = row.isCenter ? '#d32f2f' : '#bbb';
     const trackColor = row.isCenter ? '#333' : '#999';
@@ -508,18 +529,23 @@ function renderUnifiedRow(row, groupId, companyEscaped) {
 
     const metadataJson = JSON.stringify({ status: row.status || '', datetime: row.datetime || '' }).replace(/"/g, "&quot;");
 
+    const toggleAction = hasSatellites ? `onclick="toggleSatelliteGroup(this)"` : '';
+
     return `
-        <div style="${rowStyle} opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem;">
+        <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem;">
             <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
                 ${row.isCenter ? `
                     <input type="checkbox" class="group-checkbox-${groupId}" value="${row.number}" 
                         data-metadata="${metadataJson}"
-                        style="width:17px; height:17px; cursor:pointer;" checked>
+                        style="width:17px; height:17px; cursor:pointer;" checked onclick="event.stopPropagation()">
                 ` : ''}
             </div>
-            <div style="width:30px; text-align:center; font-weight:bold; font-size:0.7rem; color:${indexColor};">${indexLabel}</div>
+            <div style="width:30px; text-align:center; font-weight:bold; font-size:0.7rem; color:${indexColor};">
+                ${hasSatellites ? '<span class="toggle-icon">▶</span>' : ''}
+                ${indexLabel}
+            </div>
             <div style="width:35px; text-align:center;">
-                <button class="btn" style="padding:2px 5px; font-size:${row.isCenter ? '1.5rem' : '0.95rem'}; border:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
+                <button class="btn" style="padding:2px 5px; font-size:${row.isCenter ? '1.5rem' : '0.95rem'}; border:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
             </div>
             <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
                 ${TrackingUtils.formatTrackingNumber(row.number)}
@@ -529,7 +555,7 @@ function renderUnifiedRow(row, groupId, companyEscaped) {
                     </div>
                 ` : ''}
             </div>
-            <div style="padding-right:10px; display:flex; gap:4px;">
+            <div style="padding-right:10px; display:flex; gap:4px;" onclick="event.stopPropagation()">
                 <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${row.number}').then(()=>alert('คัดลอก ${row.number}'))">📋</button>
                 <button class="btn btn-trace" style="padding:1px 5px; font-size:0.65rem;" title="เช็คสถานะ" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${row.number}&lang=th', '_blank')">🔍</button>
             </div>
@@ -4189,4 +4215,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+/**
+ * v1.65: Toggle Satellite visibility with animation
+ */
+function toggleSatelliteGroup(triggerRow) {
+    const wrapper = triggerRow.nextElementSibling;
+    if (wrapper && wrapper.classList.contains('satellite-wrapper')) {
+        wrapper.classList.toggle('expanded');
+        triggerRow.classList.toggle('expanded-trigger');
+    }
+}
 

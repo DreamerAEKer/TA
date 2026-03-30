@@ -885,4 +885,47 @@ body.user-mode button[onclick="confirmAndBackup()"] {
     opacity: 0.9;
     font-weight: 300;
 }
+
+/* --- Satellite Toggle Animation (v1.65) --- */
+.satellite-wrapper {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.3s ease-in-out;
+    opacity: 0;
+    background: #fdfdfd;
+}
+
+.satellite-wrapper.expanded {
+    max-height: 1000px;
+    opacity: 1;
+    border-bottom: 2px solid #e1f5fe;
+}
+
+.toggle-icon {
+    display: inline-block;
+    transition: transform 0.3s ease;
+    font-size: 0.8rem;
+    color: #90caf9;
+    margin-right: 5px;
+}
+
+.expanded-trigger .toggle-icon {
+    transform: rotate(90deg);
+    color: #0288d1;
+}
+
+.unified-row {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.unified-row:hover {
+    background: #f5faff !important;
+}
+
+.satellite-row {
+    border-left: 3px solid #e1f5fe;
+    background: #fffafa;
+}
 
