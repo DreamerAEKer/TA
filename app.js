@@ -370,9 +370,6 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
                     </div>
                     <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
                         <span style="font-size:0.75rem; font-weight:normal; color:#888;">${groupItems.length} รายการ</span>
-                        <button class="btn btn-success" style="padding:5px 12px; font-size:0.75rem; border:none; border-radius:4px; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:4px;" onclick="stagingQuickReportFromGroup('${groupId}', '${companyEscaped}')">
-                           <span>🚩 เพิ่มรายการที่เลือก</span>
-                        </button>
                     </div>
                 </div>
                 <table style="width:100%; border-collapse:collapse; margin:0; font-size:0.9rem;">
@@ -435,7 +432,18 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
     resultArea.innerHTML = html;
     
     const copyBar = document.getElementById('smart-copy-all-bar');
-    if (copyBar) copyBar.classList.remove('hidden');
+    if (copyBar) {
+        copyBar.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <button class="btn btn-success" onclick="stagingAllCheckedItems()" style="width:100%; font-size:1.1rem; padding:15px; font-weight:bold; border-radius:10px; box-shadow:0 4px 15px rgba(46,125,50,0.2);">🚩 เพิ่มรายการที่เลือกเข้าตารางร่าง (Add Selected)</button>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-neutral" onclick="copyAllUnifiedNumbers()" style="flex:1; font-size:0.85rem; padding:8px; border:1px solid #ccc; background:#f9f9f9;">📋 คัดลอกเลขทั้งหมด (Copy All)</button>
+                    <button class="btn btn-neutral" onclick="document.querySelectorAll('[class^=group-checkbox-]').forEach(cb=>cb.checked=false)" style="flex:1; font-size:0.85rem; padding:8px; border:1px solid #ccc; background:#f9f9f9;">❌ ยกเลิกการเลือกทั้งหมด</button>
+                </div>
+            </div>
+        `;
+        copyBar.classList.remove('hidden');
+    }
 }
 
 /**
@@ -481,6 +489,40 @@ function stagingQuickReportFromGroup(groupId, companyName) {
     }
 
     stagingQuickReport(selectedTracks, companyName, firstMetadata || {});
+}
+
+/**
+ * Collect ALL checked items from ALL groups and add them to the report draft.
+ */
+function stagingAllCheckedItems() {
+    const cbks = document.querySelectorAll('[class^="group-checkbox-"]');
+    const selectedTracks = [];
+    let firstMetadata = null;
+
+    cbks.forEach(cb => {
+        if (cb.checked) {
+            selectedTracks.push(cb.value);
+            if (!firstMetadata) {
+                try {
+                    const metaStr = cb.getAttribute('data-metadata');
+                    if (metaStr) firstMetadata = JSON.parse(metaStr.replace(/&quot;/g, '"'));
+                } catch(e) {}
+            }
+        }
+    });
+
+    if (selectedTracks.length === 0) {
+        if (typeof showToast === 'function') showToast('กรุณาติ๊กเลือกรายการอย่างน้อย 1 รายการครับ', 'error');
+        return;
+    }
+
+    // Call stagingQuickReport to populate form and potentially auto-submit if desired?
+    // User asked to "Add to report section", implying they want it added to draft.
+    // However, stagingQuickReport usually populates the form for review.
+    // Given the user specifically wants to move the button to the bottom, 
+    // it's likely they want to handle bulk selection efficiently.
+    
+    stagingQuickReport(selectedTracks, "", firstMetadata || {});
 }
 
 // Consolidated File Upload handler (Excel & OCR) inside the Track & Trace section
@@ -3218,7 +3260,12 @@ function renderExceptionTable() {
         const timeStr = dObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
         const dateStr = dObj.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
         
-        // Find images (v1.55 deduplication: images might be on any entry in the session, usually the first)
+        // Alternating background shades and a left-border "Group ID" marker for clarity
+        const isAlternate = idx % 2 === 1;
+        const groupBg = isAlternate ? '#f5faff' : '#ffffff';
+        const markerColor = isAlternate ? '#0288d1' : '#ccc';
+
+        // Find images
         let images = [];
         for (const entry of session.entries) {
             if (entry.images && entry.images.length > 0) {
@@ -3239,7 +3286,7 @@ function renderExceptionTable() {
             : '';
 
         html += `
-            <div class="report-card" style="background:white; border:1px solid #e0e0e0; border-radius:10px; padding:15px; position:relative; box-shadow:0 2px 5px rgba(0,0,0,0.03); display:flex; gap:12px; align-items:flex-start;">
+            <div class="report-card" style="background:${groupBg}; border:1px solid #e0e0e0; border-left:4px solid ${markerColor}; border-radius:10px; padding:15px; position:relative; box-shadow:0 2px 5px rgba(0,0,0,0.03); display:flex; gap:12px; align-items:flex-start;">
                 <input type="checkbox" class="sess-select" value="${session.sessionId}" checked style="margin-top:5px; transform:scale(1.2); cursor:pointer;">
                 <div style="flex:1;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
