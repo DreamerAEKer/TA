@@ -388,13 +388,28 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
                 indexStyle = item.offset < 0 ? 'color:#28a745;' : (item.offset > 0 ? 'color:#d32f2f;' : 'color:#999;');
             }
 
+            // Metadata display (Excel source)
+            let metadataHtml = '';
+            if (item.status || item.datetime) {
+                metadataHtml = `
+                    <div style="font-size:0.75rem; color:#0288d1; margin-top:2px; font-style:italic;">
+                        ${item.status ? `[${item.status}] ` : ''}${item.datetime || ''}
+                    </div>
+                `;
+            }
+
+            const metadataJson = JSON.stringify({ status: item.status || '', datetime: item.datetime || '' }).replace(/"/g, "&quot;");
+
             html += `
                 <tr ${rowStyle} style="border-bottom:1px solid #f0f0f0;">
                     <td style="width:35px; text-align:center; ${indexStyle} font-weight:bold; font-size:0.75rem; padding:8px 2px;">${indexLabel}</td>
                     <td style="width:40px; text-align:center; padding:8px 2px;">
-                        <button class="btn" style="padding:2px 5px; font-size:1rem; border:none; background:none; color:#2e7d32; cursor:pointer;" title="รายงานรายการนี้" onclick="stagingQuickReport(['${item.number}'], '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}')">🚩</button>
+                        <button class="btn" style="padding:2px 5px; font-size:1rem; border:none; background:none; color:#2e7d32; cursor:pointer;" title="รายงานรายการนี้" onclick="stagingQuickReport(['${item.number}'], '${company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '')}', ${metadataJson})">🚩</button>
                     </td>
-                    <td style="font-family:monospace; font-weight:bold; color:#333; padding:8px 5px;">${TrackingUtils.formatTrackingNumber(item.number)}</td>
+                    <td style="font-family:monospace; font-weight:bold; color:#333; padding:8px 5px;">
+                        ${TrackingUtils.formatTrackingNumber(item.number)}
+                        ${metadataHtml}
+                    </td>
                     <td style="text-align:right; padding:8px 10px;">
                         <div style="display:flex; gap:4px; justify-content:flex-end;">
                             <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${item.number}').then(()=>alert('คัดลอก ${item.number}'))">📋</button>
@@ -415,67 +430,167 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
     if (copyBar) copyBar.classList.remove('hidden');
 }
 
-// OCR upload handler inside the Track & Trace section
-async function handleTrackOcrUpload(files) {
+// Consolidated File Upload handler (Excel & OCR) inside the Track & Trace section
+async function handleTrackFileUpload(files) {
     if (!files || files.length === 0) return;
     const statusEl = document.getElementById('track-ocr-status');
-    statusEl.textContent = `กำลังสแกน ${files.length} รูป...`;
+    statusEl.textContent = `กำลังประมวลผล ${files.length} ไฟล์...`;
 
-    let combinedText = '';
+    // Partition files into Images (OCR) and Excel
+    const images = [];
+    const excelFiles = [];
+    for (const f of files) {
+        if (f.type.includes('image')) images.push(f);
+        else if (f.name.endsWith('.xlsx') || f.name.endsWith('.xls')) excelFiles.push(f);
+    }
+
+    let allItems = []; // List of { number, status, datetime, source }
+
     try {
-        for (let i = 0; i < files.length; i++) {
-            statusEl.textContent = `OCR รูป ${i + 1}/${files.length}...`;
-            const worker = await Tesseract.createWorker('tha+eng');
-            const { data: { text } } = await worker.recognize(files[i]);
-            await worker.terminate();
-            combinedText += '\n' + text;
+        // 1. Process Images via OCR
+        if (images.length > 0) {
+            statusEl.textContent = `กำลังสแกน OCR ${images.length} รูป...`;
+            let combinedOcrText = '';
+            for (let i = 0; i < images.length; i++) {
+                statusEl.textContent = `OCR รูป ${i + 1}/${images.length}...`;
+                const worker = await Tesseract.createWorker('tha+eng');
+                const { data: { text } } = await worker.recognize(images[i]);
+                await worker.terminate();
+                combinedOcrText += '\n' + text;
+            }
+            const ocrNumbers = TrackingUtils.extractTrackingNumbers(combinedOcrText);
+            ocrNumbers.forEach(num => {
+                allItems.push({ number: num, source: 'OCR', status: '', datetime: '' });
+            });
         }
 
-        const numbers = TrackingUtils.extractTrackingNumbers(combinedText);
-        if (numbers.length === 0) {
-            statusEl.textContent = '⚠️ ไม่พบเลขในภาพ';
+        // 2. Process Excel Files
+        if (excelFiles.length > 0) {
+            statusEl.textContent = `กำลังอ่านโหมด Excel ${excelFiles.length} ไฟล์...`;
+            for (const file of excelFiles) {
+                const excelItems = await processTrackExcelFile(file);
+                allItems.push(...excelItems);
+            }
+        }
+
+        if (allItems.length === 0) {
+            statusEl.textContent = '⚠️ ไม่พบข้อมูลเลขพัสดุ';
             return;
         }
 
-        if (numbers.length === 1) {
-            // Single number -> put in main input and search
-            document.getElementById('smart-main-input').value = numbers[0];
-            statusEl.textContent = `✅ พบเลข: ${numbers[0]} กำลังค้นหา...`;
+        // 3. Render Results
+        if (allItems.length === 1) {
+            // Single result -> Fill main input and search
+            const item = allItems[0];
+            document.getElementById('smart-main-input').value = item.number;
+            statusEl.textContent = `✅ พบเลข: ${item.number} กำลังค้นหา...`;
+            
+            // If it had metadata, we might want to store it temporarily for current search
+            window._pendingMetadata = { status: item.status, datetime: item.datetime };
+            
             unifiedMainSearch();
         } else {
-            // Multiple numbers -> Expand unknowns and show results
+            // Multiple results -> Show in Unified Side
             const expandedItems = [];
-            numbers.forEach(num => {
-                const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(num) : null;
+            allItems.forEach(item => {
+                const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(item.number) : null;
                 if (!owner) {
                     // Expand Unknown to 4 items (-2, -1, 0, +1)
-                    const range = TrackingUtils.generateTrackingRange(num, 2, 1);
-                    expandedItems.push(...range);
+                    const range = TrackingUtils.generateTrackingRange(item.number, 2, 1);
+                    range.forEach(r => {
+                        // Pass metadata if it's the center number
+                        if (r.isCenter) {
+                            r.status = item.status;
+                            r.datetime = item.datetime;
+                            r.source = item.source;
+                        }
+                        expandedItems.push(r);
+                    });
                 } else {
-                    // Keep Known as single item (using the object format expected by renderUnifiedNumbers)
-                    expandedItems.push({ number: num, owner, offset: 0, isCenter: true });
+                    // Keep Known as single item
+                    expandedItems.push({ 
+                        number: item.number, 
+                        owner, 
+                        offset: 0, 
+                        isCenter: true,
+                        status: item.status,
+                        datetime: item.datetime,
+                        source: item.source
+                    });
                 }
             });
             
             lastGeneratedRange = expandedItems.map(item => item.number);
-            renderUnifiedNumbers(`สแกนจากรูป ${files.length} รูป`, expandedItems, true);
-
-            // --- QMS AUTO-FILL LINK (Optional helper) ---
-            const qmsTextarea = document.getElementById('qms-import-text');
-            const qmsSection = document.getElementById('qms-staging-section');
-            if (qmsTextarea && qmsSection) {
-                qmsTextarea.value = numbers.join('\n');
-                if (typeof processQmsImport === 'function') {
-                    qmsSection.style.display = 'block';
-                    processQmsImport();
-                }
-            }
+            renderUnifiedNumbers(`ข้อมูลจาก ${files.length} ไฟล์`, expandedItems, true);
         }
-        statusEl.textContent = `✅ เสร็จ พบ ${numbers.length} เลข`;
+
+        statusEl.textContent = `✅ สำเร็จ พบข้อมูล ${allItems.length} รายการ`;
+        // Clear input to allow re-uploading same file if needed
+        document.getElementById('track-ocr-upload').value = '';
+
     } catch (err) {
         console.error(err);
         statusEl.textContent = '❌ เกิดข้อผิดพลาด: ' + err.message;
     }
+}
+
+/**
+ * Specifically parses Excel for the Track & Trace search context.
+ * Targets Column H (Track), I (Status), J (DateTime)
+ */
+async function processTrackExcelFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                
+                const results = [];
+                const trackingRegex = /[A-Z]{2}\d{9}[A-Z]{2}/i;
+
+                jsonData.forEach((row, idx) => {
+                    // Skip header or short rows
+                    // User format: Col H is index 7
+                    if (row.length < 8) return;
+
+                    const rawTrack = row[7]; // Col H
+                    if (!rawTrack) return;
+
+                    const match = rawTrack.toString().match(trackingRegex);
+                    if (match) {
+                        const status = row[8] || ''; // Col I
+                        const rawTime = row[9] || ''; // Col J
+                        
+                        // User's Excel DateTime is often a string or a legacy date
+                        let formattedTime = rawTime;
+                        if (typeof rawTime === 'number') {
+                            // XLSX serial date conversion
+                            const dateObj = new Date(Math.round((rawTime - 25569) * 86400 * 1000));
+                            // Since we need BE display or at least a recognizable string
+                            // If it's serial, it's relative to 1900.
+                            // Better to use current local format
+                            formattedTime = dateObj.toLocaleDateString('th-TH') + ' ' + dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                        }
+
+                        results.push({
+                            number: match[0].toUpperCase(),
+                            status: status.toString().trim(),
+                            datetime: formattedTime.toString().trim(),
+                            source: 'Excel'
+                        });
+                    }
+                });
+                resolve(results);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+    });
 }
 
 // Gap analysis features removed per user request
@@ -2426,9 +2541,20 @@ function draftReportFromGroup(prefix) {
 /**
  * Pre-fills the exception form from search results.
  */
-function stagingQuickReport(tracks, companyName) {
-    console.log("DEBUG: stagingQuickReport called with:", tracks.length, "tracks for", companyName);
+function stagingQuickReport(tracks, companyName, metadata = {}) {
+    console.log("DEBUG: stagingQuickReport called with:", tracks.length, "tracks for", companyName, "metadata:", metadata);
     if (!tracks || tracks.length === 0) return;
+    
+    // --- Metadata Pre-fill (Excel source) ---
+    if (metadata.status) {
+        const reasonInput = document.getElementById('exception-reason-input');
+        if (reasonInput) reasonInput.value = metadata.status;
+    }
+    if (metadata.datetime) {
+        if (typeof setExceptionDatePickerFromBE === 'function') {
+            setExceptionDatePickerFromBE(metadata.datetime);
+        }
+    }
 
     // --- DB Warning Check ---
     let knownCount = 0;

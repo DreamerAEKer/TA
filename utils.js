@@ -596,8 +596,33 @@ window.TrackingUtils = {
     summarizePrices,
     getWeightFromPriceA3,
     extractHandwrittenTable,
-    compressImage // Added
+    compressImage, // Added
+    parseThaiDateBE // Added
 };
+
+/**
+ * Parses a Thai Buddhist Era date string (DD/MM/YYYY) into a CE Date object.
+ * @param {string} dateStr - e.g. "28/03/2569 11:03"
+ * @returns {Date|null}
+ */
+function parseThaiDateBE(dateStr) {
+    if (!dateStr) return null;
+    // Match DD/MM/YYYY HH:MM or DD/MM/YYYY
+    // Group 1: Day, 2: Month, 3: Year (BE), 4: Hour (optional), 5: Minute (optional)
+    const m = dateStr.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+    if (!m) return null;
+    
+    const dd = parseInt(m[1], 10);
+    const mm = parseInt(m[2], 10) - 1; // 0-indexed
+    const yyyy_be = parseInt(m[3], 10);
+    const yyyy_ce = yyyy_be - 543;
+    
+    const hh = m[4] ? parseInt(m[4], 10) : 0;
+    const min = m[5] ? parseInt(m[5], 10) : 0;
+    
+    const date = new Date(yyyy_ce, mm, dd, hh, min);
+    return isNaN(date.getTime()) ? null : date;
+}
 
 /**
  * UI Utilities

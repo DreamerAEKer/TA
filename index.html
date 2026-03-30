@@ -80,9 +80,9 @@
                         <div id="smart-main-input-warning" style="display:none; margin-top:5px; color:#d32f2f; font-size:0.75rem; font-weight:bold; padding:4px 10px; background:#fff5f5; border-radius:4px; border-left:3px solid #d32f2f;"></div>
                         <!-- Image Upload for OCR inside Track & Trace -->
                         <div style="margin-bottom: 12px;">
-                            <input type="file" id="track-ocr-upload" accept="image/*" multiple style="display:none" onchange="handleTrackOcrUpload(this.files)">
+                            <input type="file" id="track-ocr-upload" accept="image/*, .xlsx, .xls" multiple style="display:none" onchange="handleTrackFileUpload(this.files)">
                             <button class="btn btn-neutral" onclick="document.getElementById('track-ocr-upload').click()" style="font-size:0.85rem; padding:6px 12px; border:1px solid #ccc; display:flex; align-items:center; gap:6px;">
-                                📸 อัปโหลดรูปเพื่อสแกนเลข (OCR)
+                                📸 เพิ่มรูปภาพ หรือไฟล์ Excel
                             </button>
                             <span id="track-ocr-status" style="font-size:0.8rem; color:var(--primary-color); margin-top:5px; display:block;"></span>
                         </div>
@@ -654,7 +654,7 @@
     </main>
 
     <footer style="text-align:center; padding:20px; color:#ccc; font-size:0.75rem; font-family:monospace;">
-        Tracking Analyst v1.55
+        Tracking Analyst v1.56
     </footer>
 
     <!-- IMAGE EDITOR MODAL -->
@@ -677,10 +677,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="utils.js?v=1.55"></script>
-    <script src="db_manager.js?v=1.55"></script>
-    <script src="smart_input.js?v=1.55"></script>
-    <script src="app.js?v=1.55"></script>
+    <script src="utils.js?v=1.56"></script>
+    <script src="db_manager.js?v=1.56"></script>
+    <script src="smart_input.js?v=1.56"></script>
+    <script src="app.js?v=1.56"></script>
 </body>
 
 </html>
