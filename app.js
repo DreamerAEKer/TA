@@ -469,6 +469,23 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
 
         html += `</div></div>`;
     });
+
+    html += `</div>`;
+    resultArea.innerHTML = html;
+
+    const copyBar = document.getElementById('smart-copy-all-bar');
+    if (copyBar) {
+        copyBar.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <button class="btn btn-success" onclick="stagingAllCheckedItems()" style="width:100%; font-size:1.1rem; padding:15px; font-weight:bold; border-radius:10px; box-shadow:0 4px 15px rgba(46,125,50,0.2);">🚩 เพิ่มรายการที่เลือกเข้าตารางร่าง (Add Selected)</button>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-neutral" onclick="copyAllUnifiedNumbers()" style="flex:1; font-size:0.85rem; padding:8px; border:1px solid #ccc; background:#f9f9f9;">📋 คัดลอกเลขทั้งหมด (Copy All)</button>
+                    <button class="btn btn-neutral" onclick="document.querySelectorAll('[class^=group-checkbox-]').forEach(cb=>cb.checked=false)" style="flex:1; font-size:0.85rem; padding:8px; border:1px solid #ccc; background:#f9f9f9;">❌ ยกเลิกการเลือกทั้งหมด</button>
+                </div>
+            </div>
+        `;
+        copyBar.classList.remove('hidden');
+    }
 }
 
 /**
@@ -509,23 +526,6 @@ function renderUnifiedRow(row, groupId, companyEscaped) {
             </div>
         </div>
     `;
-
-    html += `</div>`;
-    resultArea.innerHTML = html;
-    
-    const copyBar = document.getElementById('smart-copy-all-bar');
-    if (copyBar) {
-        copyBar.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:8px;">
-                <button class="btn btn-success" onclick="stagingAllCheckedItems()" style="width:100%; font-size:1.1rem; padding:15px; font-weight:bold; border-radius:10px; box-shadow:0 4px 15px rgba(46,125,50,0.2);">🚩 เพิ่มรายการที่เลือกเข้าตารางร่าง (Add Selected)</button>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn btn-neutral" onclick="copyAllUnifiedNumbers()" style="flex:1; font-size:0.85rem; padding:8px; border:1px solid #ccc; background:#f9f9f9;">📋 คัดลอกเลขทั้งหมด (Copy All)</button>
-                    <button class="btn btn-neutral" onclick="document.querySelectorAll('[class^=group-checkbox-]').forEach(cb=>cb.checked=false)" style="flex:1; font-size:0.85rem; padding:8px; border:1px solid #ccc; background:#f9f9f9;">❌ ยกเลิกการเลือกทั้งหมด</button>
-                </div>
-            </div>
-        `;
-        copyBar.classList.remove('hidden');
-    }
 }
 
 /**
