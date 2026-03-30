@@ -277,9 +277,9 @@ async function unifiedSingleCheckNew(input, inputEl) {
         `;
         lastGeneratedRange = [validTarget];
     } else {
-        // NOT FOUND in DB: Show Range View (2 before, 1 after) as requested
+        // NOT FOUND in DB: Show Range View (1 before, 1 after)
         const cleanTarget = validTarget.replace(/\s+/g, '');
-        const list = TrackingUtils.generateTrackingRange(cleanTarget, 2, 1);
+        const list = TrackingUtils.generateTrackingRange(cleanTarget, 1, 1);
         lastGeneratedRange = list.map(item => item.number);
         
         // Construct the single validation box at the top
@@ -291,8 +291,8 @@ async function unifiedSingleCheckNew(input, inputEl) {
             </div>
         `;
 
-        // Render the list using the shared renderer
-        renderUnifiedNumbers(`เลขข้างเคียงสำหรับ: ${validTarget}`, list, false);
+        // Render the list using the shared renderer (AWAIT FIX)
+        await renderUnifiedNumbers(`เลขข้างเคียงสำหรับ: ${validTarget}`, list, false);
         
         // Prepend the validation header
         resultArea.innerHTML = headerHtml + resultArea.innerHTML;
@@ -392,9 +392,14 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                 currentSeries = [];
             }
             
-            // Find satellites for this main item
+            // Find satellites for this main item (Optimized v1.67: Use offset first)
             const satellites = groupItems.filter(i => {
                 if (i.isCenter) return false;
+                
+                // If it already has offset from generateTrackingRange, use it!
+                if (typeof i.offset !== 'undefined' && Math.abs(i.offset) <= 2) return true;
+
+                // Fallback: Parse and check diff
                 const pSat = parseExceptionTrackNum(i.number);
                 if (!pSat || !pMain) return false;
                 return pSat.prefix === pMain.prefix && 
@@ -756,7 +761,7 @@ async function handleTrackFileUpload(files) {
             });
             
             lastGeneratedRange = expandedItems.map(item => item.number);
-            renderUnifiedNumbers(`ข้อมูลจาก ${files.length} ไฟล์`, expandedItems, true);
+            await renderUnifiedNumbers(`ข้อมูลจาก ${files.length} ไฟล์`, expandedItems, true);
         }
 
         statusEl.textContent = `✅ สำเร็จ พบข้อมูล ${allItems.length} รายการ`;
