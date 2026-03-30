@@ -167,7 +167,7 @@ function toggleMainRangeInputs() {
 
 async function unifiedMainSearch() {
     const inputEl = document.getElementById('smart-main-input');
-    let input = inputEl.value.trim().toUpperCase();
+    let input = inputEl.value.trim().toUpperCase().replace(/\s+/g, '');
     const isRange = document.getElementById('smart-main-range-toggle')?.checked;
     
     if (!input) {
@@ -253,7 +253,7 @@ function unifiedSingleCheckNew(input, inputEl) {
         resultArea.innerHTML = `
             <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <h4 style="margin: 0 0 15px 0; font-size: 1.2rem; display:flex; justify-content:space-between; align-items:center;">
-                    <span>ผลการตรวจสอบ: <span style="font-family:monospace; color:#0d47a1; background:#f0f7ff; padding:2px 6px; border-radius:4px;">${TrackingUtils.formatTrackingNumber(input)}</span></span>
+                    <span>ผลการตรวจสอบ: <span style="font-family:monospace; color:#0d47a1; background:#f0f7ff; padding:2px 6px; border-radius:4px;">${TrackingUtils.formatTrackingNumber(validTarget)}</span></span>
                 </h4>
                 
                 <div style="display:flex; flex-direction:column; gap: 15px;">
