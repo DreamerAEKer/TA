@@ -480,12 +480,22 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                     </div>
                 `;
             } else {
-                // --- ISOLATED CLUSTER RENDERING (v1.65/v1.66 Toggle) ---
+                // --- ISOLATED CLUSTER RENDERING (v1.66 Fix) ---
                 const { main, satellites } = series[0];
                 const clusterStyle = 'margin-bottom:8px; border:1px solid #eee; border-radius:10px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.03);';
                 
-                const beforeSats = satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt < parseExceptionTrackNum(main.number).bodyInt);
-                const afterSats = satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt > parseExceptionTrackNum(main.number).bodyInt);
+                const pMain = parseExceptionTrackNum(main.number);
+                
+                // Separate into before/after for logical ordering in expanded view
+                const beforeSats = satellites.filter(s => {
+                    const pS = parseExceptionTrackNum(s.number);
+                    return pS && pMain && pS.bodyInt < pMain.bodyInt;
+                });
+                const afterSats = satellites.filter(s => {
+                    const pS = parseExceptionTrackNum(s.number);
+                    return pS && pMain && pS.bodyInt > pMain.bodyInt;
+                });
+                
                 const hasSats = beforeSats.length > 0 || afterSats.length > 0;
 
                 html += `<div style="${clusterStyle}">`;
@@ -495,6 +505,7 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
 
                 if (hasSats) {
                     html += `<div class="satellite-wrapper">`;
+                    // Ordered: Before then After
                     [...beforeSats, ...afterSats].forEach(row => {
                         if (!displayedInGroup.has(row.number)) {
                             displayedInGroup.add(row.number);
