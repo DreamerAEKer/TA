@@ -521,8 +521,9 @@ function renderUnifiedRow(row, groupId, companyEscaped) {
                     </div>
                 ` : ''}
             </div>
-            <div style="padding-right:10px;">
+            <div style="padding-right:10px; display:flex; gap:4px;">
                 <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${row.number}').then(()=>alert('คัดลอก ${row.number}'))">📋</button>
+                <button class="btn btn-trace" style="padding:1px 5px; font-size:0.65rem;" title="เช็คสถานะ" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${row.number}&lang=th', '_blank')">🔍</button>
             </div>
         </div>
     `;
