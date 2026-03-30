@@ -424,40 +424,55 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
 
         seriesList.forEach((series, sIdx) => {
             const isSingleSerie = series.length === 1;
-            const seriesStyle = !isSingleSerie ? 'border:1px solid #90caf9; background:#fff; margin-bottom:12px; border-radius:8px; padding:8px; box-shadow:0 2px 4px rgba(2,136,209,0.05);' : '';
-            const seriesHeader = !isSingleSerie ? `<div style="font-size:0.7rem; color:#0288d1; font-weight:bold; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px;">📦 กลุ่มเลขรันต่อเนื่อง (${series.length} ชุด)</div>` : '';
-
-            html += `<div style="${seriesStyle}">${seriesHeader}`;
 
             if (!isSingleSerie) {
-                // --- BRIDGE RENDERING FOR CONSECUTIVE SERIES ---
+                // --- BRIDGE RENDERING FOR CONSECUTIVE SERIES (v1.66) ---
                 const firstMain = series[0].main;
                 const lastMain  = series[series.length - 1].main;
-                const pFirst = parseExceptionTrackNum(firstMain.number);
-                const pLast  = parseExceptionTrackNum(lastMain.number);
-
-                const leadingSats = series[0].satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt < pFirst.bodyInt);
-                const trailingSats = series[series.length - 1].satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt > pLast.bodyInt);
-                const allMains = series.map(s => s.main);
-
-                // Group all into one toggleable block for the series
-                const hasAnySats = leadingSats.length > 0 || trailingSats.length > 0;
                 
-                // Show a combined "Summary" row for the whole series that can toggle sats
+                const startStr = TrackingUtils.formatTrackingNumber(firstMain.number);
+                const endStr = TrackingUtils.formatTrackingNumber(lastMain.number);
+                
                 const seriesTitleRow = { 
-                    number: `${firstMain.number.substring(0,10)}...${lastMain.number.substring(10)}`, 
-                    isCenter: true, offset: 0, status: 'ชุดเลขรันต่อเนื่อง' 
+                    number: `${startStr} ถึง ${endStr}`, 
+                    isCenter: true, 
+                    offset: 0, 
+                    status: `กลุ่มเลขรันต่อเนื่อง (${series.length} ชุด)` 
                 };
 
+                const leadingSats = series[0].satellites.filter(s => {
+                   const pS = parseExceptionTrackNum(s.number);
+                   const pF = parseExceptionTrackNum(firstMain.number);
+                   return pS && pF && pS.bodyInt < pF.bodyInt;
+                });
+
+                const trailingSats = series[series.length - 1].satellites.filter(s => {
+                   const pS = parseExceptionTrackNum(s.number);
+                   const pL = parseExceptionTrackNum(lastMain.number);
+                   return pS && pL && pS.bodyInt > pL.bodyInt;
+                });
+                
+                const allMains = series.map(s => s.main);
+                const hasAnySats = true; // Series always expandable manually
+
                 html += `
-                    <div style="border:1px solid #90caf9; border-radius:8px; overflow:hidden; background:white;">
+                    <div style="border:1px solid #90caf9; border-radius:10px; overflow:hidden; background:white; margin-bottom:12px; box-shadow:0 3px 10px rgba(2,136,209,0.08);">
                         ${renderUnifiedRow(seriesTitleRow, groupId, companyEscaped, hasAnySats)}
                         <div class="satellite-wrapper">
+                             ${leadingSats.map(s => {
+                                 if (displayedInGroup.has(s.number)) return '';
+                                 displayedInGroup.add(s.number);
+                                 return renderUnifiedRow(s, groupId, companyEscaped);
+                             }).join('')}
+
                              ${allMains.map(m => {
+                                 if (displayedInGroup.has(m.number)) return '';
                                  displayedInGroup.add(m.number);
                                  return renderUnifiedRow(m, groupId, companyEscaped);
                              }).join('')}
-                             ${[...leadingSats, ...trailingSats].map(s => {
+
+                             ${trailingSats.map(s => {
+                                 if (displayedInGroup.has(s.number)) return '';
                                  displayedInGroup.add(s.number);
                                  return renderUnifiedRow(s, groupId, companyEscaped);
                              }).join('')}
@@ -465,7 +480,7 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                     </div>
                 `;
             } else {
-                // --- ISOLATED CLUSTER RENDERING (v1.65 Toggle) ---
+                // --- ISOLATED CLUSTER RENDERING (v1.65/v1.66 Toggle) ---
                 const { main, satellites } = series[0];
                 const clusterStyle = 'margin-bottom:8px; border:1px solid #eee; border-radius:10px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.03);';
                 
@@ -475,24 +490,21 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
 
                 html += `<div style="${clusterStyle}">`;
                 
-                // 1. Render Main Row (The Toggle)
                 displayedInGroup.add(main.number);
                 html += renderUnifiedRow(main, groupId, companyEscaped, hasSats);
 
-                // 2. Wrap Satellites in animated container
                 if (hasSats) {
                     html += `<div class="satellite-wrapper">`;
                     [...beforeSats, ...afterSats].forEach(row => {
-                        displayedInGroup.add(row.number);
-                        html += renderUnifiedRow(row, groupId, companyEscaped);
+                        if (!displayedInGroup.has(row.number)) {
+                            displayedInGroup.add(row.number);
+                            html += renderUnifiedRow(row, groupId, companyEscaped);
+                        }
                     });
                     html += `</div>`;
                 }
-
-                html += `</div>`; // End Cluster
+                html += `</div>`; 
             }
-
-            html += `</div>`; // End Series (or isolated container)
         });
 
         html += `</div></div>`;
