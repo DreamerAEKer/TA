@@ -446,12 +446,14 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                 };
 
                 const leadingSats = series[0].satellites.filter(s => {
+                   if (typeof s.offset !== 'undefined') return s.offset < 0;
                    const pS = parseExceptionTrackNum(s.number);
                    const pF = parseExceptionTrackNum(firstMain.number);
                    return pS && pF && pS.bodyInt < pF.bodyInt;
                 });
 
                 const trailingSats = series[series.length - 1].satellites.filter(s => {
+                   if (typeof s.offset !== 'undefined') return s.offset > 0;
                    const pS = parseExceptionTrackNum(s.number);
                    const pL = parseExceptionTrackNum(lastMain.number);
                    return pS && pL && pS.bodyInt > pL.bodyInt;
@@ -493,10 +495,12 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                 
                 // Separate into before/after for logical ordering in expanded view
                 const beforeSats = satellites.filter(s => {
+                    if (typeof s.offset !== 'undefined') return s.offset < 0;
                     const pS = parseExceptionTrackNum(s.number);
                     return pS && pMain && pS.bodyInt < pMain.bodyInt;
                 });
                 const afterSats = satellites.filter(s => {
+                    if (typeof s.offset !== 'undefined') return s.offset > 0;
                     const pS = parseExceptionTrackNum(s.number);
                     return pS && pMain && pS.bodyInt > pMain.bodyInt;
                 });
