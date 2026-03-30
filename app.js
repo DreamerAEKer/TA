@@ -359,6 +359,9 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
         const groupId = `group-${groupIdx}`;
         const companyEscaped = company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '');
 
+        // --- DEDUPLICATION STATE ---
+        const displayedInGroup = new Set();
+
         // --- HIERARCHICAL GROUPING LOGIC ---
         // 1. Identify "Main" items and "Satellites"
         const mainItems = groupItems.filter(i => i.isCenter).sort((a, b) => a.number.localeCompare(b.number));
@@ -382,7 +385,6 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
             }
             
             // Find satellites for this main item
-            // Typically satellites have the same prefix/suffix and are within offset range
             const satellites = groupItems.filter(i => {
                 if (i.isCenter) return false;
                 const pSat = parseExceptionTrackNum(i.number);
@@ -419,61 +421,94 @@ function renderUnifiedNumbers(title, items, isOcr = false) {
 
             html += `<div style="${seriesStyle}">${seriesHeader}`;
 
-            series.forEach((cluster, cIdx) => {
-                const { main, satellites } = cluster;
+            if (!isSingleSerie) {
+                // --- BRIDGE RENDERING FOR CONSECUTIVE SERIES ---
+                // Avoid duplication in clusters within a series box.
+                // Just render one clean sequential list within the series-box.
+                html += `<div style="border:1px solid #eee; border-radius:6px; background:white; overflow:hidden;">`;
+                
+                const firstMain = series[0].main;
+                const lastMain  = series[series.length - 1].main;
+                const pFirst = parseExceptionTrackNum(firstMain.number);
+                const pLast  = parseExceptionTrackNum(lastMain.number);
+
+                // Collect only leading satellites from first, and trailing from last
+                const leadingSats = series[0].satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt < pFirst.bodyInt);
+                const trailingSats = series[series.length - 1].satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt > pLast.bodyInt);
+                
+                const allMains = series.map(s => s.main);
+                
+                // Combine and render (Deduplicate)
+                [...leadingSats, ...allMains, ...trailingSats].forEach(row => {
+                    if (displayedInGroup.has(row.number)) return;
+                    displayedInGroup.add(row.number);
+                    html += renderUnifiedRow(row, groupId, companyEscaped);
+                });
+                
+                html += `</div>`; // End Bridge box
+            } else {
+                // --- ISOLATED CLUSTER RENDERING ---
+                const { main, satellites } = series[0];
                 const clusterStyle = 'margin-bottom:8px; border:1px solid #eee; border-radius:6px; background:white; overflow:hidden;';
                 
                 html += `<div style="${clusterStyle}">`;
-
-                // Render rows within cluster
-                const allRows = [...satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt < parseExceptionTrackNum(main.number).bodyInt), 
+                const allRowsInCluster = [...satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt < parseExceptionTrackNum(main.number).bodyInt), 
                                  main, 
                                  ...satellites.filter(s => parseExceptionTrackNum(s.number).bodyInt > parseExceptionTrackNum(main.number).bodyInt)];
 
-                allRows.forEach((row, rIdx) => {
-                    const rowStyle = row.isCenter ? 'background:#fff9c4;' : 'background:#fff;';
-                    const indexLabel = row.isCenter ? '🚩' : Math.abs(row.offset);
-                    const indexColor = row.isCenter ? '#d32f2f' : '#bbb';
-
-                    const pRow = parseExceptionTrackNum(row.number);
-                    const metadataJson = JSON.stringify({ status: row.status || '', datetime: row.datetime || '' }).replace(/"/g, "&quot;");
-
-                    html += `
-                        <div style="${rowStyle} display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem;">
-                            <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
-                                ${row.isCenter ? `
-                                    <input type="checkbox" class="group-checkbox-${groupId}" value="${row.number}" 
-                                        data-metadata="${metadataJson}"
-                                        style="width:17px; height:17px; cursor:pointer;" checked>
-                                ` : ''}
-                            </div>
-                            <div style="width:30px; text-align:center; font-weight:bold; font-size:0.7rem; color:${indexColor};">${indexLabel}</div>
-                            <div style="width:35px; text-align:center;">
-                                <button class="btn" style="padding:2px 5px; font-size:1rem; border:none; background:none; color:#2e7d32; cursor:pointer;" title="รายงานรายการนี้" onclick="stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
-                            </div>
-                            <div style="flex:1; font-family:monospace; font-weight:bold; color:#333; padding:8px 5px;">
-                                ${TrackingUtils.formatTrackingNumber(row.number)}
-                                ${row.status || row.datetime ? `
-                                    <div style="font-size:0.72rem; color:#0288d1; margin-top:1px; font-style:italic;">
-                                        ${row.status ? `[${row.status}] ` : ''}${row.datetime || ''}
-                                    </div>
-                                ` : ''}
-                            </div>
-                            <div style="padding-right:10px;">
-                                <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${row.number}').then(()=>alert('คัดลอก ${row.number}'))">📋</button>
-                            </div>
-                        </div>
-                    `;
+                allRowsInCluster.forEach(row => {
+                    if (displayedInGroup.has(row.number)) return;
+                    displayedInGroup.add(row.number);
+                    html += renderUnifiedRow(row, groupId, companyEscaped);
                 });
-
                 html += `</div>`; // End Cluster
-            });
+            }
 
-            html += `</div>`; // End Series
+            html += `</div>`; // End Series (or isolated container)
         });
 
         html += `</div></div>`;
     });
+}
+
+/**
+ * Helper to render a single row in the Results Sidebar.
+ */
+function renderUnifiedRow(row, groupId, companyEscaped) {
+    const rowStyle = row.isCenter ? 'background:#fff9c4;' : 'background:#fff;';
+    const indexLabel = row.isCenter ? '🚩' : Math.abs(row.offset);
+    const indexColor = row.isCenter ? '#d32f2f' : '#bbb';
+    const trackColor = row.isCenter ? '#333' : '#999';
+    const opacity    = row.isCenter ? '1' : '0.85';
+
+    const metadataJson = JSON.stringify({ status: row.status || '', datetime: row.datetime || '' }).replace(/"/g, "&quot;");
+
+    return `
+        <div style="${rowStyle} opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem;">
+            <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
+                ${row.isCenter ? `
+                    <input type="checkbox" class="group-checkbox-${groupId}" value="${row.number}" 
+                        data-metadata="${metadataJson}"
+                        style="width:17px; height:17px; cursor:pointer;" checked>
+                ` : ''}
+            </div>
+            <div style="width:30px; text-align:center; font-weight:bold; font-size:0.7rem; color:${indexColor};">${indexLabel}</div>
+            <div style="width:35px; text-align:center;">
+                <button class="btn" style="padding:2px 5px; font-size:1rem; border:none; background:none; color:#2e7d32; cursor:pointer;" title="รายงานรายการนี้" onclick="stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
+            </div>
+            <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
+                ${TrackingUtils.formatTrackingNumber(row.number)}
+                ${row.status || row.datetime ? `
+                    <div style="font-size:0.72rem; color:#0288d1; margin-top:1px; font-style:italic; filter:grayscale(30%);">
+                        ${row.status ? `[${row.status}] ` : ''}${row.datetime || ''}
+                    </div>
+                ` : ''}
+            </div>
+            <div style="padding-right:10px;">
+                <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${row.number}').then(()=>alert('คัดลอก ${row.number}'))">📋</button>
+            </div>
+        </div>
+    `;
 
     html += `</div>`;
     resultArea.innerHTML = html;
