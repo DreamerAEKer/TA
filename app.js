@@ -513,11 +513,9 @@ function renderUnifiedRow(row, groupId, companyEscaped) {
             </div>
             <div style="width:30px; text-align:center; font-weight:bold; font-size:0.7rem; color:${indexColor};">${indexLabel}</div>
             <div style="width:35px; text-align:center;">
-                <button class="btn btn-flag-green" title="รายงานรายการนี้" onclick="stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M5 21V4.5C5 4.22386 5.22386 4 5.5 4H13.5L14.5 6H19.5C19.7761 6 20 6.22386 20 6.5V14.5C20 14.7761 19.7761 15 19.5 15H14.5L13.5 13H6V21H5Z" fill="#2e7d32" stroke="#1b5e20" stroke-width="1.5" stroke-linejoin="round"/>
-                    </svg>
-                </button>
+                ${row.isCenter ? `
+                <button class="btn" style="padding:2px 5px; font-size:1.4rem; border:none; background:none; cursor:pointer; filter: hue-rotate(100deg) brightness(0.8) saturate(3);" title="รายงานรายการนี้" onclick="stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
+                ` : ''}
             </div>
             <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
                 ${TrackingUtils.formatTrackingNumber(row.number)}
