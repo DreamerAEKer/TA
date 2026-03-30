@@ -27,14 +27,15 @@ function switchTab(tabId) {
 }
 
 // Global Event Listeners (Run on load)
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof CustomerDB !== 'undefined') await CustomerDB.init();
     checkAuth();
     
     // Auto-init Exception Report if visible
     if (document.getElementById('exception-table-container')) {
         console.log("DOMContentLoaded: Initializing Exception Report Features...");
         loadExceptionMeta(); 
-        renderExceptionTable();
+        await renderExceptionTable();
     }
 
     // --- Old tools consolidated into Smart Workspace ---
@@ -73,10 +74,10 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * Real-time warning for Report Draft inputs if number exists in DB
  */
-function checkDbWarningForReport(el) {
+async function checkDbWarningForReport(el) {
     const val = el.value.trim().toUpperCase().replace(/\s+/g, '');
     if (val.length === 13) {
-        const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(val) : null;
+        const owner = typeof CustomerDB !== 'undefined' ? await CustomerDB.get(val) : null;
         if (owner) {
             el.style.backgroundColor = "#ffebee";
             el.style.border = "1px solid #f44336";
@@ -182,7 +183,7 @@ async function unifiedMainSearch() {
     }
 }
 
-function unifiedGenerateRangeNew(center, centerInput) {
+async function unifiedGenerateRangeNew(center, centerInput) {
     const qty = parseInt(document.getElementById('smart-range-qty')?.value) || 0;
     const prev = parseInt(document.getElementById('smart-range-prev').value) || 0;
     const next = parseInt(document.getElementById('smart-range-next').value) || 0;
@@ -208,32 +209,32 @@ function unifiedGenerateRangeNew(center, centerInput) {
     // Show summary badge
     summaryArea.innerHTML = `<span class="badge badge-primary">${list.length} รายการ</span>`;
 
-    // Use shared renderer
-    renderUnifiedNumbers(`สร้างจากเลข: ${center}`, list, false);
+    // Use shared renderer (NOW ASYNC)
+    await renderUnifiedNumbers(`สร้างจากเลข: ${center}`, list, false);
 
     const copyBar = document.getElementById('smart-copy-all-bar');
     if (copyBar) copyBar.classList.remove('hidden');
 }
 
-function unifiedSingleCheckNew(input, inputEl) {
+async function unifiedSingleCheckNew(input, inputEl) {
     const resultArea = document.getElementById('smart-unified-results');
     const summaryArea = document.getElementById('smart-result-summary');
     
     const validation = TrackingUtils.validateTrackingNumber(input);
-    const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(input) : null;
+    const owner = typeof CustomerDB !== 'undefined' ? await CustomerDB.get(input) : null;
     
-    // Row 1 Logic (Always show for the main searched number)
+    // Row 1 Logic
     let row1Html = '';
     let validTarget = input;
     if (validation.isValid) {
-        row1Html = `<span style="color:#28a745; font-size:1.1rem;">✅ <strong>โครงสร้างเลขถูกต้อง</strong> (Check Digit Valid)</span>`;
+        row1Html = `<span style="color:#28a745; font-size:1.1rem;">✅ <strong>โครงสร้างเลขถูกต้อง</strong></span>`;
     } else {
         if (validation.suggestion) {
             row1Html = `
                 <div style="display:flex; flex-direction:column; gap:8px;">
                     <span style="color:#d32f2f; font-weight:bold; font-size:1.1rem;">❌ โครงสร้างเลขผิด: ${validation.error}</span>
                     <div style="background:#e8f5e9; padding:8px 12px; border-left:4px solid #28a745; border-radius:4px;">
-                        <span style="color:#28a745; font-weight:bold;">👉 เลขที่ถูกต้องน่าจะเป็น: ${validation.suggestion}</span>
+                        <span style="color:#28a745; font-weight:bold;">👉 แนะนำ: ${validation.suggestion}</span>
                         <button class="btn btn-primary" style="margin-left:10px; padding:4px 8px; font-size:0.8rem;" onclick="document.getElementById('smart-main-input').value='${validation.suggestion}'; unifiedMainSearch();">ใช้เลขนี้แทน</button>
                     </div>
                 </div>`;
@@ -244,9 +245,7 @@ function unifiedSingleCheckNew(input, inputEl) {
     }
 
     if (owner) {
-        // FOUND in DB: Show Premium Single Result View
         summaryArea.innerHTML = `<span class="badge badge-primary">พบในฐานข้อมูล 1 รายการ</span>`;
-        
         const dateStr = owner.timestamp ? `(บันทึกเมื่อ ${new Date(owner.timestamp).toLocaleDateString('th-TH')})` : '';
         const row2Html = `<span style="color:#0056b3; font-size:1.05rem;">🏢 พบในฐานข้อมูลของคุณ: <strong>${owner.name}</strong> <span style="font-size:0.85rem; color:#666;">${dateStr}</span></span>`;
 
@@ -321,24 +320,31 @@ function copyAllUnifiedNumbers() {
  * Shared helper to render numbers in the Right Hand "Results" section.
  * Groups by Company and adds the "Add to Report" (🚩) action on the left.
  */
-function renderUnifiedNumbers(title, items, isOcr = false) {
+async function renderUnifiedNumbers(title, items, isOcr = false) {
     console.log("DEBUG: renderUnifiedNumbers called with:", title, items.length, "items");
     const resultArea = document.getElementById('smart-unified-results');
     const summaryArea = document.getElementById('smart-result-summary');
     
+    // FETCH OWNERS IN PARALLEL (v1.64 Async)
+    const enrichedItems = await Promise.all(items.map(async item => {
+        const num = typeof item === 'string' ? item : item.number;
+        const owner = typeof CustomerDB !== 'undefined' ? await CustomerDB.get(num) : null;
+        return {
+            number: num,
+            owner,
+            offset: item.offset || 0,
+            isCenter: item.isCenter || false,
+            status: item.status || '',
+            datetime: item.datetime || ''
+        };
+    }));
+
     // Sort into groups based on CustomerDB
     const groups = {};
-    items.forEach(item => {
-        const num = typeof item === 'string' ? item : item.number;
-        const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(num) : null;
-        const groupName = owner ? owner.name : 'ไม่มีในฐานข้อมูล (Unknown Sender)';
+    enrichedItems.forEach(item => {
+        const groupName = item.owner ? item.owner.name : 'ไม่มีในฐานข้อมูล (Unknown Sender)';
         if (!groups[groupName]) groups[groupName] = [];
-        groups[groupName].push({ 
-            number: num, 
-            owner, 
-            offset: item.offset || 0, 
-            isCenter: item.isCenter || false 
-        });
+        groups[groupName].push(item);
     });
 
     // Update global list for "Copy All" - ONLY center (Main) numbers
@@ -2721,7 +2727,7 @@ function draftReportFromGroup(prefix) {
 /**
  * Pre-fills the exception form from search results.
  */
-function stagingQuickReport(tracks, companyName, metadata = {}) {
+async function stagingQuickReport(tracks, companyName, metadata = {}) {
     console.log("DEBUG: stagingQuickReport called with:", tracks.length, "tracks for", companyName, "metadata:", metadata);
     if (!tracks || tracks.length === 0) return;
 
@@ -2737,16 +2743,18 @@ function stagingQuickReport(tracks, companyName, metadata = {}) {
         }
     }
 
-    // --- DB Warning Check ---
+    // --- DB Warning Check (Async) ---
     let knownCount = 0;
-    let knownNames = new Set();
-    tracks.forEach(num => {
-        const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(num) : null;
-        if (owner) {
-            knownCount++;
-            knownNames.add(owner.name);
-        }
-    });
+    const knownNames = new Set();
+    if (typeof CustomerDB !== 'undefined') {
+        const owners = await Promise.all(tracks.map(n => CustomerDB.get(n)));
+        owners.forEach(owner => {
+            if (owner) {
+                knownCount++;
+                knownNames.add(owner.name);
+            }
+        });
+    }
 
     if (knownCount > 0) {
         const names = Array.from(knownNames).join(', ');
@@ -3079,7 +3087,7 @@ function buildExceptionTrackNum(prefix, bodyInt, suffix) {
 /**
  * Main save: collects all inputs and saves as one session.
  */
-function addExceptionEntry() {
+async function addExceptionEntry() {
     const isRange = document.getElementById('exception-range-toggle').checked;
     const reason = document.getElementById('exception-reason-input').value.trim();
     const category = document.getElementById('exception-category').value;
@@ -3156,36 +3164,35 @@ function addExceptionEntry() {
     const originalHtml = btn ? btn.innerHTML : 'บันทึก (Save)';
     if (btn) window.setButtonLoading(btn, true);
 
-    setTimeout(() => {
-        const savedId = ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime, exceptionImages, currentEditingSessionId, metadata);
-        
-        if (btn) window.setButtonLoading(btn, false, originalHtml);
+    // v1.64: ASYNC SAVE
+    const savedId = await ExceptionManager.saveSession(trackNums, companyName, reason, firstStatus, dateTime, exceptionImages, currentEditingSessionId, metadata);
+    
+    if (btn) window.setButtonLoading(btn, false, originalHtml);
 
-        if (!savedId) return;
-        
-        window.showToast(`บันทึกเรียบร้อย! (${trackNums.length} รายการ)`);
-        
-        // Clear state
-        currentEditingSessionId = null;
-        clearExceptionImages();
+    if (!savedId) return;
+    
+    window.showToast(`บันทึกเรียบร้อย! (${trackNums.length} รายการ)`);
+    
+    // Clear state
+    currentEditingSessionId = null;
+    clearExceptionImages();
 
-        // Reset inputs
-        document.getElementById('exception-track-input').value = '';
-        document.getElementById('exception-start-input').value = '';
-        document.getElementById('exception-end-input').value = '';
-        document.getElementById('exception-range-preview').textContent = '';
-        document.getElementById('exception-extra-items').innerHTML = '';
-        
-        // Reset date/time pickers to empty
-        const dpicker = document.getElementById('exception-date-picker');
-        const tpicker = document.getElementById('exception-time-picker');
-        if (dpicker) dpicker.value = '';
-        if (tpicker) tpicker.value = '';
-        updateBEDisplay();
-        extraItemCount = 0;
+    // Reset inputs
+    document.getElementById('exception-track-input').value = '';
+    document.getElementById('exception-start-input').value = '';
+    document.getElementById('exception-end-input').value = '';
+    document.getElementById('exception-range-preview').textContent = '';
+    document.getElementById('exception-extra-items').innerHTML = '';
+    
+    // Reset date/time pickers to empty
+    const dpicker = document.getElementById('exception-date-picker');
+    const tpicker = document.getElementById('exception-time-picker');
+    if (dpicker) dpicker.value = '';
+    if (tpicker) tpicker.value = '';
+    updateBEDisplay();
+    extraItemCount = 0;
 
-        renderExceptionTable();
-    }, 500);
+    await renderExceptionTable();
 
     // Scroll to the new entry
     const container = document.getElementById('exception-table-container');
@@ -3249,8 +3256,9 @@ function setExceptionFilter(mode) {
 /**
  * Clear only items visible in the current filter
  */
-function clearFilteredExceptions() {
-    const all = ExceptionManager.getAll();
+async function clearFilteredExceptions() {
+    if (!confirm("ยืนยันการล้างรายการที่แสดงอยู่หรือไม่?")) return;
+    const all = await ExceptionManager.getAll();
     const today = new Date().toISOString().split('T')[0];
     
     let toKeep = [];
@@ -3266,8 +3274,8 @@ function clearFilteredExceptions() {
         });
     }
     
-    localStorage.setItem('thp_exception_db_v1', JSON.stringify(toKeep));
-    renderExceptionTable();
+    await StorageV2.set(EXCEPTION_KEY, toKeep);
+    await renderExceptionTable();
 }
 
 function validateCheckDigitUI(trackNum) {
@@ -3281,12 +3289,12 @@ function validateCheckDigitUI(trackNum) {
 /**
  * Render the current draft report in a clean, card-based list.
  */
-function renderExceptionTable() {
+async function renderExceptionTable() {
     const container = document.getElementById('exception-table-container');
     const exportBar = document.getElementById('exception-export-bar');
     if (!container) return;
 
-    let exceptions = (typeof ExceptionManager !== 'undefined') ? ExceptionManager.getAll() : [];
+    let exceptions = (typeof ExceptionManager !== 'undefined') ? await ExceptionManager.getAll() : [];
     
     // Apply Filter
     const todayStr = new Date().toISOString().split('T')[0];

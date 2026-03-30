@@ -227,7 +227,7 @@ function toggleSmartRange() {
     }
 }
 
-function addSmartEntryAndSave() {
+async function addSmartEntryAndSave() {
     // Validate Customer Name first
     const dbNameInput = document.getElementById('db-name');
     const name = dbNameInput ? dbNameInput.value.trim() : '';
@@ -249,94 +249,68 @@ function addSmartEntryAndSave() {
     const isRange = document.getElementById('smart-range-enable').checked;
 
     // Validation
-    if (prefix.length !== 2) {
-        alert('กรุณากรอก อักษร (Prefix) 2 ตัว'); return;
-    }
-    if (b1.length !== 4) {
-        alert('กรุณากรอก เลขชุดหน้า (4 หลัก)'); return;
-    }
-    if (b2.length !== 4) {
-        alert('กรุณากรอก เลขชุดหลัง (4 หลัก)'); return;
-    }
-    if (suffix.length !== 2) {
-        alert('กรุณากรอก Suffix 2 ตัวอักษร'); return;
-    }
+    if (prefix.length !== 2) { alert('กรุณากรอก อักษร (Prefix) 2 ตัว'); return; }
+    if (b1.length !== 4) { alert('กรุณากรอก เลขชุดหน้า (4 หลัก)'); return; }
+    if (b2.length !== 4) { alert('กรุณากรอก เลขชุดหลัง (4 หลัก)'); return; }
+    if (suffix.length !== 2) { alert('กรุณากรอก Suffix 2 ตัวอักษร'); return; }
 
-    // Save Memories
+    // Save Memories (Sync - utils)
     PrefixManager.add(prefix);
-    Block1Manager.add(b1); // Save Block 1
+    Block1Manager.add(b1);
     renderPrefixOptions();
     renderBlock1Options();
 
     let itemsToAdd = [];
-
-    // --- Smart Input Logic ---
     if (isRange) {
         let qty = parseInt(qtyStr, 10);
-        if (isNaN(qty) || qty <= 0) {
-            alert('กรุณาระบุจำนวนที่ถูกต้อง');
-            return;
-        }
-        
+        if (isNaN(qty) || qty <= 0) { alert('กรุณาระบุจำนวนที่ถูกต้อง'); return; }
         let startNum = parseInt(b1 + b2, 10);
         for (let i = 0; i < qty; i++) {
             let currentNumStr = (startNum + i).toString().padStart(8, '0');
-            if (currentNumStr.length > 8) {
-                alert('เลขรันเกิน 8 หลักแล้ว ระบบหยุดการทำงาน');
-                break;
-            }
+            if (currentNumStr.length > 8) break;
             let checkDigit = TrackingUtils.calculateS10CheckDigit(currentNumStr);
-            if (checkDigit !== null) {
-                itemsToAdd.push(`${prefix}${currentNumStr}${checkDigit}${suffix}`);
-            }
+            if (checkDigit !== null) itemsToAdd.push(`${prefix}${currentNumStr}${checkDigit}${suffix}`);
         }
     } else {
         let currentNumStr = b1 + b2;
         let checkDigit = TrackingUtils.calculateS10CheckDigit(currentNumStr);
-        if (checkDigit !== null) {
-            itemsToAdd.push(`${prefix}${currentNumStr}${checkDigit}${suffix}`);
-        } else {
-            alert('ไม่สามารถคำนวณ Check Digit ได้');
-            return;
-        }
+        if (checkDigit !== null) itemsToAdd.push(`${prefix}${currentNumStr}${checkDigit}${suffix}`);
+        else { alert('ไม่สามารถคำนวณ Check Digit ได้'); return; }
     }
 
     if(itemsToAdd.length === 0) return;
 
-    // Save to DB directly
+    // Save to DB directly (Async v1.64)
     const btn = document.querySelector('button[onclick="addSmartEntryAndSave()"]');
     const originalText = btn ? btn.innerHTML : '💾 บันทึกข้อมูล (Save)';
     if (btn) window.setButtonLoading(btn, true);
 
-    setTimeout(() => {
-        try {
-            const batchInfo = { name, type, contract, requestDate, timestamp: new Date().getTime() };
-            const result = CustomerDB.addBatch(batchInfo, itemsToAdd);
+    try {
+        const batchInfo = { name, type, contract, requestDate, timestamp: new Date().getTime() };
+        const result = await CustomerDB.addBatch(batchInfo, itemsToAdd);
 
-            if (result && result.error === 'DUPLICATE') {
-                window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'warning');
-                return;
-            }
-
-            window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${itemsToAdd.length} รายการ สำเร็จ`);
-
-            // Complete cleanup for UI
-            document.getElementById('db-name').value = '';
-            document.getElementById('db-contract').value = '';
-            document.getElementById('db-request-date').value = '';
-            document.getElementById('smart-block2').value = '';
-            document.getElementById('smart-check-digit').value = '-';
-            
-            // Refresh tables
-            if(typeof updateDbViews === 'function') updateDbViews();
-            
-        } catch (err) {
-            console.error("addSmartEntryAndSave Error:", err);
-            // Storage Full or other Error is handled inside CustomerDB.addBatch
-        } finally {
-            if (btn) window.setButtonLoading(btn, false, originalText);
+        if (result && result.error === 'DUPLICATE') {
+            window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'warning');
+            return;
         }
-    }, 500);
+
+        window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${itemsToAdd.length} รายการ สำเร็จ`);
+
+        // Complete cleanup for UI
+        if (dbNameInput) dbNameInput.value = '';
+        if (document.getElementById('db-contract')) document.getElementById('db-contract').value = '';
+        if (document.getElementById('db-request-date')) document.getElementById('db-request-date').value = '';
+        document.getElementById('smart-block2').value = '';
+        document.getElementById('smart-check-digit').value = '-';
+        
+        // Refresh tables (Now Async)
+        if(typeof updateDbViews === 'function') await updateDbViews();
+        
+    } catch (err) {
+        console.error("addSmartEntryAndSave Error:", err);
+    } finally {
+        if (btn) window.setButtonLoading(btn, false, originalText);
+    }
 }
 
 async function handleImageSelection(files) {
