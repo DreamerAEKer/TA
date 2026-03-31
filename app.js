@@ -412,22 +412,7 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
         if (currentSeries.length > 0) seriesList.push(currentSeries);
 
         html += `
-            <div style="margin-bottom:20px; border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.06);">
-                <div style="background:#f0f7ff; padding:10px 15px; border-bottom:1px solid #e1f5fe; font-weight:bold; color:#0277bd; display:flex; justify-content:space-between; align-items:center; font-size:0.95rem; gap:10px;">
-                    <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
-                        <input type="checkbox" id="master-${groupId}" style="width:20px; height:20px; cursor:pointer;" onclick="toggleGroupCheckboxes('${groupId}', this.checked)" checked>
-                        <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${company}">
-                            <span>🏢 ${company}</span>
-                        </div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
-                        <span style="font-size:0.8rem; font-weight:normal; color:#888;">${mainItems.length} ชุดเลขหลัก</span>
-                    </div>
-                </div>
-                <div style="padding:12px; background:#fafafa;">
-        `;
-
-        seriesList.forEach((series, sIdx) => {
+            <div style="margin-bottom:20px; border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; background:#fff        seriesList.forEach((series, sIdx) => {
             const isSingleSerie = series.length === 1;
 
             if (!isSingleSerie) {
@@ -440,7 +425,7 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                 
                 const seriesTitleRow = { 
                     number: `${startStr} ถึง ${endStr}`, 
-                    isCenter: true, 
+                    isCenter: false, // Summary row should NOT be selectable for counting
                     offset: 0, 
                     status: `กลุ่มเลขรันต่อเนื่อง (${series.length} ชุด)` 
                 };
@@ -487,7 +472,7 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                     </div>
                 `;
             } else {
-                // --- ISOLATED CLUSTER RENDERING (v1.66 Fix) ---
+                // --- ISOLATED CLUSTER RENDERING (v1.70 Order Fix: Before -> Main -> After) ---
                 const { main, satellites } = series[0];
                 const clusterStyle = 'margin-bottom:8px; border:1px solid #eee; border-radius:10px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.03);';
                 
@@ -498,6 +483,55 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                     if (typeof s.offset !== 'undefined') return s.offset < 0;
                     const pS = parseExceptionTrackNum(s.number);
                     return pS && pMain && pS.bodyInt < pMain.bodyInt;
+                });
+                const afterSats = satellites.filter(s => {
+                    if (typeof s.offset !== 'undefined') return s.offset > 0;
+                    const pS = parseExceptionTrackNum(s.number);
+                    return pS && pMain && pS.bodyInt > pMain.bodyInt;
+                });
+                
+                const hasSats = beforeSats.length > 0 || afterSats.length > 0;
+
+                // IN ORDER UI (V1.70): Wrapper contains Everything if expanded
+                // However, user wants Main Search target to be visible? 
+                // Let's make it look like the Bridge UI.
+                
+                html += `<div style="${clusterStyle}">`;
+                
+                // Header of this group shows the Main Number (or Range if many)
+                html += renderUnifiedRow(main, groupId, companyEscaped, hasSats);
+
+                if (hasSats) {
+                    html += `<div class="satellite-wrapper">`;
+                    // RE-ORDERED: Only Before and After inside? 
+                    // To show Main in the middle "According to order", we need to render it again and hide the header? 
+                    // OR just render BEFORE -> ARROW -> AFTER.
+                    
+                    beforeSats.forEach(row => {
+                        if (!displayedInGroup.has(row.number)) {
+                            displayedInGroup.add(row.number);
+                            html += renderUnifiedRow(row, groupId, companyEscaped);
+                        }
+                    });
+                    
+                    // Render Main again inside to maintain real order? 
+                    // If Main is already in header, we don't repeat it to keep it clean.
+                    // But user asked for "In order". Let's repeat if it makes sense.
+                    // Actually, let's just render BEFORE then AFTER. 
+                    // The Header row *is* the main one.
+                    
+                    afterSats.forEach(row => {
+                        if (!displayedInGroup.has(row.number)) {
+                            displayedInGroup.add(row.number);
+                            html += renderUnifiedRow(row, groupId, companyEscaped);
+                        }
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            }
+        });
+bodyInt;
                 });
                 const afterSats = satellites.filter(s => {
                     if (typeof s.offset !== 'undefined') return s.offset > 0;
@@ -557,7 +591,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
     const indexLabel = row.isCenter ? '•' : Math.abs(row.offset);
     const indexColor = row.isCenter ? '#d32f2f' : '#bbb';
     const trackColor = row.isCenter ? '#333' : '#999';
-    const opacity    = row.isCenter ? '1' : '0.85';
+    const opacity    = row.isCenter ? '1' : '0.6';
 
     const metadataJson = JSON.stringify({ status: row.status || '', datetime: row.datetime || '' }).replace(/"/g, "&quot;");
 
