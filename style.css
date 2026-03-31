@@ -897,7 +897,7 @@ body.user-mode button[onclick="confirmAndBackup()"] {
 }
 
 .satellite-wrapper.expanded {
-    max-height: 1000px;
+    max-height: 5000px;
     opacity: 1;
     border-bottom: 2px solid #e1f5fe;
 }
