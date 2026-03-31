@@ -169,218 +169,120 @@ function toggleMainRangeInputs() {
 async function unifiedMainSearch() {
     const inputEl = document.getElementById('smart-main-input');
     let input = inputEl.value.trim().toUpperCase().replace(/\s+/g, '');
-    const isRange = document.getElementById('smart-main-range-toggle')?.checked;
-    
-    if (!input) {
-        alert('กรุณากรอกเลขพัสดุ');
-        return;
-    }
-    
-    if (isRange) {
-        unifiedGenerateRangeNew(input, inputEl);
-    } else {
-        unifiedSingleCheckNew(input, inputEl);
-    }
-}
+    const isRange = document./**
+ * BATCH SEARCH: Generate a range of numbers to check.
+ * v1.70: Includes 1 neighbor before and after for context.
+ */
+async function unifiedGenerateRangeNew() {
+    const startRaw = document.getElementById('exception-start-input').value.trim().toUpperCase().replace(/\s+/g, '');
+    const endRaw   = document.getElementById('exception-end-input').value.trim().toUpperCase().replace(/\s+/g, '');
 
-async function unifiedGenerateRangeNew(center, centerInput) {
-    const qty = parseInt(document.getElementById('smart-range-qty')?.value) || 0;
-    const prev = parseInt(document.getElementById('smart-range-prev').value) || 0;
-    const next = parseInt(document.getElementById('smart-range-next').value) || 0;
-    const effectivePrev = (prev === 0 && next === 0 && qty > 0) ? Math.floor(qty / 2) : prev;
-    const effectiveNext = (prev === 0 && next === 0 && qty > 0) ? (qty - Math.floor(qty / 2)) : next;
-    const finalPrev = Math.max(effectivePrev, prev);
-    const finalNext = Math.max(effectiveNext, next);
-    const resultArea = document.getElementById('smart-unified-results');
-    const summaryArea = document.getElementById('smart-result-summary');
-
-    const validation = TrackingUtils.validateTrackingNumber(center);
-    if (!validation.isValid && validation.suggestion) {
-        center = validation.suggestion;
-        centerInput.value = center;
-    } else if (!validation.isValid) {
-        alert('เลขไม่ถูกต้อง: ' + validation.error);
+    if (!startRaw || !endRaw) {
+        alert('กรุณาระบุเลขเริ่มต้นและสุดท้าย');
         return;
     }
 
-    const list = TrackingUtils.generateTrackingRange(center, finalPrev, finalNext);
-    lastGeneratedRange = list.map(item => item.number);
-    
-    // Show summary badge
-    summaryArea.innerHTML = `<span class="badge badge-primary">${list.length} รายการ</span>`;
+    const startParsed = parseExceptionTrackNum(startRaw);
+    const endParsed   = parseExceptionTrackNum(endRaw);
 
-    // Use shared renderer (NOW ASYNC)
-    await renderUnifiedNumbers(`สร้างจากเลข: ${center}`, list, false);
-
-    const copyBar = document.getElementById('smart-copy-all-bar');
-    if (copyBar) copyBar.classList.remove('hidden');
-}
-
-async function unifiedSingleCheckNew(input, inputEl) {
-    const resultArea = document.getElementById('smart-unified-results');
-    const summaryArea = document.getElementById('smart-result-summary');
-    
-    const validation = TrackingUtils.validateTrackingNumber(input);
-    const owner = typeof CustomerDB !== 'undefined' ? await CustomerDB.get(input) : null;
-    
-    // Row 1 Logic
-    let row1Html = '';
-    let validTarget = input;
-    if (validation.isValid) {
-        row1Html = `<span style="color:#28a745; font-size:1.1rem;">✅ <strong>โครงสร้างเลขถูกต้อง</strong></span>`;
-    } else {
-        if (validation.suggestion) {
-            row1Html = `
-                <div style="display:flex; flex-direction:column; gap:8px;">
-                    <span style="color:#d32f2f; font-weight:bold; font-size:1.1rem;">❌ โครงสร้างเลขผิด: ${validation.error}</span>
-                    <div style="background:#e8f5e9; padding:8px 12px; border-left:4px solid #28a745; border-radius:4px;">
-                        <span style="color:#28a745; font-weight:bold;">👉 แนะนำ: ${validation.suggestion}</span>
-                        <button class="btn btn-primary" style="margin-left:10px; padding:4px 8px; font-size:0.8rem;" onclick="document.getElementById('smart-main-input').value='${validation.suggestion}'; unifiedMainSearch();">ใช้เลขนี้แทน</button>
-                    </div>
-                </div>`;
-            validTarget = validation.suggestion;
-        } else {
-            row1Html = `<span style="color:#d32f2f; font-weight:bold; font-size:1.1rem;">❌ โครงสร้างเลขผิด: ${validation.error}</span>`;
-        }
-    }
-
-    if (owner) {
-        summaryArea.innerHTML = `<span class="badge badge-primary">พบในฐานข้อมูล 1 รายการ</span>`;
-        const dateStr = owner.timestamp ? `(บันทึกเมื่อ ${new Date(owner.timestamp).toLocaleDateString('th-TH')})` : '';
-        const row2Html = `<span style="color:#0056b3; font-size:1.05rem;">🏢 พบในฐานข้อมูลของคุณ: <strong>${owner.name}</strong> <span style="font-size:0.85rem; color:#666;">${dateStr}</span></span>`;
-
-        resultArea.innerHTML = `
-            <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <h4 style="margin: 0 0 15px 0; font-size: 1.2rem; display:flex; justify-content:space-between; align-items:center;">
-                    <span>ผลการตรวจสอบ: <span style="font-family:monospace; color:#0d47a1; background:#f0f7ff; padding:2px 6px; border-radius:4px;">${TrackingUtils.formatTrackingNumber(validTarget)}</span></span>
-                </h4>
-                
-                <div style="display:flex; flex-direction:column; gap: 15px;">
-                    <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center;">
-                        ${row1Html}
-                    </div>
-                    
-                    <div style="padding: 15px; border: 1px solid #eee; border-radius: 6px; background:#fafafa; display:flex; align-items:center;">
-                        ${row2Html}
-                    </div>
-
-                    <div style="padding: 12px 15px; border: 1px solid #eee; border-radius: 6px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; border-left:4px solid #0d47a1;">
-                        <span style="font-size:1.15rem; font-family:monospace; color:#0d47a1; font-weight:bold;">${TrackingUtils.formatTrackingNumber(validTarget)}</span>
-                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <button class="btn btn-success" style="padding:6px 15px; font-size:0.9rem; white-space:nowrap; background: #2e7d32; border:none; color:white; border-radius:6px; box-shadow:0 2px 5px rgba(46,125,50,0.2);" onclick="stagingQuickReport(['${validTarget}'], '${owner.name}')">🚩 นำข้อมูลนี้ไปสร้างรายงาน</button>
-                            <button class="btn btn-neutral" style="padding:6px 12px; font-size:0.9rem; background:#fff; border:1px solid #ccc; white-space:nowrap;" onclick="navigator.clipboard.writeText('${validTarget}').then(()=>{ this.textContent='✅ คัดลอกแล้ว'; setTimeout(()=>this.textContent='📋 สำเนาเลข', 1500); })">📋 สำเนาเลข</button>
-                            <button class="btn btn-primary" style="padding:6px 12px; font-size:0.9rem; white-space:nowrap;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${validTarget}', '_blank')">🔍 สถานะ</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        lastGeneratedRange = [validTarget];
-    } else {
-        // NOT FOUND in DB: Show Range View (1 before, 1 after)
-        const cleanTarget = validTarget.replace(/\s+/g, '');
-        const list = TrackingUtils.generateTrackingRange(cleanTarget, 1, 1);
-        lastGeneratedRange = list.map(item => item.number);
-        
-        // Construct the single validation box at the top
-        const headerHtml = `
-            <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="margin-bottom:10px; font-size:0.9rem; color:#666;">ผลตรวจสอบเลขหลัก: <span style="font-family:monospace; font-weight:bold;">${TrackingUtils.formatTrackingNumber(validTarget)}</span></div>
-                ${row1Html}
-                <div style="margin-top:10px; color:#d32f2f; font-size:0.9rem; font-weight:bold;">⚪ ไม่พบในฐานข้อมูล: ระบบแสดงเลขข้างเคียงให้เลือก</div>
-            </div>
-        `;
-
-        // Render the list using the shared renderer (AWAIT FIX)
-        await renderUnifiedNumbers(`เลขข้างเคียงสำหรับ: ${validTarget}`, list, false);
-        
-        // Prepend the validation header
-        resultArea.innerHTML = headerHtml + resultArea.innerHTML;
-        
-        summaryArea.innerHTML = `<span class="badge badge-warning">ไม่พบข้อมูล (แสดงเลขใกล้เคียง ${list.length} รายการ)</span>`;
-    }
-
-    const copyBar = document.getElementById('smart-copy-all-bar');
-    if (copyBar) copyBar.classList.remove('hidden');
-}
-
-// Copy all numbers from lastGeneratedRange
-function copyAllUnifiedNumbers() {
-    if (!lastGeneratedRange || lastGeneratedRange.length === 0) {
-        alert('ไม่มีข้อมูลเลขใเค๊อพ');
+    if (!startParsed || !endParsed) {
+        alert('รูปแบบเลขไม่ถูกต้อง');
         return;
     }
-    const text = lastGeneratedRange.join('\n');
-    navigator.clipboard.writeText(text).then(() => {
-        alert(`คัดลอก ${lastGeneratedRange.length} รายการเรียบร้อยแล้ว!`);
-    });
+
+    if (startParsed.prefix !== endParsed.prefix || startParsed.suffix !== endParsed.suffix) {
+        alert('Prefix/Suffix ไม่ตรงกัน');
+        return;
+    }
+
+    const startStr = TrackingUtils.formatTrackingNumber(startRaw);
+    const endStr = TrackingUtils.formatTrackingNumber(endRaw);
+
+    // GENERATE RANGE with 1 before and 1 after (v1.70)
+    const list = [];
+    const count = endParsed.bodyInt - startParsed.bodyInt + 1;
+    
+    if (count > 500 && !confirm(`จะสร้างเลขชุดจำนวน ${count} รายการ ยืนยันหรือไม่?`)) return;
+
+    for (let i = startParsed.bodyInt - 1; i <= endParsed.bodyInt + 1; i++) {
+        const isMain = (i >= startParsed.bodyInt && i <= endParsed.bodyInt);
+        list.push({
+            number: buildExceptionTrackNum(startParsed.prefix, i, startParsed.suffix),
+            isCenter: isMain,
+            offset: isMain ? 0 : (i < startParsed.bodyInt ? -1 : 1)
+        });
+    }
+
+    // Capture main items for "Copy All"
+    lastGeneratedRange = list.filter(item => item.isCenter).map(item => item.number);
+    
+    await renderUnifiedNumbers(`ชุดเลขต่อเนื่อง (${startStr} - ${endStr})`, list, false);
 }
 
 /**
- * Shared helper to render numbers in the Right Hand "Results" section.
- * Groups by Company and adds the "Add to Report" (🚩) action on the left.
+ * SHARED RENDERER: Renders a list of tracking items into the Unified Results area.
+ * v1.70: Unified "In-Order" UI [Before -> Main -> After]
  */
 async function renderUnifiedNumbers(title, items, isOcr = false) {
-    console.log("DEBUG: renderUnifiedNumbers called with:", title, items.length, "items");
     const resultArea = document.getElementById('smart-unified-results');
-    const summaryArea = document.getElementById('smart-result-summary');
+    const summaryArea = document.getElementById('smart-summary-badge');
     
-    // FETCH OWNERS IN PARALLEL (v1.64 Async)
+    if (!resultArea) return;
+    resultArea.innerHTML = '<div style="padding:20px; text-align:center; color:#888;"><span class="spinner"></span> กำลังวิเคราะห์ข้อมูลและตรวจสอบเจ้าของ...</div>';
+
+    // 1. Fetch Owners (Async)
     const enrichedItems = await Promise.all(items.map(async item => {
-        const num = typeof item === 'string' ? item : item.number;
-        const owner = typeof CustomerDB !== 'undefined' ? await CustomerDB.get(num) : null;
+        let owner = null;
+        if (typeof CustomerDB !== 'undefined') {
+            owner = await CustomerDB.get(item.number);
+        }
         return {
-            number: num,
-            owner,
-            offset: item.offset || 0,
+            number: item.number,
+            owner: owner,
+            status: item.status || (owner ? owner.remark : ''),
+            datetime: item.datetime || '',
             isCenter: item.isCenter || false,
-            status: item.status || '',
-            datetime: item.datetime || ''
+            offset: item.offset || 0
         };
     }));
 
-    // Sort into groups based on CustomerDB
+    // 2. Group by Company
     const groups = {};
     enrichedItems.forEach(item => {
-        const groupName = item.owner ? item.owner.name : 'ไม่มีในฐานข้อมูล (Unknown Sender)';
-        if (!groups[groupName]) groups[groupName] = [];
-        groups[groupName].push(item);
+        const companyName = item.owner ? item.owner.name : 'ไม่มีในฐานข้อมูล (Unknown Sender)';
+        if (!groups[companyName]) groups[companyName] = [];
+        groups[companyName].push(item);
     });
 
-    // Update global list for "Copy All" - ONLY center (Main) numbers
-    lastGeneratedRange = items.filter(i => typeof i === 'object' ? i.isCenter : true).map(i => typeof i === 'object' ? i.number : i);
+    // 3. Update Summary Badge (Count ONLY Main items)
+    const mainItemTotal = enrichedItems.filter(i => i.isCenter).length;
+    if (summaryArea) {
+        summaryArea.innerHTML = `<span class="badge badge-primary">${mainItemTotal} รายการหลัก${isOcr ? ' (OCR)' : ''}</span>`;
+    }
 
-    // v1.63: Count only "Main" items (centers) for the badge
-    const mainCount = items.filter(i => i.isCenter).length || items.length;
-    summaryArea.innerHTML = `<span class="badge badge-primary">${mainCount} รายการ${isOcr ? ' (OCR)' : ''}</span>`;
-
+    // 4. Build HTML Header
     let html = `
-        <div style="padding:10px; background:linear-gradient(to bottom, #fff, #f9f9f9); border-bottom:1px solid #ddd; position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-            <small style="color:#666;">${title}</small>
-            <button class="btn" style="padding:4px 12px; font-size:0.75rem; background:#fff; border:1px solid #0288d1; color:#0288d1; border-radius:4px; font-weight:bold;" onclick="copyAllUnifiedNumbers()">📋 Copy All</button>
+        <div style="padding:10px; background:linear-gradient(to bottom, #fff, #f9f9f9); border-bottom:1px solid #ddd; position:sticky; top:0; z-index:99; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+            <div style="font-size:0.8rem; color:#666; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">🔍 ${title} (${mainItemTotal} รายการ)</div>
+            <button class="btn" style="padding:4px 12px; font-size:0.75rem; background:#fff; border:1px solid #0288d1; color:#0288d1; border-radius:4px; font-weight:bold; flex-shrink:0; margin-left:10px;" onclick="copyAllUnifiedNumbers()">📋 Copy All</button>
         </div>
         <div style="padding:10px;">
     `;
 
-    Object.keys(groups).forEach((company, groupIdx) => {
+    // 5. Render Each Company Group
+    Object.keys(groups).forEach((company, companyIdx) => {
         const groupItems = groups[company];
-        const groupId = `group-${groupIdx}`;
         const companyEscaped = company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '');
+        const companyId = `group-${companyIdx}`;
 
-        // --- DEDUPLICATION STATE ---
-        const displayedInGroup = new Set();
-
-        // --- HIERARCHICAL GROUPING LOGIC ---
-        // 1. Identify "Main" items and "Satellites"
-        const mainItems = groupItems.filter(i => i.isCenter).sort((a, b) => a.number.localeCompare(b.number));
-        
-        // 2. Identify "Series" (Consecutive Main items)
-        const seriesList = []; // Each element is an array of clusters
+        // Sub-group items into clusters (Consecutive ranges)
+        const mainItemsInGroup = groupItems.filter(i => i.isCenter).sort((a, b) => a.number.localeCompare(b.number));
+        const seriesList = [];
         let currentSeries = [];
 
-        mainItems.forEach((main, mIdx) => {
+        mainItemsInGroup.forEach((main, mIdx) => {
             const pMain = parseExceptionTrackNum(main.number);
-            const prevMain = mIdx > 0 ? parseExceptionTrackNum(mainItems[mIdx - 1].number) : null;
+            const prevMain = mIdx > 0 ? parseExceptionTrackNum(mainItemsInGroup[mIdx - 1].number) : null;
             
             const isConsecutive = prevMain && 
                                   pMain.prefix === prevMain.prefix && 
@@ -392,173 +294,96 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                 currentSeries = [];
             }
             
-            // Find satellites for this main item (Optimized v1.67: Use offset first)
             const satellites = groupItems.filter(i => {
                 if (i.isCenter) return false;
-                
-                // If it already has offset from generateTrackingRange, use it!
                 if (typeof i.offset !== 'undefined' && Math.abs(i.offset) <= 2) return true;
-
-                // Fallback: Parse and check diff
                 const pSat = parseExceptionTrackNum(i.number);
                 if (!pSat || !pMain) return false;
-                return pSat.prefix === pMain.prefix && 
-                       pSat.suffix === pMain.suffix && 
-                       Math.abs(pSat.bodyInt - pMain.bodyInt) <= 2;
-            }).sort((a, b) => a.number.localeCompare(b.number));
+                return pSat.prefix === pMain.prefix && pSat.suffix === pMain.suffix && Math.abs(pSat.bodyInt - pMain.bodyInt) <= 2;
+            });
 
             currentSeries.push({ main, satellites });
         });
         if (currentSeries.length > 0) seriesList.push(currentSeries);
 
+        // Render the Company Header
+        const mainInCompanyCount = groupItems.filter(i => i.isCenter).length;
         html += `
-            <div style="margin-bottom:20px; border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; background:#fff        seriesList.forEach((series, sIdx) => {
-            const isSingleSerie = series.length === 1;
-
-            if (!isSingleSerie) {
-                // --- BRIDGE RENDERING FOR CONSECUTIVE SERIES (v1.66) ---
-                const firstMain = series[0].main;
-                const lastMain  = series[series.length - 1].main;
-                
-                const startStr = TrackingUtils.formatTrackingNumber(firstMain.number);
-                const endStr = TrackingUtils.formatTrackingNumber(lastMain.number);
-                
-                const seriesTitleRow = { 
-                    number: `${startStr} ถึง ${endStr}`, 
-                    isCenter: false, // Summary row should NOT be selectable for counting
-                    offset: 0, 
-                    status: `กลุ่มเลขรันต่อเนื่อง (${series.length} ชุด)` 
-                };
-
-                const leadingSats = series[0].satellites.filter(s => {
-                   if (typeof s.offset !== 'undefined') return s.offset < 0;
-                   const pS = parseExceptionTrackNum(s.number);
-                   const pF = parseExceptionTrackNum(firstMain.number);
-                   return pS && pF && pS.bodyInt < pF.bodyInt;
-                });
-
-                const trailingSats = series[series.length - 1].satellites.filter(s => {
-                   if (typeof s.offset !== 'undefined') return s.offset > 0;
-                   const pS = parseExceptionTrackNum(s.number);
-                   const pL = parseExceptionTrackNum(lastMain.number);
-                   return pS && pL && pS.bodyInt > pL.bodyInt;
-                });
-                
-                const allMains = series.map(s => s.main);
-                const hasAnySats = true; // Series always expandable manually
-
-                html += `
-                    <div style="border:1px solid #90caf9; border-radius:10px; overflow:hidden; background:white; margin-bottom:12px; box-shadow:0 3px 10px rgba(2,136,209,0.08);">
-                        ${renderUnifiedRow(seriesTitleRow, groupId, companyEscaped, hasAnySats)}
-                        <div class="satellite-wrapper">
-                             ${leadingSats.map(s => {
-                                 if (displayedInGroup.has(s.number)) return '';
-                                 displayedInGroup.add(s.number);
-                                 return renderUnifiedRow(s, groupId, companyEscaped);
-                             }).join('')}
-
-                             ${allMains.map(m => {
-                                 if (displayedInGroup.has(m.number)) return '';
-                                 displayedInGroup.add(m.number);
-                                 return renderUnifiedRow(m, groupId, companyEscaped);
-                             }).join('')}
-
-                             ${trailingSats.map(s => {
-                                 if (displayedInGroup.has(s.number)) return '';
-                                 displayedInGroup.add(s.number);
-                                 return renderUnifiedRow(s, groupId, companyEscaped);
-                             }).join('')}
+            <div style="margin-bottom:20px; border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.06);">
+                <div style="background:#f0f7ff; padding:10px 15px; border-bottom:1px solid #e1f5fe; font-weight:bold; color:#0277bd; display:flex; justify-content:space-between; align-items:center; font-size:0.95rem; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                        <input type="checkbox" id="master-${companyId}" style="width:20px; height:20px; cursor:pointer;" onclick="toggleGroupCheckboxes('${companyId}', this.checked)" checked>
+                        <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${company}">
+                            <span>🏢 ${company}</span>
                         </div>
                     </div>
-                `;
-            } else {
-                // --- ISOLATED CLUSTER RENDERING (v1.70 Order Fix: Before -> Main -> After) ---
-                const { main, satellites } = series[0];
-                const clusterStyle = 'margin-bottom:8px; border:1px solid #eee; border-radius:10px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.03);';
-                
-                const pMain = parseExceptionTrackNum(main.number);
-                
-                // Separate into before/after for logical ordering in expanded view
-                const beforeSats = satellites.filter(s => {
-                    if (typeof s.offset !== 'undefined') return s.offset < 0;
-                    const pS = parseExceptionTrackNum(s.number);
-                    return pS && pMain && pS.bodyInt < pMain.bodyInt;
-                });
-                const afterSats = satellites.filter(s => {
-                    if (typeof s.offset !== 'undefined') return s.offset > 0;
-                    const pS = parseExceptionTrackNum(s.number);
-                    return pS && pMain && pS.bodyInt > pMain.bodyInt;
-                });
-                
-                const hasSats = beforeSats.length > 0 || afterSats.length > 0;
+                    <span style="font-size:0.8rem; font-weight:normal; color:#888;">หลัก: ${mainInCompanyCount}</span>
+                </div>
+                <div style="padding:12px; background:#fafafa;">
+        `;
 
-                // IN ORDER UI (V1.70): Wrapper contains Everything if expanded
-                // However, user wants Main Search target to be visible? 
-                // Let's make it look like the Bridge UI.
-                
-                html += `<div style="${clusterStyle}">`;
-                
-                // Header of this group shows the Main Number (or Range if many)
-                html += renderUnifiedRow(main, groupId, companyEscaped, hasSats);
+        // Render each cluster
+        seriesList.forEach((series, sIdx) => {
+            const firstMain = series[0].main;
+            const lastMain  = series[series.length - 1].main;
+            const isSingle  = series.length === 1;
 
-                if (hasSats) {
-                    html += `<div class="satellite-wrapper">`;
-                    // RE-ORDERED: Only Before and After inside? 
-                    // To show Main in the middle "According to order", we need to render it again and hide the header? 
-                    // OR just render BEFORE -> ARROW -> AFTER.
-                    
-                    beforeSats.forEach(row => {
-                        if (!displayedInGroup.has(row.number)) {
-                            displayedInGroup.add(row.number);
-                            html += renderUnifiedRow(row, groupId, companyEscaped);
-                        }
-                    });
-                    
-                    // Render Main again inside to maintain real order? 
-                    // If Main is already in header, we don't repeat it to keep it clean.
-                    // But user asked for "In order". Let's repeat if it makes sense.
-                    // Actually, let's just render BEFORE then AFTER. 
-                    // The Header row *is* the main one.
-                    
-                    afterSats.forEach(row => {
-                        if (!displayedInGroup.has(row.number)) {
-                            displayedInGroup.add(row.number);
-                            html += renderUnifiedRow(row, groupId, companyEscaped);
-                        }
-                    });
-                    html += `</div>`;
-                }
-                html += `</div>`;
-            }
-        });
-bodyInt;
-                });
-                const afterSats = satellites.filter(s => {
-                    if (typeof s.offset !== 'undefined') return s.offset > 0;
-                    const pS = parseExceptionTrackNum(s.number);
-                    return pS && pMain && pS.bodyInt > pMain.bodyInt;
-                });
-                
-                const hasSats = beforeSats.length > 0 || afterSats.length > 0;
+            const startStr = TrackingUtils.formatTrackingNumber(firstMain.number);
+            const endStr = TrackingUtils.formatTrackingNumber(lastMain.number);
+            const rangeTitle = isSingle ? startStr : `${startStr} ถึง ${endStr}`;
+            
+            const summaryRowData = { 
+                number: rangeTitle, 
+                isCenter: false, // Summary row NOT selectable for counting
+                offset: 0, 
+                status: isSingle ? '' : `กลุ่มเลขต่อเนื่อง (${series.length} ชุด)` 
+            };
 
-                html += `<div style="${clusterStyle}">`;
-                
-                displayedInGroup.add(main.number);
-                html += renderUnifiedRow(main, groupId, companyEscaped, hasSats);
+            const leadingSats = series[0].satellites.filter(s => {
+                if (typeof s.offset !== 'undefined') return s.offset < 0;
+                const pS = parseExceptionTrackNum(s.number);
+                const pF = parseExceptionTrackNum(firstMain.number);
+                return pS && pF && pS.bodyInt < pF.bodyInt;
+            }).sort((a,b) => a.number.localeCompare(b.number));
+            
+            const trailingSats = series[series.length - 1].satellites.filter(s => {
+                if (typeof s.offset !== 'undefined') return s.offset > 0;
+                const pS = parseExceptionTrackNum(s.number);
+                const pL = parseExceptionTrackNum(lastMain.number);
+                return pS && pL && pS.bodyInt > pL.bodyInt;
+            }).sort((a,b) => a.number.localeCompare(b.number));
 
-                if (hasSats) {
-                    html += `<div class="satellite-wrapper">`;
-                    // Ordered: Before then After
-                    [...beforeSats, ...afterSats].forEach(row => {
-                        if (!displayedInGroup.has(row.number)) {
-                            displayedInGroup.add(row.number);
-                            html += renderUnifiedRow(row, groupId, companyEscaped);
-                        }
-                    });
-                    html += `</div>`;
-                }
-                html += `</div>`; 
-            }
+            const hasAnySats = leadingSats.length > 0 || trailingSats.length > 0 || !isSingle;
+            const displayedInCluster = new Set();
+
+            html += `
+                <div style="border:1px solid #90caf9; border-radius:10px; overflow:hidden; background:white; margin-bottom:12px; box-shadow:0 3px 10px rgba(2,136,209,0.05);">
+                    ${renderUnifiedRow(summaryRowData, companyId, companyEscaped, hasAnySats)}
+                    <div class="satellite-wrapper">
+                        <!-- 1. Before Satellite -->
+                        ${leadingSats.map(s => {
+                            if (displayedInCluster.has(s.number)) return '';
+                            displayedInCluster.add(s.number);
+                            return renderUnifiedRow(s, companyId, companyEscaped);
+                        }).join('')}
+
+                        <!-- 2. Main List -->
+                        ${series.map(wrap => {
+                            const m = wrap.main;
+                            if (displayedInCluster.has(m.number)) return '';
+                            displayedInCluster.add(m.number);
+                            return renderUnifiedRow(m, companyId, companyEscaped);
+                        }).join('')}
+
+                        <!-- 3. After Satellite -->
+                        ${trailingSats.map(s => {
+                            if (displayedInCluster.has(s.number)) return '';
+                            displayedInCluster.add(s.number);
+                            return renderUnifiedRow(s, companyId, companyEscaped);
+                        }).join('')}
+                    </div>
+                </div>
+            `;
         });
 
         html += `</div></div>`;
@@ -567,14 +392,15 @@ bodyInt;
     html += `</div>`;
     resultArea.innerHTML = html;
 
+    // Update Copy Bar
     const copyBar = document.getElementById('smart-copy-all-bar');
     if (copyBar) {
         copyBar.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:8px;">
-                <button class="btn btn-success" onclick="stagingAllCheckedItems()" style="width:100%; font-size:1.1rem; padding:15px; font-weight:bold; border-radius:10px; box-shadow:0 4px 15px rgba(46,125,50,0.2);">🚩 เพิ่มรายการที่เลือกเข้าตารางร่าง (Add Selected)</button>
+                <button class="btn btn-success" onclick="stagingAllCheckedItems()" style="width:100%; font-size:1.16rem; padding:15px; font-weight:bold; border-radius:10px; box-shadow:0 4px 15px rgba(46,125,50,0.2);">🚩 เพิ่มรายการที่เลือกเข้าตารางร่าง (${mainItemTotal})</button>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn btn-neutral" onclick="copyAllUnifiedNumbers()" style="flex:1; font-size:0.85rem; padding:8px; border:1px solid #ccc; background:#f9f9f9;">📋 คัดลอกเลขทั้งหมด (Copy All)</button>
-                    <button class="btn btn-neutral" onclick="document.querySelectorAll('[class^=group-checkbox-]').forEach(cb=>cb.checked=false)" style="flex:1; font-size:0.85rem; padding:8px; border:1px solid #ccc; background:#f9f9f9;">❌ ยกเลิกการเลือกทั้งหมด</button>
+                    <button class="btn btn-neutral" onclick="copyAllUnifiedNumbers()" style="flex:1; font-size:0.85rem; padding:8px; background:#fff; border:1px solid #ccc;">📋 คัดลอกเลขหลักทั้งหมด</button>
+                    <button class="btn btn-neutral" onclick="document.querySelectorAll('[class^=group-checkbox-]').forEach(cb=>cb.checked=false)" style="flex:1; font-size:0.85rem; padding:8px; background:#fff; border:1px solid #ccc;">❌ ยกเลิกการเลือก</button>
                 </div>
             </div>
         `;
@@ -589,21 +415,19 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
     const rowClass = row.isCenter ? 'unified-row center-row' : 'unified-row satellite-row';
     const rowBg = row.isCenter ? '#fff9c4' : '#fff';
     const indexLabel = row.isCenter ? '•' : Math.abs(row.offset);
-    const indexColor = row.isCenter ? '#d32f2f' : '#bbb';
-    const trackColor = row.isCenter ? '#333' : '#999';
+    const indexColor = row.isCenter ? '#d63384' : '#bbb';
     const opacity    = row.isCenter ? '1' : '0.6';
 
     const metadataJson = JSON.stringify({ status: row.status || '', datetime: row.datetime || '' }).replace(/"/g, "&quot;");
-
     const toggleAction = hasSatellites ? `onclick="toggleSatelliteGroup(this)"` : '';
 
     return `
-        <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem;">
+        <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem; min-height:48px;">
             <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
                 ${row.isCenter ? `
                     <input type="checkbox" class="group-checkbox-${groupId}" value="${row.number}" 
                         data-metadata="${metadataJson}"
-                        style="width:17px; height:17px; cursor:pointer;" checked onclick="event.stopPropagation()">
+                        style="width:18px; height:18px; cursor:pointer;" checked onclick="event.stopPropagation()">
                 ` : ''}
             </div>
             <div style="width:30px; text-align:center; font-weight:bold; font-size:0.7rem; color:${indexColor};">
@@ -612,6 +436,23 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
             </div>
             <div style="width:35px; text-align:center;">
                 <button class="btn" style="padding:2px 5px; font-size:${row.isCenter ? '1.5rem' : '0.95rem'}; border:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
+            </div>
+            <div style="flex:1; font-family:monospace; font-weight:bold; padding:8px 5px;">
+                ${TrackingUtils.formatTrackingNumber(row.number)}
+                ${row.status || row.datetime ? `
+                    <div style="font-size:0.72rem; color:#0288d1; margin-top:2px; font-style:italic;">
+                        ${row.status ? `[${row.status}] ` : ''}${row.datetime || ''}
+                    </div>
+                ` : ''}
+            </div>
+            <div style="padding-right:10px; display:flex; gap:4px;" onclick="event.stopPropagation()">
+                <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" onclick="navigator.clipboard.writeText('${row.number}').then(()=>alert('คัดลอก ${row.number}'))">📋</button>
+                <button class="btn btn-trace" style="padding:1px 5px; font-size:0.65rem;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${row.number}&lang=th', '_blank')">🔍</button>
+            </div>
+        </div>
+    `;
+}
+r:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
             </div>
             <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
                 ${TrackingUtils.formatTrackingNumber(row.number)}
