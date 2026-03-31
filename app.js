@@ -3182,7 +3182,7 @@ async function addExceptionEntry() {
 
     let companyName = '-';
     if (typeof CustomerDB !== 'undefined') {
-        const info = CustomerDB.get(trackNums[0]);
+        const info = await CustomerDB.get(trackNums[0]);
         if (info) companyName = info.name;
     }
 
@@ -3389,6 +3389,7 @@ async function renderExceptionTable() {
     let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
 
     sessions.forEach((session, idx) => {
+        const firstEntry = session.entries[0];
         const compressed = compressEntriesForDisplay(session.entries);
         const dObj = new Date(session.timestamp);
         const timeStr = dObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
