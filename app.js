@@ -4249,13 +4249,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * v1.65: Toggle Satellite visibility with animation
+ * v1.69: Toggle Satellite visibility with robust DOM traversal
  */
 function toggleSatelliteGroup(triggerRow) {
-    const wrapper = triggerRow.nextElementSibling;
+    console.log('[DEBUG] Toggling satellite group for:', triggerRow.innerText.trim());
+    
+    // First try: directly next sibling
+    let wrapper = triggerRow.nextElementSibling;
+    
+    // Check if not the wrapper, try finding in parent (more robust)
+    if (!wrapper || !wrapper.classList.contains('satellite-wrapper')) {
+        const parent = triggerRow.parentElement;
+        if (parent) {
+            wrapper = parent.querySelector('.satellite-wrapper');
+        }
+    }
+
     if (wrapper && wrapper.classList.contains('satellite-wrapper')) {
+        const isExpanding = !wrapper.classList.contains('expanded');
         wrapper.classList.toggle('expanded');
         triggerRow.classList.toggle('expanded-trigger');
+        console.log('[DEBUG] Success:', isExpanding ? 'Expanded' : 'Collapsed');
+    } else {
+        console.error('[DEBUG] Failed: Satellite wrapper not found for this row.', triggerRow);
     }
 }
 
