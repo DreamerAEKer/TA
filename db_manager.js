@@ -282,7 +282,7 @@ const ExceptionManager = {
  * UI INTEGRATION (ASYNC)
  */
 async function updateDbViews() {
-    const container = document.getElementById('db-history-container');
+    const container = document.getElementById('db-list-container');
     if (!container) return;
     const view = typeof currentDbView !== 'undefined' ? currentDbView : 'recent';
     if (view === 'recent') {

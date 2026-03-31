@@ -385,15 +385,21 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                 });
             });
 
+            const mainNumbersInGroup = new Set(series.map(wrap => wrap.main.number));
+
             const leadingSats = allSats.filter(s => {
                 const pS = parseExceptionTrackNum(s.number);
                 const pF = parseExceptionTrackNum(firstMain.number);
+                // DEDUPLICATE: Don't show as satellite if it's already a main item in this series/group
+                if (mainNumbersInGroup.has(s.number)) return false; 
                 return pS && pF && pS.bodyInt < pF.bodyInt;
             }).sort((a,b) => a.number.localeCompare(b.number));
             
             const trailingSats = allSats.filter(s => {
                 const pS = parseExceptionTrackNum(s.number);
                 const pL = parseExceptionTrackNum(lastMain.number);
+                // DEDUPLICATE: Don't show as satellite if it's already a main item in this series/group
+                if (mainNumbersInGroup.has(s.number)) return false;
                 return pS && pL && pS.bodyInt > pL.bodyInt;
             }).sort((a,b) => a.number.localeCompare(b.number));
 
@@ -464,9 +470,9 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
                         style="width:18px; height:18px; cursor:pointer;" checked onclick="event.stopPropagation()">
                 ` : ''}
             </div>
-            <div style="width:30px; text-align:center; font-weight:bold; font-size:0.7rem; color:#bbb;">
+            <div style="width:30px; text-align:center; font-weight:bold; font-size:0.75rem; color:#bbb;">
                 ${hasSatellites ? '<span class="toggle-icon">▶</span>' : ''}
-                ${isMain ? '•' : 's'}
+                ${isMain ? '<span style="color:#2e7d32; font-size:1.2rem;">•</span>' : '<span style="color:#ccc; font-size:1rem;">•</span>'}
             </div>
             <div style="width:35px; text-align:center;">
                 <button class="btn" style="padding:2px 5px; font-size:1.1rem; border:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
@@ -4175,5 +4181,114 @@ function toggleSatelliteGroup(triggerRow) {
     } else {
         console.error('[DEBUG] Failed: Satellite wrapper not found for this row.', triggerRow);
     }
+}
+
+/**
+ * DATABASE RENDERING FUNCTIONS (v1.71 RESTORED)
+ */
+
+window.renderRecentBatches = function(batches) {
+    const table = document.getElementById('db-table');
+    if (!table) return;
+    
+    // Update Count
+    updateDbCount(batches.length);
+    
+    if (batches.length === 0) {
+        table.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px; color:#999;">📭 ยังไม่มีข้อมูลในระบบ</td></tr>';
+        return;
+    }
+
+    table.innerHTML = batches.map(b => `
+        <tr onclick="loadBatchToView('${b.id}')" style="cursor:pointer;">
+            <td style="padding:15px 10px;">
+                <div style="font-weight:bold; color:#0277bd;">${b.name}</div>
+                <div style="font-size:0.75rem; color:#888; font-family:monospace; margin-top:2px;">${b.rangeDesc}</div>
+            </td>
+            <td style="text-align:center;">
+                <span class="badge" style="background:#e1f5fe; color:#0277bd; border:1px solid #b3e5fc;">${b.count} ชิ้น</span>
+            </td>
+            <td style="text-align:center; font-size:0.85rem; color:#666;">${b.type || 'EMS'}</td>
+            <td style="text-align:center; font-size:0.8rem; color:#999;">
+                ${new Date(b.timestamp).toLocaleDateString('th-TH')}<br>
+                ${new Date(b.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}
+            </td>
+            <td style="text-align:center;" onclick="event.stopPropagation()">
+                <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.7rem; color:#d32f2f; border:1px solid #ffcdd2;" onclick="CustomerDB.deleteBatch('${b.id}').then(()=>updateDbViews())">🗑️ ลบ</button>
+            </td>
+        </tr>
+    `).join('');
+};
+
+window.renderCompanySummaries = function(sums) {
+    const table = document.getElementById('db-table');
+    if (!table) return;
+    
+    updateDbCount(sums.length);
+
+    if (sums.length === 0) {
+        table.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px; color:#999;">📭 ไม่พบข้อมูลบริษัท</td></tr>';
+        return;
+    }
+
+    table.innerHTML = sums.map(s => `
+        <tr style="background:#f9f9f9;">
+            <td colspan="2" style="padding:15px 10px; font-weight:bold; color:#333;">🏢 ${s.name}</td>
+            <td style="text-align:center;"><span class="badge badge-primary">${s.totalCount} ชิ้น</span></td>
+            <td style="text-align:center; font-size:0.8rem; color:#888;">${s.batches.length} ชุดข้อมููล</td>
+            <td></td>
+        </tr>
+        ${s.batches.sort((a,b)=>b.timestamp-a.timestamp).map(b => `
+            <tr onclick="loadBatchToView('${b.id}')" style="cursor:pointer; font-size:0.85rem; border-left:4px solid #eee;">
+                <td style="padding:10px 20px; color:#666;">
+                    • ${b.rangeDesc}
+                </td>
+                <td style="text-align:center; color:#888;">${b.count} ชิ้น</td>
+                <td style="text-align:center; color:#888;">${b.type}</td>
+                <td style="text-align:center; color:#999; font-size:0.75rem;">${new Date(b.timestamp).toLocaleDateString('th-TH')}</td>
+                <td style="text-align:center;" onclick="event.stopPropagation()">
+                    <button class="btn btn-neutral" style="padding:2px 6px; font-size:0.65rem; color:#d32f2f;" onclick="CustomerDB.deleteBatch('${b.id}').then(()=>updateDbViews())">🗑️</button>
+                </td>
+            </tr>
+        `).join('')}
+    `).join('');
+};
+
+window.renderTrashBatches = function(trash) {
+    const table = document.getElementById('db-table');
+    if (!table) return;
+
+    updateDbCount(trash.length);
+
+    if (trash.length === 0) {
+        table.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px; color:#999;">🗑️ ถังขยะว่างเปล่า</td></tr>';
+        return;
+    }
+
+    table.innerHTML = trash.map(b => `
+        <tr style="opacity:0.6;">
+            <td style="padding:15px 10px;">
+                <div style="font-weight:bold; color:#666;">${b.name}</div>
+                <div style="font-size:0.72rem; color:#999;">${b.rangeDesc}</div>
+            </td>
+            <td style="text-align:center;">${b.count} ชิ้น</td>
+            <td style="text-align:center;">${b.type}</td>
+            <td style="text-align:center; font-size:0.75rem; color:#999;">
+                ลบเมื่อ: ${new Date(b.deletedAt).toLocaleDateString('th-TH')}<br>
+                ${new Date(b.deletedAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}
+            </td>
+            <td style="text-align:center;" onclick="event.stopPropagation()">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <button class="btn btn-neutral" style="padding:2px 8px; font-size:0.65rem; color:#2e7d32; border:1px solid #c8e6c9;" onclick="CustomerDB.restoreTrash('${b.id}').then(()=>updateDbViews())">🔄 กู้คืน</button>
+                    <button class="btn btn-neutral" style="padding:2px 8px; font-size:0.65rem; color:#d32f2f; border:1px solid #ffcdd2;" onclick="CustomerDB.permanentDeleteTrash('${b.id}').then(()=>updateDbViews())">❌ ลบทิ้ง</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+};
+
+function updateDbCount(count) {
+    const countEl = document.getElementById('db-count');
+    if (countEl) countEl.innerText = count;
 }
 
