@@ -455,9 +455,11 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
     const rowBg = isMain ? '#fff9c4' : '#fff';
     const opacity = isMain ? '1' : '0.75';
     
-    // v1.73: Ensure Raw Number for actions (No spaces)
-    const rawNum = row.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
-    const formattedNum = TrackingUtils.formatTrackingNumber(rawNum);
+    // v1.73/v1.74: Only sanitize and re-format if it's a single tracking number (approx 13 chars)
+    // If it's a range summary title (longer), keep it as is.
+    const isSingleTrack = !hasSatellites && row.number.replace(/\s/g,'').length <= 15;
+    const rawNum = isSingleTrack ? row.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '') : row.number;
+    const formattedNum = isSingleTrack ? TrackingUtils.formatTrackingNumber(rawNum) : row.number;
 
     // Metadata encoding (v1.73: use rawNum)
     const metadataObj = { status: row.status || '', datetime: row.datetime || '' };
