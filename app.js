@@ -3591,23 +3591,23 @@ function compressEntriesForDisplay(entries) {
     return groups;
 }
 
-function deleteExceptionSession(sessionId) {
+async function deleteExceptionSession(sessionId) {
     if (confirm('ลบรายการในกลุ่มนี้ทั้งหมดใช่หรือไม่?')) {
-        ExceptionManager.removeSession(sessionId);
-        renderExceptionTable();
+        await ExceptionManager.removeSession(sessionId);
+        await renderExceptionTable();
     }
 }
 
-function deleteException(id) {
+async function deleteException(id) {
     if (confirm('ยืนยันลบรายการนี้?')) {
-        ExceptionManager.remove(id);
-        renderExceptionTable();
+        await ExceptionManager.remove(id);
+        await renderExceptionTable();
     }
 }
 
-function editExceptionSession(sessionId) {
-    const exceptions = ExceptionManager.getAll();
-    const sessionItems = exceptions.filter(e => e.sessionId === sessionId);
+async function editExceptionSession(sessionId) {
+    const exceptions = await ExceptionManager.getAll();
+    const sessionItems = exceptions.filter(e => (e.sessionId || e.id) === sessionId);
     if (sessionItems.length === 0) return;
 
     const first = sessionItems[0];
@@ -3679,15 +3679,15 @@ function editExceptionSession(sessionId) {
     }
 }
 
-function clearAllExceptions() {
+async function clearAllExceptions() {
     if (confirm('ยืนยันล้างประวัติรายงานทั้งหมด?')) {
-        ExceptionManager.clearAll();
-        renderExceptionTable();
+        await ExceptionManager.clearAll();
+        await renderExceptionTable();
     }
 }
 
 async function exportExceptionImage() {
-    renderExceptionTable();
+    await renderExceptionTable();
 
     const selectedSids = Array.from(document.querySelectorAll('.sess-select:checked')).map(cb => cb.value);
     if (selectedSids.length === 0) {
@@ -3695,8 +3695,8 @@ async function exportExceptionImage() {
         return;
     }
 
-    const exceptions = ExceptionManager.getAll();
-    const selectedItems = exceptions.filter(e => selectedSids.includes(e.sessionId));
+    const exceptions = await ExceptionManager.getAll();
+    const selectedItems = exceptions.filter(e => selectedSids.includes(e.sessionId || e.id));
     const meta = getExceptionMeta();
 
     // 1. Grouping Logic
