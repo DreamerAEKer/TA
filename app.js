@@ -168,7 +168,8 @@ function toggleMainRangeInputs() {
 
 async function unifiedMainSearch() {
     const inputEl = document.getElementById('smart-main-input');
-    let input = inputEl.value.trim().toUpperCase().replace(/\s+/g, '');
+    // v1.73: Enhanced sanitization to remove ALL types of spaces and hidden characters
+    let input = inputEl.value.trim().toUpperCase().replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
     const isRange = document.getElementById('smart-main-range-toggle')?.checked;
     
     if (!input) {
@@ -199,8 +200,8 @@ async function unifiedSingleCheckNew(input, inputEl) {
  * v1.70: Includes 1 neighbor before and after.
  */
 async function unifiedGenerateRangeNew() {
-    const startRaw = document.getElementById('exception-start-input')?.value.trim().toUpperCase().replace(/\s+/g, '') || "";
-    const endRaw   = document.getElementById('exception-end-input')?.value.trim().toUpperCase().replace(/\s+/g, '') || "";
+    const startRaw = (document.getElementById('exception-start-input')?.value || "").trim().toUpperCase().replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, "");
+    const endRaw   = (document.getElementById('exception-end-input')?.value || "").trim().toUpperCase().replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, "");
 
     if (!startRaw || !endRaw) {
         alert('กรุณาระบุเลขเริ่มต้นและสุดท้าย');
@@ -454,7 +455,11 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
     const rowBg = isMain ? '#fff9c4' : '#fff';
     const opacity = isMain ? '1' : '0.75';
     
-    // Metadata encoding
+    // v1.73: Ensure Raw Number for actions (No spaces)
+    const rawNum = row.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+    const formattedNum = TrackingUtils.formatTrackingNumber(rawNum);
+
+    // Metadata encoding (v1.73: use rawNum)
     const metadataObj = { status: row.status || '', datetime: row.datetime || '' };
     const metadataJson = JSON.stringify(metadataObj).replace(/"/g, '&quot;');
     
@@ -465,7 +470,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
         <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem; min-height:48px; cursor:${hasSatellites ? 'pointer' : 'default'};">
             <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
                 ${isMain ? `
-                    <input type="checkbox" class="group-checkbox-${groupId}" value="${row.number}" 
+                    <input type="checkbox" class="group-checkbox-${groupId}" value="${rawNum}" 
                         data-metadata="${metadataJson}"
                         style="width:18px; height:18px; cursor:pointer;" checked onclick="event.stopPropagation()">
                 ` : ''}
@@ -475,10 +480,10 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
                 ${isMain ? '<span style="color:#2e7d32; font-size:1.2rem;">•</span>' : '<span style="color:#ccc; font-size:1rem;">•</span>'}
             </div>
             <div style="width:35px; text-align:center;">
-                <button class="btn" style="padding:2px 5px; font-size:1.1rem; border:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
+                <button class="btn" style="padding:2px 5px; font-size:1.1rem; border:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${rawNum}'], '${companyEscaped}', ${metadataJson})">🚩</button>
             </div>
             <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
-                ${TrackingUtils.formatTrackingNumber(row.number)}
+                ${formattedNum}
                 ${row.status || row.datetime ? `
                     <div style="font-size:0.72rem; color:#0288d1; margin-top:1px; font-style:italic;">
                         ${row.status ? `[${row.status}] ` : ''}${row.datetime || ''}
@@ -486,8 +491,8 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
                 ` : ''}
             </div>
             <div style="padding-right:10px; display:flex; gap:4px;" onclick="event.stopPropagation()">
-                <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${row.number}').then(()=>alert('คัดลอก ${row.number}'))">📋</button>
-                <button class="btn btn-trace" style="padding:1px 5px; font-size:0.65rem;" title="เช็คสถานะ" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${row.number}&lang=th', '_blank')">🔍</button>
+                <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${rawNum}').then(()=>alert('คัดลอก ${rawNum}'))">📋</button>
+                <button class="btn btn-trace" style="padding:1px 5px; font-size:0.65rem;" title="เช็คสถานะ" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${rawNum}&lang=th', '_blank')">🔍</button>
             </div>
         </div>
     `;
@@ -573,7 +578,9 @@ function stagingAllCheckedItems() {
 
     cbks.forEach(cb => {
         if (cb.checked) {
-            selectedTracks.push(cb.value);
+            // v1.73: Clean all possible space characters
+            const raw = cb.value.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+            selectedTracks.push(raw);
             if (!firstMetadata) {
                 try {
                     const metaStr = cb.getAttribute('data-metadata');
@@ -585,10 +592,37 @@ function stagingAllCheckedItems() {
 
     if (selectedTracks.length === 0) {
         if (typeof showToast === 'function') showToast('กรุณาติ๊กเลือกรายการอย่างน้อย 1 รายการครับ', 'error');
+        else alert('กรุณาเลือกรายการอย่างน้อย 1 รายการ');
         return;
     }
 
     stagingQuickReport(selectedTracks, "", firstMetadata || {});
+}
+
+/**
+ * v1.73: Copy all selected numbers as clean raw strings (no spaces)
+ */
+function copyAllUnifiedNumbers() {
+    const cbks = document.querySelectorAll('[class^="group-checkbox-"]');
+    const selectedTracks = [];
+
+    cbks.forEach(cb => {
+        if (cb.checked) {
+            selectedTracks.push(cb.value.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, ''));
+        }
+    });
+
+    if (selectedTracks.length === 0) {
+        alert('กรุณาเลือกรายการที่ต้องการคัดลอก');
+        return;
+    }
+
+    const text = selectedTracks.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        alert(`คัดลอกเลขพัสดุสำเร็จ ${selectedTracks.length} รายการ (แบบไม่มีช่องว่าง)`);
+    }).catch(err => {
+        alert('ไม่สามารถคัดลอกได้: ' + err);
+    });
 }
 
 // Consolidated File Upload handler (Excel & OCR) inside the Track & Trace section
@@ -1645,8 +1679,8 @@ function adminOpenThpTrack() {
         return;
     }
     
-    // Extract all tracking numbers using our robust parser
-    const extracted = TrackingUtils.extractTrackingNumbers(rawInput);
+    // v1.73: Clean all possible space characters from the extracted IDs
+    const extracted = TrackingUtils.extractTrackingNumbers(rawInput).map(id => id.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, ''));
     
     if (extracted.length === 0) {
         alert("ไม่พบรูปแบบเลขพัสดุที่ถูกต้อง (13 หลัก)");
@@ -2189,14 +2223,7 @@ function adminHandleTrackInput(el) {
     el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 13);
 }
 
-function adminOpenThpTrack() {
-    const input = document.getElementById('admin-track-input').value.trim();
-    if (!input || input.length !== 13) {
-        alert('กรุณากรอกเลขพัสดุให้ครบ 13 หลัก');
-        return;
-    }
-    window.open(`https://track.thailandpost.co.th/?trackNumber=${input}&lang=th`, '_blank');
-}
+// v1.73: Removed duplicate definition of adminOpenThpTrack
 
 async function adminHandleImageOcr(files) {
     if (!files || files.length === 0) return;
@@ -2694,8 +2721,11 @@ function draftReportFromGroup(prefix) {
  * Pre-fills the exception form from search results.
  */
 async function stagingQuickReport(tracks, companyName, metadata = {}) {
+    // v1.73: Sanitize all input tracks just in case
+    if (!tracks) return;
+    tracks = (Array.isArray(tracks) ? tracks : [tracks]).map(t => t.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, ''));
+    
     console.log("DEBUG: stagingQuickReport called with:", tracks.length, "tracks for", companyName, "metadata:", metadata);
-    if (!tracks || tracks.length === 0) return;
 
     // --- Metadata Pre-fill (Excel/Checked source) ---
     // If multiple tracks, we use the metadata from the FIRST one or the one with content
