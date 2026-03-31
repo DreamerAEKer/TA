@@ -455,9 +455,12 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
     const rowBg = isMain ? '#fff9c4' : '#fff';
     const opacity = isMain ? '1' : '0.75';
     
-    // v1.73/v1.74: Only sanitize and re-format if it's a single tracking number (approx 13 chars)
-    // If it's a range summary title (longer), keep it as is.
-    const isSingleTrack = !hasSatellites && row.number.replace(/\s/g,'').length <= 15;
+    // v1.73/v1.74/v1.75: Only sanitize and re-format if it's a single tracking number (approx 13 chars)
+    // If it's a range summary title (longer, contains "ถึง"), keep it as is for the UI.
+    const isRangeTitle = hasSatellites || row.number.includes(' ถึง ');
+    const isSingleTrack = !isRangeTitle && row.number.replace(/\s/g,'').length <= 15;
+    
+    // For actions, if it's a range title, don't strip spaces yet so stagingQuickReport can parse it
     const rawNum = isSingleTrack ? row.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '') : row.number;
     const formattedNum = isSingleTrack ? TrackingUtils.formatTrackingNumber(rawNum) : row.number;
 
@@ -2723,11 +2726,48 @@ function draftReportFromGroup(prefix) {
  * Pre-fills the exception form from search results.
  */
 async function stagingQuickReport(tracks, companyName, metadata = {}) {
-    // v1.73: Sanitize all input tracks just in case
+    // v1.73/v1.75: Sanitize input tracks
     if (!tracks) return;
-    tracks = (Array.isArray(tracks) ? tracks : [tracks]).map(t => t.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, ''));
+    const inputTracks = Array.isArray(tracks) ? tracks : [tracks];
     
-    console.log("DEBUG: stagingQuickReport called with:", tracks.length, "tracks for", companyName, "metadata:", metadata);
+    // v1.75: Detect Range Title (e.g. "ET ... ถึง ET ...")
+    if (inputTracks.length === 1 && inputTracks[0].includes(' ถึง ')) {
+        const parts = inputTracks[0].split(' ถึง ');
+        if (parts.length === 2) {
+            const startStr = parts[0].replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+            const endStr = parts[1].replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+            
+            // Switch to Range Mode
+            const rangeToggle = document.getElementById('exception-range-toggle');
+            if (rangeToggle && !rangeToggle.checked) {
+                rangeToggle.checked = true;
+                if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
+            }
+            
+            const startInput = document.getElementById('exception-start-input');
+            const endInput = document.getElementById('exception-end-input');
+            if (startInput) startInput.value = startStr;
+            if (endInput) endInput.value = endStr;
+            
+            // Set Reason from metadata if available (v1.75: default to "กลุ่มเลขต่อเนื่อง")
+            const reasonInput = document.getElementById('exception-reason-input');
+            if (reasonInput) reasonInput.value = metadata.status || "กลุ่มเลขต่อเนื่อง";
+            
+            // Highlight
+            [startInput, endInput].forEach(el => { if(el) { el.style.background="#fff9c4"; setTimeout(()=>el.style.background="",1000); } });
+            
+            // Update metadata form
+            if (companyName && !document.getElementById('rpt-subject').value) {
+                document.getElementById('rpt-subject').value = "รายงานชิ้นงานตกหล่น: " + companyName;
+            }
+            return; // DONE for Range Title
+        }
+    }
+
+    // Normal processing for arrays of numbers
+    const sanitizedTracks = inputTracks.map(t => t.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, ''));
+    
+    console.log("DEBUG: stagingQuickReport called with:", sanitizedTracks.length, "tracks for", companyName, "metadata:", metadata);
 
     // --- Metadata Pre-fill (Excel/Checked source) ---
     // If multiple tracks, we use the metadata from the FIRST one or the one with content
@@ -2781,7 +2821,7 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
 
     const mainInput = document.getElementById('exception-track-input');
 
-    if (isConsecutive(tracks)) {
+    if (isConsecutive(sanitizedTracks)) {
         // Toggle to Range Mode
         const rangeToggle = document.getElementById('exception-range-toggle');
         if (rangeToggle && !rangeToggle.checked) {
@@ -2791,8 +2831,8 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
         
         const startInput = document.getElementById('exception-start-input');
         const endInput = document.getElementById('exception-end-input');
-        if (startInput) startInput.value = tracks[0];
-        if (endInput) endInput.value = tracks[tracks.length - 1];
+        if (startInput) startInput.value = sanitizedTracks[0];
+        if (endInput) endInput.value = sanitizedTracks[sanitizedTracks.length - 1];
         
         // Visual feedback
         [startInput, endInput].forEach(el => {
@@ -2811,7 +2851,7 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
     }
 
     // Sort tracks to try and fill in order
-    tracks.forEach(track => {
+    sanitizedTracks.forEach(track => {
         const allInputs = [mainInput, ...document.querySelectorAll('.exception-extra-track')];
         // Priority: mainInput if empty, then first empty extra
         let targetField = null;
@@ -3170,6 +3210,9 @@ async function addExceptionEntry() {
     if (!savedId) return;
     
     window.showToast(`บันทึกเรียบร้อย! (${trackNums.length} รายการ)`);
+    
+    // v1.75: Refresh table
+    await renderExceptionTable();
     
     // Clear state
     currentEditingSessionId = null;
