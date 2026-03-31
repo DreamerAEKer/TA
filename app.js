@@ -3440,7 +3440,7 @@ async function renderExceptionTable() {
                         </div>
                     </div>
 
-                    <div style="background:#fcfcfc; border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid #f0f0f0; position:relative;">
+                    <div style="background:#fcfcfc; border-radius:8px; padding:10px 70px 10px 10px; margin-bottom:8px; border:1px solid #f0f0f0; position:relative;">
                         <button style="position:absolute; top:8px; right:8px; background:none; border:none; color:#0288d1; font-size:0.75rem; cursor:pointer;" onclick="copySessionTracks('${session.sessionId}')">📋 คัดลอก</button>
                         <div style="display:flex; flex-wrap:wrap; gap:4px; font-family:monospace; font-size:0.95rem;">
                             ${compressed.map(g => `<span style="background:#fff; border:1px solid #eee; padding:2px 8px; border-radius:4px; color:#0277bd;">${g.display}</span>`).join('')}
