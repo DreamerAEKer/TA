@@ -169,13 +169,38 @@ function toggleMainRangeInputs() {
 async function unifiedMainSearch() {
     const inputEl = document.getElementById('smart-main-input');
     let input = inputEl.value.trim().toUpperCase().replace(/\s+/g, '');
-    const isRange = document./**
- * BATCH SEARCH: Generate a range of numbers to check.
+    const isRange = document.getElementById('smart-main-range-toggle')?.checked;
+    
+    if (!input) {
+        alert('กรุณากรอกเลขพัสดุ');
+        return;
+    }
+    
+    if (isRange) {
+        unifiedGenerateRangeNew();
+    } else {
+        unifiedSingleCheckNew(input, inputEl);
+    }
+}
+
+/**
+ * SINGLE SEARCH: Check a single number and include neighbors.
  * v1.70: Includes 1 neighbor before and after for context.
  */
+async function unifiedSingleCheckNew(input, inputEl) {
+    if (inputEl) inputEl.value = input;
+    
+    const items = TrackingUtils.generateTrackingRange(input, 1, 1);
+    await renderUnifiedNumbers(`ค้นหาเลข: ${TrackingUtils.formatTrackingNumber(input)}`, items, false);
+}
+
+/**
+ * BATCH SEARCH: Generate a range of numbers to check based on UI inputs.
+ * v1.70: Includes 1 neighbor before and after.
+ */
 async function unifiedGenerateRangeNew() {
-    const startRaw = document.getElementById('exception-start-input').value.trim().toUpperCase().replace(/\s+/g, '');
-    const endRaw   = document.getElementById('exception-end-input').value.trim().toUpperCase().replace(/\s+/g, '');
+    const startRaw = document.getElementById('exception-start-input')?.value.trim().toUpperCase().replace(/\s+/g, '') || "";
+    const endRaw   = document.getElementById('exception-end-input')?.value.trim().toUpperCase().replace(/\s+/g, '') || "";
 
     if (!startRaw || !endRaw) {
         alert('กรุณาระบุเลขเริ่มต้นและสุดท้าย');
@@ -221,7 +246,7 @@ async function unifiedGenerateRangeNew() {
 
 /**
  * SHARED RENDERER: Renders a list of tracking items into the Unified Results area.
- * v1.70: Unified "In-Order" UI [Before -> Main -> After]
+ * v1.70: Unified "In-Order" UI [Before -> Main (Range) -> After]
  */
 async function renderUnifiedNumbers(title, items, isOcr = false) {
     const resultArea = document.getElementById('smart-unified-results');
@@ -230,7 +255,7 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
     if (!resultArea) return;
     resultArea.innerHTML = '<div style="padding:20px; text-align:center; color:#888;"><span class="spinner"></span> กำลังวิเคราะห์ข้อมูลและตรวจสอบเจ้าของ...</div>';
 
-    // 1. Fetch Owners (Async)
+    // 1. Fetch Owners (Async) - CRITICAL: CustomerDB.get is async
     const enrichedItems = await Promise.all(items.map(async item => {
         let owner = null;
         if (typeof CustomerDB !== 'undefined') {
@@ -242,7 +267,8 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
             status: item.status || (owner ? owner.remark : ''),
             datetime: item.datetime || '',
             isCenter: item.isCenter || false,
-            offset: item.offset || 0
+            offset: item.offset || 0,
+            source: item.source || ''
         };
     }));
 
@@ -270,7 +296,13 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
     `;
 
     // 5. Render Each Company Group
-    Object.keys(groups).forEach((company, companyIdx) => {
+    const sortedCompanies = Object.keys(groups).sort((a, b) => {
+        if (a.includes('ไม่มีในฐานข้อมูล')) return 1;
+        if (b.includes('ไม่มีในฐานข้อมูล')) return -1;
+        return a.localeCompare(b);
+    });
+
+    sortedCompanies.forEach((company, companyIdx) => {
         const groupItems = groups[company];
         const companyEscaped = company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '');
         const companyId = `group-${companyIdx}`;
@@ -285,6 +317,7 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
             const prevMain = mIdx > 0 ? parseExceptionTrackNum(mainItemsInGroup[mIdx - 1].number) : null;
             
             const isConsecutive = prevMain && 
+                                  pMain && 
                                   pMain.prefix === prevMain.prefix && 
                                   pMain.suffix === prevMain.suffix && 
                                   pMain.bodyInt === prevMain.bodyInt + 1;
@@ -294,12 +327,12 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                 currentSeries = [];
             }
             
+            // Satellites for this specific main item
             const satellites = groupItems.filter(i => {
                 if (i.isCenter) return false;
-                if (typeof i.offset !== 'undefined' && Math.abs(i.offset) <= 2) return true;
                 const pSat = parseExceptionTrackNum(i.number);
                 if (!pSat || !pMain) return false;
-                return pSat.prefix === pMain.prefix && pSat.suffix === pMain.suffix && Math.abs(pSat.bodyInt - pMain.bodyInt) <= 2;
+                return pSat.prefix === pMain.prefix && pSat.suffix === pMain.suffix && Math.abs(pSat.bodyInt - pMain.bodyInt) <= 1;
             });
 
             currentSeries.push({ main, satellites });
@@ -336,51 +369,48 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
                 number: rangeTitle, 
                 isCenter: false, // Summary row NOT selectable for counting
                 offset: 0, 
-                status: isSingle ? '' : `กลุ่มเลขต่อเนื่อง (${series.length} ชุด)` 
+                status: isSingle ? (firstMain.status || '') : `กลุ่มเลขต่อเนื่อง (${series.length} ชุด)` 
             };
 
-            const leadingSats = series[0].satellites.filter(s => {
-                if (typeof s.offset !== 'undefined') return s.offset < 0;
+            // Collect all satellites for this series
+            const allSats = [];
+            const seenSats = new Set();
+            
+            series.forEach(wrap => {
+                wrap.satellites.forEach(s => {
+                    if (!seenSats.has(s.number)) {
+                        seenSats.add(s.number);
+                        allSats.push(s);
+                    }
+                });
+            });
+
+            const leadingSats = allSats.filter(s => {
                 const pS = parseExceptionTrackNum(s.number);
                 const pF = parseExceptionTrackNum(firstMain.number);
                 return pS && pF && pS.bodyInt < pF.bodyInt;
             }).sort((a,b) => a.number.localeCompare(b.number));
             
-            const trailingSats = series[series.length - 1].satellites.filter(s => {
-                if (typeof s.offset !== 'undefined') return s.offset > 0;
+            const trailingSats = allSats.filter(s => {
                 const pS = parseExceptionTrackNum(s.number);
                 const pL = parseExceptionTrackNum(lastMain.number);
                 return pS && pL && pS.bodyInt > pL.bodyInt;
             }).sort((a,b) => a.number.localeCompare(b.number));
 
             const hasAnySats = leadingSats.length > 0 || trailingSats.length > 0 || !isSingle;
-            const displayedInCluster = new Set();
 
             html += `
                 <div style="border:1px solid #90caf9; border-radius:10px; overflow:hidden; background:white; margin-bottom:12px; box-shadow:0 3px 10px rgba(2,136,209,0.05);">
                     ${renderUnifiedRow(summaryRowData, companyId, companyEscaped, hasAnySats)}
                     <div class="satellite-wrapper">
                         <!-- 1. Before Satellite -->
-                        ${leadingSats.map(s => {
-                            if (displayedInCluster.has(s.number)) return '';
-                            displayedInCluster.add(s.number);
-                            return renderUnifiedRow(s, companyId, companyEscaped);
-                        }).join('')}
+                        ${leadingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped)).join('')}
 
                         <!-- 2. Main List -->
-                        ${series.map(wrap => {
-                            const m = wrap.main;
-                            if (displayedInCluster.has(m.number)) return '';
-                            displayedInCluster.add(m.number);
-                            return renderUnifiedRow(m, companyId, companyEscaped);
-                        }).join('')}
+                        ${series.map(wrap => renderUnifiedRow(wrap.main, companyId, companyEscaped)).join('')}
 
                         <!-- 3. After Satellite -->
-                        ${trailingSats.map(s => {
-                            if (displayedInCluster.has(s.number)) return '';
-                            displayedInCluster.add(s.number);
-                            return renderUnifiedRow(s, companyId, companyEscaped);
-                        }).join('')}
+                        ${trailingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped)).join('')}
                     </div>
                 </div>
             `;
@@ -410,54 +440,41 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
 
 /**
  * Helper to render a single row in the Results Sidebar.
+ * v1.70: Distinctive styling for Main vs Satellite row.
  */
 function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
-    const rowClass = row.isCenter ? 'unified-row center-row' : 'unified-row satellite-row';
-    const rowBg = row.isCenter ? '#fff9c4' : '#fff';
-    const indexLabel = row.isCenter ? '•' : Math.abs(row.offset);
-    const indexColor = row.isCenter ? '#d63384' : '#bbb';
-    const opacity    = row.isCenter ? '1' : '0.6';
-
-    const metadataJson = JSON.stringify({ status: row.status || '', datetime: row.datetime || '' }).replace(/"/g, "&quot;");
+    const isMain = row.isCenter === true;
+    const rowClass = isMain ? 'unified-row center-row' : 'unified-row satellite-row';
+    const rowBg = isMain ? '#fff9c4' : '#fff';
+    const opacity = isMain ? '1' : '0.75';
+    
+    // Metadata encoding
+    const metadataObj = { status: row.status || '', datetime: row.datetime || '' };
+    const metadataJson = JSON.stringify(metadataObj).replace(/"/g, '&quot;');
+    
+    const trackColor = isMain ? '#333' : '#777';
     const toggleAction = hasSatellites ? `onclick="toggleSatelliteGroup(this)"` : '';
 
     return `
-        <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem; min-height:48px;">
+        <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem; min-height:48px; cursor:${hasSatellites ? 'pointer' : 'default'};">
             <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
-                ${row.isCenter ? `
+                ${isMain ? `
                     <input type="checkbox" class="group-checkbox-${groupId}" value="${row.number}" 
                         data-metadata="${metadataJson}"
                         style="width:18px; height:18px; cursor:pointer;" checked onclick="event.stopPropagation()">
                 ` : ''}
             </div>
-            <div style="width:30px; text-align:center; font-weight:bold; font-size:0.7rem; color:${indexColor};">
+            <div style="width:30px; text-align:center; font-weight:bold; font-size:0.7rem; color:#bbb;">
                 ${hasSatellites ? '<span class="toggle-icon">▶</span>' : ''}
-                ${indexLabel}
+                ${isMain ? '•' : 's'}
             </div>
             <div style="width:35px; text-align:center;">
-                <button class="btn" style="padding:2px 5px; font-size:${row.isCenter ? '1.5rem' : '0.95rem'}; border:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
-            </div>
-            <div style="flex:1; font-family:monospace; font-weight:bold; padding:8px 5px;">
-                ${TrackingUtils.formatTrackingNumber(row.number)}
-                ${row.status || row.datetime ? `
-                    <div style="font-size:0.72rem; color:#0288d1; margin-top:2px; font-style:italic;">
-                        ${row.status ? `[${row.status}] ` : ''}${row.datetime || ''}
-                    </div>
-                ` : ''}
-            </div>
-            <div style="padding-right:10px; display:flex; gap:4px;" onclick="event.stopPropagation()">
-                <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" onclick="navigator.clipboard.writeText('${row.number}').then(()=>alert('คัดลอก ${row.number}'))">📋</button>
-                <button class="btn btn-trace" style="padding:1px 5px; font-size:0.65rem;" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${row.number}&lang=th', '_blank')">🔍</button>
-            </div>
-        </div>
-    `;
-}
-r:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
+                <button class="btn" style="padding:2px 5px; font-size:1.1rem; border:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${row.number}'], '${companyEscaped}', ${metadataJson})">🚩</button>
             </div>
             <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
                 ${TrackingUtils.formatTrackingNumber(row.number)}
                 ${row.status || row.datetime ? `
-                    <div style="font-size:0.72rem; color:#0288d1; margin-top:1px; font-style:italic; filter:grayscale(30%);">
+                    <div style="font-size:0.72rem; color:#0288d1; margin-top:1px; font-style:italic;">
                         ${row.status ? `[${row.status}] ` : ''}${row.datetime || ''}
                     </div>
                 ` : ''}
@@ -468,6 +485,32 @@ r:none; background:none; cursor:pointer;" title="รายงานรายก�
             </div>
         </div>
     `;
+}
+
+/**
+ * Toggle the expansion of a satellite group.
+ * v1.70: Animation-friendly toggle using CSS classes.
+ */
+function toggleSatelliteGroup(el) {
+    const parent = el.parentElement;
+    if (!parent) return;
+    
+    const wrapper = parent.querySelector('.satellite-wrapper');
+    const icon = el.querySelector('.toggle-icon');
+    
+    if (wrapper) {
+        const isExpanded = wrapper.classList.toggle('expanded');
+        if (icon) {
+            icon.style.transform = isExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
+        }
+        
+        // Add a visual indicator to the trigger row
+        if (isExpanded) {
+            el.classList.add('expanded-trigger');
+        } else {
+            el.classList.remove('expanded-trigger');
+        }
+    }
 }
 
 /**
@@ -496,7 +539,6 @@ function stagingQuickReportFromGroup(groupId, companyName) {
                 try {
                     const metaStr = cb.getAttribute('data-metadata');
                     if (metaStr) {
-                        // Metadata was encoded for HTML attribute, decode back
                         const decoded = metaStr.replace(/&quot;/g, '"');
                         firstMetadata = JSON.parse(decoded);
                     }
@@ -540,12 +582,6 @@ function stagingAllCheckedItems() {
         return;
     }
 
-    // Call stagingQuickReport to populate form and potentially auto-submit if desired?
-    // User asked to "Add to report section", implying they want it added to draft.
-    // However, stagingQuickReport usually populates the form for review.
-    // Given the user specifically wants to move the button to the bottom, 
-    // it's likely they want to handle bulk selection efficiently.
-    
     stagingQuickReport(selectedTracks, "", firstMetadata || {});
 }
 
@@ -553,7 +589,7 @@ function stagingAllCheckedItems() {
 async function handleTrackFileUpload(files) {
     if (!files || files.length === 0) return;
     const statusEl = document.getElementById('track-ocr-status');
-    statusEl.textContent = `กำลังประมวลผล ${files.length} ไฟล์...`;
+    if (statusEl) statusEl.textContent = `กำลังประมวลผล ${files.length} ไฟล์...`;
 
     // Partition files into Images (OCR) and Excel
     const images = [];
@@ -568,10 +604,10 @@ async function handleTrackFileUpload(files) {
     try {
         // 1. Process Images via OCR
         if (images.length > 0) {
-            statusEl.textContent = `กำลังสแกน OCR ${images.length} รูป...`;
+            if (statusEl) statusEl.textContent = `กำลังสแกน OCR ${images.length} รูป...`;
             let combinedOcrText = '';
             for (let i = 0; i < images.length; i++) {
-                statusEl.textContent = `OCR รูป ${i + 1}/${images.length}...`;
+                if (statusEl) statusEl.textContent = `OCR รูป ${i + 1}/${images.length}...`;
                 const worker = await Tesseract.createWorker('tha+eng');
                 const { data: { text } } = await worker.recognize(images[i]);
                 await worker.terminate();
@@ -585,7 +621,7 @@ async function handleTrackFileUpload(files) {
 
         // 2. Process Excel Files
         if (excelFiles.length > 0) {
-            statusEl.textContent = `กำลังอ่านโหมด Excel ${excelFiles.length} ไฟล์...`;
+            if (statusEl) statusEl.textContent = `กำลังอ่านโหมด Excel ${excelFiles.length} ไฟล์...`;
             for (const file of excelFiles) {
                 const excelItems = await processTrackExcelFile(file);
                 allItems.push(...excelItems);
@@ -593,31 +629,24 @@ async function handleTrackFileUpload(files) {
         }
 
         if (allItems.length === 0) {
-            statusEl.textContent = '⚠️ ไม่พบข้อมูลเลขพัสดุ';
+            if (statusEl) statusEl.textContent = '⚠️ ไม่พบข้อมูลเลขพัสดุ';
             return;
         }
 
         // 3. Render Results
         if (allItems.length === 1) {
-            // Single result -> Fill main input and search
             const item = allItems[0];
             document.getElementById('smart-main-input').value = item.number;
-            statusEl.textContent = `✅ พบเลข: ${item.number} กำลังค้นหา...`;
-            
-            // If it had metadata, we might want to store it temporarily for current search
-            window._pendingMetadata = { status: item.status, datetime: item.datetime };
-            
+            if (statusEl) statusEl.textContent = `✅ พบเลข: ${item.number} กำลังค้นหา...`;
             unifiedMainSearch();
         } else {
-            // Multiple results -> Show in Unified Side
             const expandedItems = [];
-            allItems.forEach(item => {
-                const owner = typeof CustomerDB !== 'undefined' ? CustomerDB.get(item.number) : null;
+            for (const item of allItems) {
+                const owner = typeof CustomerDB !== 'undefined' ? await CustomerDB.get(item.number) : null;
                 if (!owner) {
-                    // Expand Unknown to 4 items (-2, -1, 0, +1)
-                    const range = TrackingUtils.generateTrackingRange(item.number, 2, 1);
+                    // Expand Unknown to include neighbors (1 before, 1 after)
+                    const range = TrackingUtils.generateTrackingRange(item.number, 1, 1);
                     range.forEach(r => {
-                        // Pass metadata if it's the center number
                         if (r.isCenter) {
                             r.status = item.status;
                             r.datetime = item.datetime;
@@ -637,27 +666,25 @@ async function handleTrackFileUpload(files) {
                         source: item.source
                     });
                 }
-            });
-            
-            lastGeneratedRange = expandedItems.map(item => item.number);
+            }
+            lastGeneratedRange = expandedItems.filter(i => i.isCenter).map(item => item.number);
             await renderUnifiedNumbers(`ข้อมูลจาก ${files.length} ไฟล์`, expandedItems, true);
         }
 
-        statusEl.textContent = `✅ สำเร็จ พบข้อมูล ${allItems.length} รายการ`;
-        // Clear input to allow re-uploading same file if needed
+        if (statusEl) statusEl.textContent = `✅ สำเร็จ พบข้อมูล ${allItems.length} รายการ`;
         document.getElementById('track-ocr-upload').value = '';
 
     } catch (err) {
         console.error(err);
-        statusEl.textContent = '❌ เกิดข้อผิดพลาด: ' + err.message;
+        if (statusEl) statusEl.textContent = '❌ เกิดข้อผิดพลาด: ' + err.message;
     }
 }
 
 /**
  * Specifically parses Excel for the Track & Trace search context.
- * Targets Column H (Track), I (Status), J (DateTime)
  */
 async function processTrackExcelFile(file) {
+
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = function(e) {
