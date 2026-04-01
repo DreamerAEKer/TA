@@ -545,7 +545,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
                 ${hideCheckbox ? warningIcon : (isMain ? `
                     <input type="checkbox" class="group-checkbox-${groupId} cluster-checkbox-${clusterId}" value="${rawNum}" 
                         data-metadata="${metadataJson}"
-                        style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation()">
+                        style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation()" checked>
                 ` : (hasSatellites && clusterId ? `
                     <input type="checkbox" class="cluster-master-${clusterId}" 
                         style="width:18px; height:18px; cursor:pointer;" 
