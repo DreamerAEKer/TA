@@ -292,7 +292,7 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
             const allExceptions = await ExceptionManager.getAll();
             const found = allExceptions.find(e => e.trackNum === item.number.replace(/\s/g,''));
             if (found) {
-                historyInfo = { date: found.timestamp, company: found.companyName, reason: found.reason };
+                historyInfo = { date: found.timestamp, company: found.companyName, reason: found.reason, sessionId: found.sessionId || found.id };
             }
         }
 
@@ -320,6 +320,48 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
 }
 
 /**
+ * Helper to get all tracking numbers currently in the exception report form.
+ * Returns a Set of cleaned tracking numbers.
+ */
+function getCurrentDraftNumbers() {
+    const numbers = new Set();
+    const rangeToggle = document.getElementById('exception-range-toggle');
+    
+    // 1. Single Mode Textarea
+    const mainInput = document.getElementById('exception-track-input');
+    if (mainInput && mainInput.value) {
+        mainInput.value.split(/[\s,]+/).forEach(n => {
+            const clean = n.trim().toUpperCase().replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+            if (clean) numbers.add(clean);
+        });
+    }
+
+    // 2. Range Mode Inputs
+    if (rangeToggle && rangeToggle.checked) {
+        const start = document.getElementById('exception-start-input')?.value.trim().toUpperCase().replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+        const end = document.getElementById('exception-end-input')?.value.trim().toUpperCase().replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+        if (start && end) {
+            const sP = parseExceptionTrackNum(start);
+            const eP = parseExceptionTrackNum(end);
+            if (sP && eP && sP.prefix === eP.prefix && sP.suffix === eP.suffix) {
+                for (let i = sP.bodyInt; i <= eP.bodyInt; i++) {
+                    numbers.add(buildExceptionTrackNum(sP.prefix, i, sP.suffix));
+                }
+            }
+        }
+    }
+
+    // 3. Extra Items
+    const extras = document.querySelectorAll('.exception-extra-input');
+    extras.forEach(ex => {
+        const clean = ex.value.trim().toUpperCase().replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+        if (clean) numbers.add(clean);
+    });
+
+    return numbers;
+}
+
+/**
  * Renders from state (skips async fetching)
  */
 function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
@@ -327,9 +369,15 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
     const summaryArea = document.getElementById('smart-summary-badge');
     if (!resultArea) return;
 
+    // v1.91: Get current drafting items to hide them
+    const draftSet = getCurrentDraftNumbers();
+
     // 2. Group by Company
     const groups = {};
     enrichedItems.forEach(item => {
+        const cleanNum = item.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+        if (draftSet.has(cleanNum)) return; // Skip items already in draft
+
         const companyName = item.owner ? item.owner.name : 'ไม่มีในฐานข้อมูล (Unknown Sender)';
         if (!groups[companyName]) groups[companyName] = [];
         groups[companyName].push(item);
@@ -478,16 +526,16 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
 
             html += `
                 <div style="border:1px solid #90caf9; border-radius:10px; overflow:hidden; background:white; margin-bottom:12px; box-shadow:0 3px 10px rgba(2,136,209,0.05);">
-                    ${renderUnifiedRow(summaryRowData, companyId, companyEscaped, hasAnySats, clusterId, shouldCheckDefault)}
+                    ${renderUnifiedRow(summaryRowData, companyId, companyEscaped, hasAnySats, clusterId, shouldCheckDefault, draftSet)}
                     <div class="satellite-wrapper">
                         <!-- 1. Before Satellite -->
-                        ${leadingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped, false, clusterId, shouldCheckDefault)).join('')}
+                        ${leadingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped, false, clusterId, shouldCheckDefault, draftSet)).join('')}
 
                         <!-- 2. Main List -->
-                        ${series.map(wrap => renderUnifiedRow(wrap.main, companyId, companyEscaped, false, clusterId, shouldCheckDefault)).join('')}
+                        ${series.map(wrap => renderUnifiedRow(wrap.main, companyId, companyEscaped, false, clusterId, shouldCheckDefault, draftSet)).join('')}
 
                         <!-- 3. After Satellite -->
-                        ${trailingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped, false, clusterId, shouldCheckDefault)).join('')}
+                        ${trailingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped, false, clusterId, shouldCheckDefault, draftSet)).join('')}
                     </div>
                 </div>
             `;
@@ -517,9 +565,9 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
 
 /**
  * Helper to render a single row in the Results Sidebar.
- * v1.70: Distinctive styling for Main vs Satellite row.
+ * v1.91: Improved history feedback and jump-to-report action.
  */
-function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, clusterId = null, shouldAutoCheck = true) {
+function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, clusterId = null, shouldAutoCheck = true, draftSet = new Set()) {
     const isMain = row.isCenter === true;
     const rowClass = isMain ? 'unified-row center-row' : 'unified-row satellite-row';
     const rowBg = isMain ? '#fff9c4' : '#fff';
@@ -541,8 +589,11 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
     const trackColor = isMain ? '#333' : '#777';
     const toggleAction = hasSatellites ? `onclick="toggleSatelliteGroup(this)"` : '';
 
-    const warningIcon = row.hasHistory || row.history ? '<span class="badge badge-danger" style="margin-left:5px; padding:2px 4px; font-size:0.7rem;" title="แจ้งรายงานแล้ว">⚠️</span>' : '';
+    const warningIcon = row.hasHistory || row.history ? '<span class="badge badge-danger" style="margin-left:5px; padding:2px 4px; font-size:0.7rem; cursor:help;" title="เคยแจ้งรายงานแล้ว">⚠️ แจ้งแล้ว</span>' : '';
     const hideCheckbox = (isMain && row.history) || (hasSatellites && row.allReported);
+
+    // v1.91: Instant Filter Sync
+    if (isSingleTrack && draftSet.has(rawNum)) return ''; 
 
     const checkedAttr = shouldAutoCheck ? 'checked' : '';
 
@@ -568,8 +619,12 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
             </div>
             <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
                 ${formattedNum} ${(!isMain && !hasSatellites) ? warningIcon : ''}
-                ${(hasSatellites && row.hasHistory) ? '<span style="font-size:0.7rem; color:#d32f2f; margin-left:5px; font-weight:normal;">(มีรายการแจ้งแล้ว)</span>' : ''}
-                ${row.history ? `<div class="reported-badge">⚠️ ${new Date(row.history.date).toLocaleDateString('th-TH')} - ${row.history.company} (${row.history.reason})</div>` : ''}
+                ${(hasSatellites && row.hasHistory) ? '<span style="font-size:0.75rem; color:#d32f2f; margin-left:5px; font-weight:bold;">(แจ้งรายงานแล้ว)</span>' : ''}
+                ${row.history ? `
+                    <div class="reported-badge" style="margin-top:4px; font-weight:normal; border-top:1px dashed #ffcdd2; padding-top:4px;">
+                        <span style="color:#d32f2f;">⚠️ เมื่อ ${new Date(row.history.date).toLocaleDateString('th-TH')} - ${row.history.company}</span>
+                        <button class="btn btn-neutral" style="padding:1px 6px; font-size:0.7rem; margin-left:5px; background:#fff; border:1px solid #d32f2f; color:#d32f2f; transform:translateY(-1px);" onclick="event.stopPropagation(); viewReportSession('${row.history.sessionId}')">👁️ ดูรายงาน</button>
+                    </div>` : ''}
                 ${row.status || row.datetime ? `
                     <div style="font-size:0.72rem; color:#0288d1; margin-top:1px; font-style:italic;">
                         ${row.status ? `[${row.status}] ` : ''}${row.datetime || ''}
@@ -4498,3 +4553,49 @@ function updateDbCount(count) {
     if (countEl) countEl.innerText = count;
 }
 
+/**
+ * Jump to a specific report session in the drafts/history list.
+ * v1.91: Handles tab switching, filtering, and animation.
+ */
+function viewReportSession(sessionId) {
+    // 1. Switch to 'smart' tab if not there
+    switchTab('smart');
+    
+    // 2. Set filter to 'history' or 'today'? 
+    // Usually, historical reports are in 'history'.
+    setExceptionFilter('history');
+
+    // 3. Wait for render and scroll
+    setTimeout(() => {
+        const card = document.getElementById(`sess-card-${sessionId}`);
+        if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            card.style.transition = 'all 0.5s ease';
+            card.style.boxShadow = '0 0 20px rgba(211, 47, 47, 0.5)';
+            card.style.borderColor = '#d32f2f';
+            
+            // Flash effect
+            let flashes = 0;
+            const interval = setInterval(() => {
+                card.style.backgroundColor = flashes % 2 === 0 ? '#fff5f5' : '#fff';
+                flashes++;
+                if (flashes > 5) {
+                    clearInterval(interval);
+                    card.style.backgroundColor = '#fff';
+                }
+            }, 300);
+        } else {
+            // Try 'today' if not in history
+            setExceptionFilter('today');
+            setTimeout(() => {
+                const cardToday = document.getElementById(`sess-card-${sessionId}`);
+                if (cardToday) {
+                    cardToday.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    cardToday.style.boxShadow = '0 0 20px rgba(2, 136, 209, 0.5)';
+                } else {
+                    alert('ขออภัย! ไม่พบข้อมูลรายงานชุดนี้ในเครื่องครับ (อาจถูกลบหรือจัดเก็บลงฐานข้อมูลอื่น)');
+                }
+            }, 100);
+        }
+    }, 100);
+}

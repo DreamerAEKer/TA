@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracking Analyst</title>
+    <title>Tracking Analyst v1.91-stable</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=1.90-stable">
+    <link rel="stylesheet" href="style.css?v=1.91-stable">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         /* Force tabs to wrap and buttons to stay on one line */
@@ -176,20 +176,20 @@
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                                 <strong id="exception-form-title" style="color:#0288d1; font-size:1.05rem;">📥 เพิ่มรายการใหม่ลงในรายงาน</strong>
                                 <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                                    <input type="checkbox" id="exception-range-toggle" onchange="toggleExceptionRangeMode()">
+                                    <input type="checkbox" id="exception-range-toggle" onchange="toggleExceptionRangeMode(); renderStoredUnifiedNumbers(currentUnifiedTitle || '', currentUnifiedResults || [])">
                                     ช่วงเลขต่อเนื่อง
                                 </label>
                             </div>
 
                             <div id="exception-single-mode" style="margin-bottom:12px;">
-                                <textarea id="exception-track-input" placeholder="วางเลขพัสดุ 13 หลักที่นี่... (หนึ่งรายการต่อบรรทัด)" style="text-transform:uppercase; width:100%; height:120px; padding:12px; border:1px solid #ccc; border-radius:6px; font-size:1.1rem; box-sizing:border-box; font-family:monospace; text-align:left; resize:vertical;"></textarea>
+                                <textarea id="exception-track-input" oninput="renderStoredUnifiedNumbers(currentUnifiedTitle || '', currentUnifiedResults || [])" placeholder="วางเลขพัสดุ 13 หลักที่นี่... (หนึ่งรายการต่อบรรทัด)" style="text-transform:uppercase; width:100%; height:120px; padding:12px; border:1px solid #ccc; border-radius:6px; font-size:1.1rem; box-sizing:border-box; font-family:monospace; text-align:left; resize:vertical;"></textarea>
                             </div>
 
                             <div id="exception-range-mode" style="display:none; margin-bottom:12px;">
                                 <div style="display:flex; gap:8px; align-items:center;">
-                                    <input type="text" id="exception-start-input" placeholder="เลขเริ่มต้น" maxlength="13" style="text-transform:uppercase; flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; text-align:center; font-family:monospace;">
+                                    <input type="text" id="exception-start-input" oninput="renderStoredUnifiedNumbers(currentUnifiedTitle || '', currentUnifiedResults || [])" placeholder="เลขเริ่มต้น" maxlength="13" style="text-transform:uppercase; flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; text-align:center; font-family:monospace;">
                                     <span style="color:#999;">ถึง</span>
-                                    <input type="text" id="exception-end-input" placeholder="เลขสุดท้าย" maxlength="13" style="text-transform:uppercase; flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; text-align:center; font-family:monospace;">
+                                    <input type="text" id="exception-end-input" oninput="renderStoredUnifiedNumbers(currentUnifiedTitle || '', currentUnifiedResults || [])" placeholder="เลขสุดท้าย" maxlength="13" style="text-transform:uppercase; flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; text-align:center; font-family:monospace;">
                                 </div>
                                 <div id="exception-range-preview" style="margin-top:5px; font-size:0.8rem; color:#0288d1; text-align:center;"></div>
                             </div>
@@ -668,7 +668,7 @@
     </main>
 
     <footer style="text-align:center; padding:20px; color:#ccc; font-size:0.75rem; font-family:monospace;">
-        Tracking Analyst v1.90-stable
+        Tracking Analyst v1.91-stable (Edition 04/2026)
     </footer>
 
     <!-- IMAGE EDITOR MODAL -->
@@ -691,10 +691,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="utils.js?v=1.90-stable"></script>
-    <script src="db_manager.js?v=1.90-stable"></script>
-    <script src="smart_input.js?v=1.90-stable"></script>
-    <script src="app.js?v=1.90-stable"></script>
+    <script src="utils.js?v=1.91-stable"></script>
+    <script src="db_manager.js?v=1.91-stable"></script>
+    <script src="smart_input.js?v=1.91-stable"></script>
+    <script src="app.js?v=1.91-stable"></script>
 </body>
 
 </html>
