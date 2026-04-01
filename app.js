@@ -4030,9 +4030,9 @@ async function exportExceptionImage() {
                         <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #eee; font-size:0.95rem;">
                             <thead>
                         <tr style="background:#003366; border-bottom:3px solid #00264d;">
-                                    <th style="padding:12px 10px; text-align:left; border:1px solid #00264d; color:#ffffff !important; font-weight:bold; font-size:1.05rem;">หมวดงาน</th>
-                                    <th style="padding:12px 10px; text-align:left; border:1px solid #00264d; color:#ffffff !important; font-weight:bold; font-size:1.05rem;">ชื่อบริษัท / ลูกค้า</th>
-                                    <th style="padding:12px 10px; text-align:center; border:1px solid #00264d; color:#ffffff !important; font-weight:bold; width:15%; font-size:1.05rem;">รวม (ชิ้น)</th>
+                                    <th style="padding:12px 10px; text-align:left; border:1px solid #00264d; background:#003366 !important; color:#ffffff !important; font-weight:bold; font-size:1.05rem;">หมวดงาน</th>
+                                    <th style="padding:12px 10px; text-align:left; border:1px solid #00264d; background:#003366 !important; color:#ffffff !important; font-weight:bold; font-size:1.05rem;">ชื่อบริษัท / ลูกค้า</th>
+                                    <th style="padding:12px 10px; text-align:center; border:1px solid #00264d; background:#003366 !important; color:#ffffff !important; font-weight:bold; width:15%; font-size:1.05rem;">รวม (ชิ้น)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -4137,9 +4137,9 @@ async function exportExceptionImage() {
                 <table style="width:100%; border-collapse:collapse; border:1px solid #ccc; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
                     <thead>
                         <tr style="background:#003366; border-bottom:4px solid #001a33;">
-                            <th style="padding:14px 5px; text-align:center; border:1px solid #001a33; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">ลำดับ</th>
-                            <th style="padding:14px 10px; text-align:left; border:1px solid #001a33; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">หมายเลขพัสดุ</th>
-                            <th style="padding:14px 10px; text-align:left; border:1px solid #001a33; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
+                            <th style="padding:14px 5px; text-align:center; border:1px solid #001a33; background:#003366 !important; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">ลำดับ</th>
+                            <th style="padding:14px 10px; text-align:left; border:1px solid #001a33; background:#003366 !important; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">หมายเลขพัสดุ</th>
+                            <th style="padding:14px 10px; text-align:left; border:1px solid #001a33; background:#003366 !important; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
                         </tr>
                     </thead>
                     <tbody>${detailRowsHtml}</tbody>
