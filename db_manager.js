@@ -330,11 +330,4 @@ async function saveCustomerData() {
     currentDbView = 'recent'; await updateDbViews();
 }
 
-window.addEventListener('load', async () => {
-    try {
-        await CustomerDB.init();
-        if (window.migrateLegacyData) window.migrateLegacyData();
-        await CustomerDB.deduplicate();
-        await updateDbViews();
-    } catch(e) { console.error("Load failed", e); }
-});
+// Note: Initialization is now handled by app.js to ensure UI readiness.

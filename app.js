@@ -28,7 +28,14 @@ function switchTab(tabId) {
 
 // Global Event Listeners (Run on load)
 document.addEventListener('DOMContentLoaded', async () => {
-    if (typeof CustomerDB !== 'undefined') await CustomerDB.init();
+    if (typeof CustomerDB !== 'undefined') {
+        try {
+            await CustomerDB.init();
+            if (window.migrateLegacyData) window.migrateLegacyData();
+            await CustomerDB.deduplicate();
+            if (typeof updateDbViews === 'function') await updateDbViews();
+        } catch(e) { console.error("Database initialization failed:", e); }
+    }
     checkAuth();
     
     // Auto-init Exception Report if visible
@@ -2741,6 +2748,7 @@ function draftReportFromGroup(prefix) {
         mainInput.style.transition = "background-color 0.5s";
         mainInput.style.backgroundColor = "#fff9c4";
         setTimeout(() => mainInput.style.backgroundColor = "", 1500);
+    }
     }
 }
 
