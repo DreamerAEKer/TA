@@ -400,7 +400,7 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
             <div style="margin-bottom:20px; border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.06);">
                 <div style="background:#f0f7ff; padding:10px 15px; border-bottom:1px solid #e1f5fe; font-weight:bold; color:#0277bd; display:flex; justify-content:space-between; align-items:center; font-size:0.95rem; gap:10px;">
                     <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
-                        <input type="checkbox" id="master-${companyId}" style="width:20px; height:20px; cursor:pointer;" onclick="toggleGroupCheckboxes('${companyId}', this.checked)" checked>
+                        <input type="checkbox" id="master-${companyId}" style="width:20px; height:20px; cursor:pointer;" onclick="toggleGroupCheckboxes('${companyId}', this.checked)" ${isOcr ? '' : 'checked'}>
                         <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${company}">
                             <span>🏢 ${company}</span>
                         </div>
