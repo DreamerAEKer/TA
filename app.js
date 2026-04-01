@@ -421,25 +421,37 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
             const endStr = TrackingUtils.formatTrackingNumber(lastMain.number);
             const rangeTitle = isSingle ? startStr : `${startStr} ถึง ${endStr}`;
             
-            const summaryRowData = { 
-                number: rangeTitle, 
-                isCenter: false, // Summary row NOT selectable for counting
-                offset: 0, 
-                status: isSingle ? (firstMain.status || '') : `กลุ่มเลขต่อเนื่อง (${series.length} ชุด)` 
-            };
-
             // Collect all satellites for this series
             const allSats = [];
             const seenSats = new Set();
             
+            let clusterHasHistory = false;
+            let reportedMainCount = 0;
+
             series.forEach(wrap => {
+                if (wrap.main.history) {
+                    clusterHasHistory = true;
+                    reportedMainCount++;
+                }
                 wrap.satellites.forEach(s => {
+                    if (s.history) clusterHasHistory = true;
                     if (!seenSats.has(s.number)) {
                         seenSats.add(s.number);
                         allSats.push(s);
                     }
                 });
             });
+
+            const allReported = series.length > 0 && reportedMainCount === series.length;
+
+            const summaryRowData = { 
+                number: rangeTitle, 
+                isCenter: false, // Summary row NOT selectable for counting
+                offset: 0, 
+                hasHistory: clusterHasHistory,
+                allReported: allReported,
+                status: isSingle ? (firstMain.status || '') : `กลุ่มเลขต่อเนื่อง (${series.length} ชุด)` 
+            };
 
             const mainNumbersInGroup = new Set(series.map(wrap => wrap.main.number));
 
@@ -524,10 +536,13 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
     const trackColor = isMain ? '#333' : '#777';
     const toggleAction = hasSatellites ? `onclick="toggleSatelliteGroup(this)"` : '';
 
+    const warningIcon = row.hasHistory || row.history ? '<span class="badge badge-danger" style="margin-left:5px; padding:2px 4px; font-size:0.7rem;" title="แจ้งรายงานแล้ว">⚠️</span>' : '';
+    const hideCheckbox = (isMain && row.history) || (hasSatellites && row.allReported);
+
     return `
         <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem; min-height:48px; cursor:${hasSatellites ? 'pointer' : 'default'};">
             <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
-                ${isMain ? `
+                ${hideCheckbox ? warningIcon : (isMain ? `
                     <input type="checkbox" class="group-checkbox-${groupId} cluster-checkbox-${clusterId}" value="${rawNum}" 
                         data-metadata="${metadataJson}"
                         style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation()">
@@ -535,7 +550,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
                     <input type="checkbox" class="cluster-master-${clusterId}" 
                         style="width:18px; height:18px; cursor:pointer;" 
                         onclick="event.stopPropagation(); toggleClusterCheckboxes('${clusterId}', this.checked)" checked>
-                ` : '')}
+                ` : ''))}
             </div>
             <div style="width:30px; text-align:center; font-weight:bold; font-size:0.75rem; color:#bbb;">
                 ${hasSatellites ? '<span class="toggle-icon">▶</span>' : ''}
@@ -545,7 +560,8 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
                 <button class="btn" style="padding:2px 5px; font-size:1.1rem; border:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${rawNum}'], '${companyEscaped}', ${metadataJson})">🚩</button>
             </div>
             <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
-                ${formattedNum}
+                ${formattedNum} ${(!isMain && !hasSatellites) ? warningIcon : ''}
+                ${(hasSatellites && row.hasHistory) ? '<span style="font-size:0.7rem; color:#d32f2f; margin-left:5px; font-weight:normal;">(มีรายการแจ้งแล้ว)</span>' : ''}
                 ${row.history ? `<div class="reported-badge">⚠️ ${new Date(row.history.date).toLocaleDateString('th-TH')} - ${row.history.company} (${row.history.reason})</div>` : ''}
                 ${row.status || row.datetime ? `
                     <div style="font-size:0.72rem; color:#0288d1; margin-top:1px; font-style:italic;">
@@ -2799,96 +2815,67 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
 
     const sanitizedTracks = inputTracks.map(t => t.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, ''));
 
-    // 2. Direct Move Logic (v1.79)
-    // If we have a company name or metadata, we can bypass the form and save directly
-    const shouldDirectSave = (companyName && companyName !== 'ไม่มีในฐานข้อมูล (Unknown Sender)') || (metadata && metadata.status);
-    
-    if (shouldDirectSave) {
-        const reason = metadata.status || "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
-        const firstStatus = "ใส่ของลงถุง"; // Default
-        const dateTime = metadata.datetime || "";
-        
-        // Save to DB (Auto session)
-        const savedId = await ExceptionManager.saveSession(sanitizedTracks, companyName, reason, firstStatus, dateTime, [], null, {});
-        if (savedId) {
-            window.showToast(`ย้ายกลับ ${sanitizedTracks.length} รายการลงรายงานร่างแล้ว`, 'success');
-            
-            // Mark as moved in state
-            currentUnifiedResults.forEach(item => {
-                if (sanitizedTracks.includes(item.number.replace(/\s/g,''))) {
-                    item.moved = true;
-                }
-            });
-            localStorage.setItem('thp_last_search_results', JSON.stringify(currentUnifiedResults));
-            
-            // Re-render both
-            renderStoredUnifiedNumbers(currentUnifiedTitle, currentUnifiedResults);
-            await renderExceptionTable();
-            return;
-        }
-    }
-
-    // Fallback: Populate form if no direct save info
+    // Populate form instead of direct save (per user request v1.80)
     const mainInput = document.getElementById('exception-track-input');
-    if (!mainInput) return;
-
-    // --- Smart Range Detection (New) ---
-    const isConsecutive = (nums) => {
-        if (nums.length < 2) return false;
-        const parsed = nums.map(n => parseExceptionTrackNum(n));
-        if (parsed.some(p => !p)) return false;
-        
-        const prefix = parsed[0].prefix;
-        const suffix = parsed[0].suffix;
-        if (parsed.some(p => p.prefix !== prefix || p.suffix !== suffix)) return false;
-        
-        for (let i = 1; i < parsed.length; i++) {
-            if (parsed[i].bodyInt !== parsed[i-1].bodyInt + 1) return false;
-        }
-        return true;
-    };
-
-    if (isConsecutive(sanitizedTracks)) {
-        const rangeToggle = document.getElementById('exception-range-toggle');
-        if (rangeToggle && !rangeToggle.checked) {
-            rangeToggle.checked = true;
-            if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
-        }
-        
-        const startInput = document.getElementById('exception-start-input');
-        const endInput = document.getElementById('exception-end-input');
-        if (startInput) startInput.value = sanitizedTracks[0];
-        if (endInput) endInput.value = sanitizedTracks[sanitizedTracks.length - 1];
-        
-        [startInput, endInput].forEach(el => {
-            if (el) {
-                el.style.backgroundColor = "#fff9c4";
-                setTimeout(() => el.style.backgroundColor = "", 1000);
-            }
-        });
-    } else {
-        // Discrete Mode (Append)
-        const rangeToggle = document.getElementById('exception-range-toggle');
-        if (rangeToggle && rangeToggle.checked) {
-            rangeToggle.checked = false;
-            if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
-        }
-
-        mainInput.value = sanitizedTracks[0];
-        // Populate extra if multiple
-        for (let i = 1; i < sanitizedTracks.length; i++) {
-            addExceptionExtraItem();
-            const extras = document.querySelectorAll('.exception-extra-track');
-            if (extras.length > 0) extras[extras.length-1].value = sanitizedTracks[i];
-        }
-    }
-    
+    const startInput = document.getElementById('exception-start-input');
+    const endInput = document.getElementById('exception-end-input');
+    const rangeToggle = document.getElementById('exception-range-toggle');
     const reasonInput = document.getElementById('exception-reason-input');
-    if (reasonInput) reasonInput.value = metadata.status || "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
-    
-    if (metadata.datetime) setExceptionDatePickerFromBE(metadata.datetime);
-    
-    mainInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const datePicker = document.getElementById('exception-date-picker');
+    const timePicker = document.getElementById('exception-time-picker');
+    const statusInput = document.getElementById('exception-first-status');
+
+    if (sanitizedTracks.length > 0) {
+        // Handle Range logic
+        const isContinuousRange = isConsecutive(sanitizedTracks);
+        
+        if (isContinuousRange && sanitizedTracks.length > 1) {
+            if (rangeToggle && !rangeToggle.checked) {
+                rangeToggle.checked = true;
+                if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
+            }
+            if (startInput) startInput.value = sanitizedTracks[0];
+            if (endInput) endInput.value = sanitizedTracks[sanitizedTracks.length - 1];
+        } else {
+            // Single or Multiple non-consecutive
+            if (rangeToggle && rangeToggle.checked) {
+                rangeToggle.checked = false;
+                if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
+            }
+            if (mainInput) mainInput.value = sanitizedTracks.join(', ');
+        }
+
+        // Fill Metadata
+        if (reasonInput) reasonInput.value = metadata.status || "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
+        if (statusInput) statusInput.value = "ใส่ของลงถุง";
+        
+        if (metadata.datetime) {
+            // "01/04/2569 11:43" or similar
+            const dtMatch = metadata.datetime.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}:\d{2})/);
+            if (dtMatch) {
+                const day = dtMatch[1];
+                const month = dtMatch[2];
+                let year = parseInt(dtMatch[3]);
+                if (year > 2500) year -= 543; // BE to AD
+                const time = dtMatch[4];
+                
+                if (datePicker) datePicker.value = `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+                if (timePicker) timePicker.value = time;
+                if (typeof updateBEDisplay === 'function') updateBEDisplay();
+            }
+        }
+
+        // Scroll to form and highlight
+        const formSec = document.getElementById('exception-section');
+        if (formSec) {
+            formSec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            formSec.style.boxShadow = "0 0 15px rgba(2, 136, 209, 0.4)";
+            setTimeout(() => formSec.style.boxShadow = "", 2000);
+        }
+
+        window.showToast(`นำข้อมูล ${sanitizedTracks.length} รายการเข้าฟอร์มแล้ว กรุณาตรวจสอบแล้วกดบันทึก`, 'info');
+        return;
+    }
 }
 
 // SECTION: EXCEPTION META & IMAGE ATTACHMENT
@@ -3159,13 +3146,26 @@ async function addExceptionEntry() {
             trackNums.push(buildExceptionTrackNum(startParsed.prefix, i, startParsed.suffix));
         }
     } else {
-        const single = document.getElementById('exception-track-input').value.trim().toUpperCase().replace(/\s+/g, '');
-        if (!single || single.length !== 13) {
-            alert('กรุณากรอกเลขพัสดุให้ครบ 13 หลัก');
+        const rawInput = document.getElementById('exception-track-input').value.trim().toUpperCase();
+        // Split by comma, space, or newline
+        const inputs = rawInput.split(/[\s,]+/).filter(v => v.length > 0);
+        
+        if (inputs.length === 0) {
+            alert('กรุณากรอกเลขพัสดุ');
             document.getElementById('exception-track-input').focus();
             return;
         }
-        trackNums.push(single);
+
+        const validTracks = inputs.filter(v => v.length === 13);
+        if (validTracks.length === 0) {
+            alert('กรุณากรอกเลขพัสดุให้ครบ 13 หลัก (พบข้อมูลแต่รูปแบบไม่ถูกต้อง)');
+            document.getElementById('exception-track-input').focus();
+            return;
+        }
+
+        validTracks.forEach(v => {
+            if (!trackNums.includes(v)) trackNums.push(v);
+        });
     }
 
     // Extra Items
