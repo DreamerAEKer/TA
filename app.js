@@ -3860,16 +3860,15 @@ async function exportExceptionImage() {
                 }
             });
 
-            // Header (Show on every page)
             let headerHtml = `
-                <div style="margin-bottom:20px; border-bottom:3px solid #0288d1; padding-bottom:12px; display:flex; justify-content:space-between; align-items:flex-end;">
+                <div style="margin-bottom:20px; border-bottom:4px solid #004ba0; padding-bottom:12px; display:flex; justify-content:space-between; align-items:flex-end;">
                     <div>
-                        <div style="font-size:1.4rem; font-weight:bold; color:#01579b;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</div>
-                        <div style="font-size:1rem; color:#0288d1; margin-top:2px;">(Exception & Missing Items Report)</div>
+                        <div style="font-size:1.6rem; font-weight:bold; color:#01579b;">รายงานชิ้นงานที่ไม่มีสถานะรับฝาก</div>
+                        <div style="font-size:1.1rem; color:#0288d1; margin-top:2px; font-weight:500;">(Exception & Missing Items Report)</div>
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-size:1rem; font-weight:bold; color:#333;">${reportDateDisp}</div>
-                        ${totalPages > 1 ? `<div style="font-size:0.9rem; color:#0288d1; font-weight:bold; margin-top:4px;">${pageNumText.trim()}</div>` : ''}
+                        <div style="font-size:1.1rem; font-weight:bold; color:#000;">${reportDateDisp}</div>
+                        ${totalPages > 1 ? `<div style="font-size:0.9rem; color:#d32f2f; font-weight:bold; margin-top:4px;">${pageNumText.trim()}</div>` : ''}
                     </div>
                 </div>
                 <div style="margin-bottom:15px; font-size:0.9rem; line-height:1.6; color:#444; display:grid; grid-template-columns: 1.5fr 1fr; gap:20px;">
@@ -3892,10 +3891,10 @@ async function exportExceptionImage() {
                         <div style="font-size:1.1rem; font-weight:bold; color:#0d47a1; margin-bottom:8px;">📊 ตารางสรุปภาพรวม (Summary)</div>
                         <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #eee; font-size:0.95rem;">
                             <thead>
-                                <tr style="background:#e3f2fd; border-bottom:2px solid #0288d1;">
-                                    <th style="padding:8px; text-align:left; border:1px solid #eee;">หมวดงาน</th>
-                                    <th style="padding:8px; text-align:left; border:1px solid #eee;">ชื่อบริษัท / ลูกค้า</th>
-                                    <th style="padding:8px; text-align:center; border:1px solid #eee; width:15%;">รวม (ชิ้น)</th>
+                        <tr style="background:#01579b; border-bottom:3px solid #014175;">
+                                    <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-weight:bold;">หมวดงาน</th>
+                                    <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-weight:bold;">ชื่อบริษัท / ลูกค้า</th>
+                                    <th style="padding:12px 10px; text-align:center; border:1px solid #014175; color:#ffffff !important; font-weight:bold; width:15%;">รวม (ชิ้น)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -3928,8 +3927,8 @@ async function exportExceptionImage() {
 
                 if (block.type === 'categoryHeader') {
                     detailRowsHtml += `
-                        <tr style="background:#0288d1; color:#fff; font-weight:bold;">
-                            <td colspan="3" style="padding:10px 15px; font-size:1.1rem;">📁 หมวด: ${block.title}</td>
+                        <tr style="background:#014175; color:#ffffff !important; font-weight:bold; border-bottom:2px solid #002f56;">
+                            <td colspan="3" style="padding:12px 15px; font-size:1.2rem;">📁 หมวด: ${block.title}</td>
                         </tr>`;
                 } else if (block.type === 'companyHeader') {
                     detailRowsHtml += `
@@ -3945,8 +3944,15 @@ async function exportExceptionImage() {
                     const firstE = sess.entries[0];
                     let dispDT = new Date(sess.timestamp).toLocaleDateString('th-TH');
                     if (firstE.dateTime) {
-                        const m = firstE.dateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/);
-                        if(m) { let y=parseInt(m[1]); if(y<2500)y+=543; dispDT=`${m[3]}/${m[2]}/${y} ${m[4]}`; }
+                        const m = firstE.dateTime.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                        if (m) {
+                            let y = parseInt(m[1]);
+                            if (y < 2500) y += 543;
+                            let timePart = "";
+                            const tm = firstE.dateTime.match(/T(\d{2}:\d{2})/);
+                            if (tm) timePart = " " + tm[1];
+                            dispDT = `${m[3]}/${m[2]}/${y}${timePart}`;
+                        }
                     }
 
                     const isLast = (globalIdx === exportBlocks.length - 1);
@@ -3992,10 +3998,10 @@ async function exportExceptionImage() {
                 <div style="font-size:1.1rem; font-weight:bold; color:#0d47a1; margin-bottom:8px;">🔍 รายละเอียดแยกตามรายการ (Itemized Details)</div>
                 <table style="width:100%; border-collapse:collapse; border:1px solid #ccc; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
                     <thead>
-                        <tr style="background:#01579b; border-bottom:3px solid #014175;">
-                            <th style="padding:12px 5px; text-align:center; border:1px solid #0277bd; color:white; font-size:0.9rem;">ลำดับ</th>
-                            <th style="padding:12px 10px; text-align:left; border:1px solid #0277bd; color:white; font-size:0.9rem;">หมายเลขพัสดุ</th>
-                            <th style="padding:12px 10px; text-align:left; border:1px solid #0277bd; color:white; font-size:0.9rem;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
+                        <tr style="background:#014175; border-bottom:3px solid #002f56;">
+                            <th style="padding:12px 5px; text-align:center; border:1px solid #013157; color:#ffffff !important; font-size:0.95rem; font-weight:bold;">ลำดับ</th>
+                            <th style="padding:12px 10px; text-align:left; border:1px solid #013157; color:#ffffff !important; font-size:0.95rem; font-weight:bold;">หมายเลขพัสดุ</th>
+                            <th style="padding:12px 10px; text-align:left; border:1px solid #013157; color:#ffffff !important; font-size:0.95rem; font-weight:bold;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
                         </tr>
                     </thead>
                     <tbody>${detailRowsHtml}</tbody>
