@@ -69,6 +69,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('exception-track-input')?.addEventListener('input', (e) => {
         if (typeof checkDbWarningForReport === 'function') checkDbWarningForReport(e.target);
     });
+
+    // --- Persistence: Load last search results (v1.79) ---
+    const lastResults = localStorage.getItem('thp_last_search_results');
+    const lastTitle = localStorage.getItem('thp_last_search_title');
+    if (lastResults && lastTitle) {
+        try {
+            currentUnifiedResults = JSON.parse(lastResults);
+            currentUnifiedTitle = lastTitle;
+            // Immediate silent render (skip async fetch as they are already enriched)
+            renderStoredUnifiedNumbers(currentUnifiedTitle, currentUnifiedResults);
+        } catch(e) { console.error("Failed to load last results", e); }
+    }
 });
 
 /**
@@ -149,6 +161,8 @@ function checkAdminUI() {
 
 // --- Unified Workspace Logic (Smart Tracking) ---
 let lastGeneratedRange = [];
+let currentUnifiedResults = []; // Store current results for persistence & "move" logic
+let currentUnifiedTitle = "";
 
 function toggleMainRangeInputs() {
     const toggle = document.getElementById('smart-main-range-toggle');
@@ -262,6 +276,17 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
         if (typeof CustomerDB !== 'undefined') {
             owner = await CustomerDB.get(item.number);
         }
+        
+        // --- History Check (v1.79) ---
+        let historyInfo = null;
+        if (typeof ExceptionManager !== 'undefined') {
+            const allExceptions = await ExceptionManager.getAll();
+            const found = allExceptions.find(e => e.trackNum === item.number.replace(/\s/g,''));
+            if (found) {
+                historyInfo = { date: found.timestamp, company: found.companyName, reason: found.reason };
+            }
+        }
+
         return {
             number: item.number,
             owner: owner,
@@ -269,9 +294,28 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
             datetime: item.datetime || '',
             isCenter: item.isCenter || false,
             offset: item.offset || 0,
-            source: item.source || ''
+            source: item.source || '',
+            history: historyInfo
         };
     }));
+
+    currentUnifiedResults = enrichedItems;
+    currentUnifiedTitle = title;
+    
+    // Save for F5 persistence
+    localStorage.setItem('thp_last_search_results', JSON.stringify(enrichedItems));
+    localStorage.setItem('thp_last_search_title', title);
+
+    renderStoredUnifiedNumbers(title, enrichedItems, isOcr);
+}
+
+/**
+ * Renders from state (skips async fetching)
+ */
+function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
+    const resultArea = document.getElementById('smart-unified-results');
+    const summaryArea = document.getElementById('smart-summary-badge');
+    if (!resultArea) return;
 
     // 2. Group by Company
     const groups = {};
@@ -304,7 +348,10 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
     });
 
     sortedCompanies.forEach((company, companyIdx) => {
-        const groupItems = groups[company];
+        // v1.79 Filter out moved items for this company
+        const groupItems = groups[company].filter(i => !i.moved);
+        if (groupItems.length === 0) return; // Skip company if all moved
+
         const companyEscaped = company.replace(/'/g, "\\'").replace('ไม่มีในฐานข้อมูล (Unknown Sender)', '');
         const companyId = `group-${companyIdx}`;
 
@@ -477,7 +524,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
                 ${isMain ? `
                     <input type="checkbox" class="group-checkbox-${groupId}" value="${rawNum}" 
                         data-metadata="${metadataJson}"
-                        style="width:18px; height:18px; cursor:pointer;" checked onclick="event.stopPropagation()">
+                        style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation()">
                 ` : ''}
             </div>
             <div style="width:30px; text-align:center; font-weight:bold; font-size:0.75rem; color:#bbb;">
@@ -489,6 +536,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
             </div>
             <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
                 ${formattedNum}
+                ${row.history ? `<div class="reported-badge">⚠️ ${new Date(row.history.date).toLocaleDateString('th-TH')} - ${row.history.company} (${row.history.reason})</div>` : ''}
                 ${row.status || row.datetime ? `
                     <div style="font-size:0.72rem; color:#0288d1; margin-top:1px; font-style:italic;">
                         ${row.status ? `[${row.status}] ` : ''}${row.datetime || ''}
@@ -2680,32 +2728,6 @@ function draftReportFromGroup(prefix) {
     const items = group.items.map(i => i.track);
     
     if (items.length > 0) {
-        if (mainInput) mainInput.value = items[0];
-        
-        for (let i = 1; i < items.length; i++) {
-            if (typeof addExceptionExtraItem === 'function') {
-                addExceptionExtraItem();
-                const extras = document.querySelectorAll('.exception-extra-track');
-                if (extras.length > 0) {
-                    extras[extras.length - 1].value = items[i];
-                }
-            }
-        }
-    }
-
-    // Pre-fill reason if empty
-    const reasonInput = document.getElementById('exception-reason-input');
-    if (reasonInput && !reasonInput.value) {
-        reasonInput.value = "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง (จาก QMS)";
-    }
-
-    // Pre-fill auto-discovered company name into Subject as a helper if Subject is empty
-    let companyNameVal = group.companyFound ? group.companyHint.replace('(คาดเดาจากเลขใกล้เคียง) ', '') : "";
-    const subjectInput = document.getElementById('rpt-subject');
-    if (subjectInput && !subjectInput.value && companyNameVal) {
-        subjectInput.value = "รายงานชิ้นงานตกหล่น: " + companyNameVal;
-    }
-
     // NEW: Auto-fill Date/Time from QMS into the new pickers
     if (group.extractedDateTime) {
         setExceptionDatePickerFromBE(group.extractedDateTime);
@@ -2723,83 +2745,68 @@ function draftReportFromGroup(prefix) {
 }
 
 /**
- * Pre-fills the exception form from search results.
+ * Pre-fills or directly moves items into the exception report draft.
+ * v1.79: Implements 'Move' logic - items added to report are hidden from results.
  */
 async function stagingQuickReport(tracks, companyName, metadata = {}) {
-    // v1.73/v1.75: Sanitize input tracks
     if (!tracks) return;
     const inputTracks = Array.isArray(tracks) ? tracks : [tracks];
     
-    // v1.75: Detect Range Title (e.g. "ET ... ถึง ET ...")
+    // 1. Detect Range Title (ignore for direct move, just fill form)
     if (inputTracks.length === 1 && inputTracks[0].includes(' ถึง ')) {
         const parts = inputTracks[0].split(' ถึง ');
         if (parts.length === 2) {
             const startStr = parts[0].replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
             const endStr = parts[1].replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
-            
-            // Switch to Range Mode
             const rangeToggle = document.getElementById('exception-range-toggle');
             if (rangeToggle && !rangeToggle.checked) {
                 rangeToggle.checked = true;
                 if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
             }
-            
             const startInput = document.getElementById('exception-start-input');
             const endInput = document.getElementById('exception-end-input');
             if (startInput) startInput.value = startStr;
             if (endInput) endInput.value = endStr;
-            
-            // Set Reason from metadata if available (v1.75: default to "กลุ่มเลขต่อเนื่อง")
             const reasonInput = document.getElementById('exception-reason-input');
             if (reasonInput) reasonInput.value = metadata.status || "กลุ่มเลขต่อเนื่อง";
-            
-            // Highlight
-            [startInput, endInput].forEach(el => { if(el) { el.style.background="#fff9c4"; setTimeout(()=>el.style.background="",1000); } });
-            
-            // Update metadata form
-            if (companyName && !document.getElementById('rpt-subject').value) {
-                document.getElementById('rpt-subject').value = "รายงานชิ้นงานตกหล่น: " + companyName;
-            }
-            return; // DONE for Range Title
-        }
-    }
-
-    // Normal processing for arrays of numbers
-    const sanitizedTracks = inputTracks.map(t => t.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, ''));
-    
-    console.log("DEBUG: stagingQuickReport called with:", sanitizedTracks.length, "tracks for", companyName, "metadata:", metadata);
-
-    // --- Metadata Pre-fill (Excel/Checked source) ---
-    // If multiple tracks, we use the metadata from the FIRST one or the one with content
-    if (metadata && metadata.status) {
-        const reasonInput = document.getElementById('exception-reason-input');
-        if (reasonInput) reasonInput.value = metadata.status;
-    }
-    if (metadata && metadata.datetime) {
-        if (typeof setExceptionDatePickerFromBE === 'function') {
-            setExceptionDatePickerFromBE(metadata.datetime);
-        }
-    }
-
-    // --- DB Warning Check (Async) ---
-    let knownCount = 0;
-    const knownNames = new Set();
-    if (typeof CustomerDB !== 'undefined') {
-        const owners = await Promise.all(tracks.map(n => CustomerDB.get(n)));
-        owners.forEach(owner => {
-            if (owner) {
-                knownCount++;
-                knownNames.add(owner.name);
-            }
-        });
-    }
-
-    if (knownCount > 0) {
-        const names = Array.from(knownNames).join(', ');
-        if (!confirm(`⚠️ คำเตือน: พบ ${knownCount} เลขที่มีในฐานข้อมูลแล้ว (${names})\nไม่แนะนำให้นำเลขปกติมาทำรายงานรวมกับชิ้นงานตกหล่น\n\nต้องการดำเนินการต่อหรือไม่?`)) {
             return;
         }
     }
+
+    const sanitizedTracks = inputTracks.map(t => t.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, ''));
+
+    // 2. Direct Move Logic (v1.79)
+    // If we have a company name or metadata, we can bypass the form and save directly
+    const shouldDirectSave = (companyName && companyName !== 'ไม่มีในฐานข้อมูล (Unknown Sender)') || (metadata && metadata.status);
+    
+    if (shouldDirectSave) {
+        const reason = metadata.status || "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
+        const firstStatus = "ใส่ของลงถุง"; // Default
+        const dateTime = metadata.datetime || "";
+        
+        // Save to DB (Auto session)
+        const savedId = await ExceptionManager.saveSession(sanitizedTracks, companyName, reason, firstStatus, dateTime, [], null, {});
+        if (savedId) {
+            window.showToast(`ย้ายกลับ ${sanitizedTracks.length} รายการลงรายงานร่างแล้ว`, 'success');
+            
+            // Mark as moved in state
+            currentUnifiedResults.forEach(item => {
+                if (sanitizedTracks.includes(item.number.replace(/\s/g,''))) {
+                    item.moved = true;
+                }
+            });
+            localStorage.setItem('thp_last_search_results', JSON.stringify(currentUnifiedResults));
+            
+            // Re-render both
+            renderStoredUnifiedNumbers(currentUnifiedTitle, currentUnifiedResults);
+            await renderExceptionTable();
+            return;
+        }
+    }
+
+    // Fallback: Populate form if no direct save info
+    const mainInput = document.getElementById('exception-track-input');
+    if (!mainInput) return;
 
     // --- Smart Range Detection (New) ---
     const isConsecutive = (nums) => {
@@ -2807,22 +2814,17 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
         const parsed = nums.map(n => parseExceptionTrackNum(n));
         if (parsed.some(p => !p)) return false;
         
-        // Same Prefix/Suffix?
         const prefix = parsed[0].prefix;
         const suffix = parsed[0].suffix;
         if (parsed.some(p => p.prefix !== prefix || p.suffix !== suffix)) return false;
         
-        // Consecutive bodies?
         for (let i = 1; i < parsed.length; i++) {
             if (parsed[i].bodyInt !== parsed[i-1].bodyInt + 1) return false;
         }
         return true;
     };
 
-    const mainInput = document.getElementById('exception-track-input');
-
     if (isConsecutive(sanitizedTracks)) {
-        // Toggle to Range Mode
         const rangeToggle = document.getElementById('exception-range-toggle');
         if (rangeToggle && !rangeToggle.checked) {
             rangeToggle.checked = true;
@@ -2834,7 +2836,6 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
         if (startInput) startInput.value = sanitizedTracks[0];
         if (endInput) endInput.value = sanitizedTracks[sanitizedTracks.length - 1];
         
-        // Visual feedback
         [startInput, endInput].forEach(el => {
             if (el) {
                 el.style.backgroundColor = "#fff9c4";
@@ -2842,57 +2843,28 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
             }
         });
     } else {
-    // Discrete Mode (Append)
-    // Ensure Range Mode is OFF if we are adding discrete items
-    const rangeToggle = document.getElementById('exception-range-toggle');
-    if (rangeToggle && rangeToggle.checked) {
-        rangeToggle.checked = false;
-        if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
+        // Discrete Mode (Append)
+        const rangeToggle = document.getElementById('exception-range-toggle');
+        if (rangeToggle && rangeToggle.checked) {
+            rangeToggle.checked = false;
+            if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
+        }
+
+        mainInput.value = sanitizedTracks[0];
+        // Populate extra if multiple
+        for (let i = 1; i < sanitizedTracks.length; i++) {
+            addExceptionExtraItem();
+            const extras = document.querySelectorAll('.exception-extra-track');
+            if (extras.length > 0) extras[extras.length-1].value = sanitizedTracks[i];
+        }
     }
-
-    // Sort tracks to try and fill in order
-    sanitizedTracks.forEach(track => {
-        const allInputs = [mainInput, ...document.querySelectorAll('.exception-extra-track')];
-        // Priority: mainInput if empty, then first empty extra
-        let targetField = null;
-        if (mainInput && !mainInput.value.trim()) {
-            targetField = mainInput;
-        } else {
-            targetField = Array.from(document.querySelectorAll('.exception-extra-track')).find(input => input && !input.value.trim());
-        }
-
-        if (!targetField) {
-            if (typeof addExceptionExtraItem === 'function') {
-                addExceptionExtraItem();
-                const updatedExtras = document.querySelectorAll('.exception-extra-track');
-                targetField = updatedExtras[updatedExtras.length - 1];
-            }
-        }
-
-        if (targetField) {
-            targetField.value = track;
-            targetField.style.backgroundColor = "#fff9c4";
-            setTimeout(() => targetField.style.backgroundColor = "", 1000);
-        }
-    });
-}
-
-    // Pre-fill metadata only if empty
-    const subjectInput = document.getElementById('rpt-subject');
-    if (subjectInput && !subjectInput.value && companyName) {
-        subjectInput.value = "รายงานชิ้นงานตกหล่น: " + companyName;
-    }
-
+    
     const reasonInput = document.getElementById('exception-reason-input');
-    if (reasonInput && !reasonInput.value) {
-        reasonInput.value = "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
-    }
-
-    // Success feedback and scroll
-    if (mainInput) {
-        mainInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        if (typeof showToast === 'function') showToast(`เพิ่ม ${tracks.length} รายการเข้าสู่รายงานแล้ว`, 'success');
-    }
+    if (reasonInput) reasonInput.value = metadata.status || "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
+    
+    if (metadata.datetime) setExceptionDatePickerFromBE(metadata.datetime);
+    
+    mainInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // SECTION: EXCEPTION META & IMAGE ATTACHMENT
@@ -3593,7 +3565,22 @@ function compressEntriesForDisplay(entries) {
 
 async function deleteExceptionSession(sessionId) {
     if (confirm('ลบรายการในกลุ่มนี้ทั้งหมดใช่หรือไม่?')) {
+        const exceptions = await ExceptionManager.getAll();
+        const sessionItems = exceptions.filter(e => e.sessionId === sessionId).map(e => e.trackNum.replace(/\s/g,''));
+        
         await ExceptionManager.removeSession(sessionId);
+        
+        // --- Bounce Back Logic (v1.79) ---
+        if (currentUnifiedResults && currentUnifiedResults.length > 0) {
+            currentUnifiedResults.forEach(item => {
+                if (sessionItems.includes(item.number.replace(/\s/g,''))) {
+                    item.moved = false;
+                }
+            });
+            localStorage.setItem('thp_last_search_results', JSON.stringify(currentUnifiedResults));
+            renderStoredUnifiedNumbers(currentUnifiedTitle, currentUnifiedResults);
+        }
+
         await renderExceptionTable();
     }
 }
@@ -3793,7 +3780,7 @@ async function exportExceptionImage() {
                         ${meta.reporter ? `<div><strong>ผู้รายงาน:</strong> ${meta.reporter}</div>` : ''}
                     </div>
                     <div style="padding:8px; background:#f5faff; border:1px solid #d1e3f8; border-radius:6px;">
-                        <strong>หมายเหตุส่วนกลาง:</strong><br>
+                        <strong>หมายเหตุ:</strong><br>
                         <span style="font-size:0.85rem; color:#666;">${meta.note || '-'}</span>
                     </div>
                 </div>`;
@@ -3921,7 +3908,7 @@ async function exportExceptionImage() {
                     ${summaryHtml}
                     ${detailTableHtml}
                     <div style="margin-top:30px; text-align:center; font-size:0.85rem; color:#aaa; border-top:1px solid #f0f0f0; padding-top:10px;">
-                        จัดทำโดยระบบ Tracking Analyst Helper | ชุดที่ ${p+1} จากทั้งหมด ${totalPages} ชุด
+                        Tracking Analyst Helper | ชุดที่ ${p+1} จากทั้งหมด ${totalPages} ชุด
                     </div>
                 </div>`;
 
