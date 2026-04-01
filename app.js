@@ -2910,7 +2910,7 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
                 rangeToggle.checked = false;
                 if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
             }
-            if (mainInput) mainInput.value = combined.join(', ');
+            if (mainInput) mainInput.value = combined.join('\n');
         }
 
         // 4. Fill Metadata (Only if empty or if meaningful)
