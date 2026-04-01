@@ -471,18 +471,20 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
 
             const hasAnySats = leadingSats.length > 0 || trailingSats.length > 0 || !isSingle;
 
+            const shouldCheckDefault = !isOcr;
+
             html += `
                 <div style="border:1px solid #90caf9; border-radius:10px; overflow:hidden; background:white; margin-bottom:12px; box-shadow:0 3px 10px rgba(2,136,209,0.05);">
-                    ${renderUnifiedRow(summaryRowData, companyId, companyEscaped, hasAnySats, clusterId)}
+                    ${renderUnifiedRow(summaryRowData, companyId, companyEscaped, hasAnySats, clusterId, shouldCheckDefault)}
                     <div class="satellite-wrapper">
                         <!-- 1. Before Satellite -->
-                        ${leadingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped, false, clusterId)).join('')}
+                        ${leadingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped, false, clusterId, shouldCheckDefault)).join('')}
 
                         <!-- 2. Main List -->
-                        ${series.map(wrap => renderUnifiedRow(wrap.main, companyId, companyEscaped, false, clusterId)).join('')}
+                        ${series.map(wrap => renderUnifiedRow(wrap.main, companyId, companyEscaped, false, clusterId, shouldCheckDefault)).join('')}
 
                         <!-- 3. After Satellite -->
-                        ${trailingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped, false, clusterId)).join('')}
+                        ${trailingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped, false, clusterId, shouldCheckDefault)).join('')}
                     </div>
                 </div>
             `;
@@ -514,7 +516,7 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
  * Helper to render a single row in the Results Sidebar.
  * v1.70: Distinctive styling for Main vs Satellite row.
  */
-function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, clusterId = null) {
+function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, clusterId = null, shouldAutoCheck = true) {
     const isMain = row.isCenter === true;
     const rowClass = isMain ? 'unified-row center-row' : 'unified-row satellite-row';
     const rowBg = isMain ? '#fff9c4' : '#fff';
@@ -539,17 +541,19 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
     const warningIcon = row.hasHistory || row.history ? '<span class="badge badge-danger" style="margin-left:5px; padding:2px 4px; font-size:0.7rem;" title="แจ้งรายงานแล้ว">⚠️</span>' : '';
     const hideCheckbox = (isMain && row.history) || (hasSatellites && row.allReported);
 
+    const checkedAttr = shouldAutoCheck ? 'checked' : '';
+
     return `
         <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem; min-height:48px; cursor:${hasSatellites ? 'pointer' : 'default'};">
             <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
                 ${hideCheckbox ? warningIcon : (isMain ? `
                     <input type="checkbox" class="group-checkbox-${groupId} cluster-checkbox-${clusterId}" value="${rawNum}" 
                         data-metadata="${metadataJson}"
-                        style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation()" checked>
+                        style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation()" ${checkedAttr}>
                 ` : (hasSatellites && clusterId ? `
                     <input type="checkbox" class="cluster-master-${clusterId}" 
                         style="width:18px; height:18px; cursor:pointer;" 
-                        onclick="event.stopPropagation(); toggleClusterCheckboxes('${clusterId}', this.checked)" checked>
+                        onclick="event.stopPropagation(); toggleClusterCheckboxes('${clusterId}', this.checked)" ${checkedAttr}>
                 ` : ''))}
             </div>
             <div style="width:30px; text-align:center; font-weight:bold; font-size:0.75rem; color:#bbb;">
@@ -2842,46 +2846,80 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
     const statusInput = document.getElementById('exception-first-status');
 
     if (sanitizedTracks.length > 0) {
-        // Handle Range logic
-        const isContinuousRange = isConsecutive(sanitizedTracks);
+        let existingTracks = [];
+        const isCurrentRange = rangeToggle && rangeToggle.checked;
         
-        if (isContinuousRange && sanitizedTracks.length > 1) {
+        // 1. Collect Existing
+        if (isCurrentRange) {
+            const sV = startInput.value.trim().replace(/\s/g,'');
+            const eV = endInput.value.trim().replace(/\s/g,'');
+            if (sV && eV) {
+                const sP = parseExceptionTrackNum(sV);
+                const eP = parseExceptionTrackNum(eV);
+                if (sP && eP && sP.prefix === eP.prefix && sP.suffix === eP.suffix) {
+                    for (let i = sP.bodyInt; i <= eP.bodyInt; i++) {
+                        existingTracks.push(buildExceptionTrackNum(sP.prefix, i, sP.suffix));
+                    }
+                }
+            }
+        } else {
+            const mV = mainInput.value.trim();
+            if (mV) existingTracks = mV.split(/[\s,]+/).filter(v => v.length > 0);
+        }
+
+        // 2. Merge & Deduplicate
+        const combined = [...existingTracks];
+        sanitizedTracks.forEach(t => {
+            if (!combined.includes(t)) combined.push(t);
+        });
+
+        // 3. Determine Mode (Auto-Switch if append creates non-consecutive or multiple sets)
+        const isContinuousRange = isConsecutive(combined);
+        
+        if (isContinuousRange && combined.length > 1) {
             if (rangeToggle && !rangeToggle.checked) {
                 rangeToggle.checked = true;
                 if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
             }
-            if (startInput) startInput.value = sanitizedTracks[0];
-            if (endInput) endInput.value = sanitizedTracks[sanitizedTracks.length - 1];
+            if (startInput) startInput.value = combined[0];
+            if (endInput) endInput.value = combined[combined.length - 1];
         } else {
             // Single or Multiple non-consecutive
             if (rangeToggle && rangeToggle.checked) {
                 rangeToggle.checked = false;
                 if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
             }
-            if (mainInput) mainInput.value = sanitizedTracks.join(', ');
+            if (mainInput) mainInput.value = combined.join(', ');
         }
 
-        // Fill Metadata
-        if (reasonInput) reasonInput.value = metadata.status || "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
-        if (statusInput) statusInput.value = "ใส่ของลงถุง";
+        // 4. Fill Metadata (Only if empty or if meaningful)
+        const currentReason = reasonInput ? reasonInput.value.trim() : "";
+        const isNewGenericReason = metadata.status && metadata.status.includes('กลุ่มเลขต่อเนื่อง');
         
-        if (metadata.datetime) {
-            // "01/04/2569 11:43" or similar
+        if (reasonInput && (!currentReason || currentReason === "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง")) {
+            // If the incoming metadata is a generic summary row status, maybe don't use it if we are merging
+            if (!isNewGenericReason || combined.length === sanitizedTracks.length) {
+                reasonInput.value = metadata.status || "รายละเอียดยังไม่เข้าระบบ/ของยังไม่มาส่ง";
+            }
+        }
+        
+        if (statusInput && !statusInput.value) statusInput.value = "ใส่ของลงถุง";
+        
+        if (metadata.datetime && datePicker && !datePicker.value) {
             const dtMatch = metadata.datetime.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}:\d{2})/);
             if (dtMatch) {
                 const day = dtMatch[1];
                 const month = dtMatch[2];
                 let year = parseInt(dtMatch[3]);
-                if (year > 2500) year -= 543; // BE to AD
+                if (year > 2500) year -= 543;
                 const time = dtMatch[4];
-                
                 if (datePicker) datePicker.value = `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
                 if (timePicker) timePicker.value = time;
                 if (typeof updateBEDisplay === 'function') updateBEDisplay();
             }
         }
 
-        // Scroll to form and highlight
+        // 5. Scroll & Highlight
         const formSec = document.getElementById('exception-section');
         if (formSec) {
             formSec.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2889,7 +2927,7 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
             setTimeout(() => formSec.style.boxShadow = "", 2000);
         }
 
-        window.showToast(`นำข้อมูล ${sanitizedTracks.length} รายการเข้าฟอร์มแล้ว กรุณาตรวจสอบแล้วกดบันทึก`, 'info');
+        window.showToast(`เพิ่มแล้ว! รวมทั้งหมด ${combined.length} รายการ`, 'info');
         return;
     }
 }
