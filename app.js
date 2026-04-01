@@ -80,12 +80,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Persistence: Load last search results (v1.79) ---
     const lastResults = localStorage.getItem('thp_last_search_results');
     const lastTitle = localStorage.getItem('thp_last_search_title');
+    const lastIsOcr = localStorage.getItem('thp_last_search_is_ocr') === 'true';
+
     if (lastResults && lastTitle) {
         try {
             currentUnifiedResults = JSON.parse(lastResults);
             currentUnifiedTitle = lastTitle;
             // Immediate silent render (skip async fetch as they are already enriched)
-            renderStoredUnifiedNumbers(currentUnifiedTitle, currentUnifiedResults);
+            renderStoredUnifiedNumbers(currentUnifiedTitle, currentUnifiedResults, lastIsOcr);
         } catch(e) { console.error("Failed to load last results", e); }
     }
 });
@@ -312,6 +314,7 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
     // Save for F5 persistence
     localStorage.setItem('thp_last_search_results', JSON.stringify(enrichedItems));
     localStorage.setItem('thp_last_search_title', title);
+    localStorage.setItem('thp_last_search_is_ocr', isOcr ? 'true' : 'false');
 
     renderStoredUnifiedNumbers(title, enrichedItems, isOcr);
 }
