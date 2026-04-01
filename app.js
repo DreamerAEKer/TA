@@ -4030,9 +4030,9 @@ async function exportExceptionImage() {
                         <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #eee; font-size:0.95rem;">
                             <thead>
                         <tr style="background:#003366; border-bottom:3px solid #00264d;">
-                                    <th style="padding:12px 10px; text-align:left; border:1px solid #00264d; background:#003366 !important; color:#ffffff !important; font-weight:bold; font-size:1.05rem;">หมวดงาน</th>
-                                    <th style="padding:12px 10px; text-align:left; border:1px solid #00264d; background:#003366 !important; color:#ffffff !important; font-weight:bold; font-size:1.05rem;">ชื่อบริษัท / ลูกค้า</th>
-                                    <th style="padding:12px 10px; text-align:center; border:1px solid #00264d; background:#003366 !important; color:#ffffff !important; font-weight:bold; width:15%; font-size:1.05rem;">รวม (ชิ้น)</th>
+                                    <th style="padding:12px 10px; text-align:left; border:1px solid #004ba0; background:#01579b !important; color:#ffffff !important; font-weight:bold; font-size:1.05rem;">หมวดงาน</th>
+                                    <th style="padding:12px 10px; text-align:left; border:1px solid #004ba0; background:#01579b !important; color:#ffffff !important; font-weight:bold; font-size:1.05rem;">ชื่อบริษัท / ลูกค้า</th>
+                                    <th style="padding:12px 10px; text-align:center; border:1px solid #004ba0; background:#01579b !important; color:#ffffff !important; font-weight:bold; width:15%; font-size:1.05rem;">รวม (ชิ้น)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -4065,7 +4065,7 @@ async function exportExceptionImage() {
 
                 if (block.type === 'categoryHeader') {
                     detailRowsHtml += `
-                        <tr style="background:#003366; color:#ffffff !important; font-weight:bold; border-bottom:2px solid #001a33;">
+                        <tr style="background:#01579b; color:#ffffff !important; font-weight:bold; border-bottom:2px solid #014175;">
                             <td colspan="3" style="padding:12px 15px; font-size:1.2rem;">📁 หมวด: ${block.title}</td>
                         </tr>`;
                 } else if (block.type === 'companyHeader') {
@@ -4136,10 +4136,10 @@ async function exportExceptionImage() {
                 <div style="font-size:1.1rem; font-weight:bold; color:#0d47a1; margin-bottom:8px;">🔍 รายละเอียดแยกตามรายการ (Itemized Details)</div>
                 <table style="width:100%; border-collapse:collapse; border:1px solid #ccc; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
                     <thead>
-                        <tr style="background:#003366; border-bottom:4px solid #001a33;">
-                            <th style="padding:14px 5px; text-align:center; border:1px solid #001a33; background:#003366 !important; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">ลำดับ</th>
-                            <th style="padding:14px 10px; text-align:left; border:1px solid #001a33; background:#003366 !important; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">หมายเลขพัสดุ</th>
-                            <th style="padding:14px 10px; text-align:left; border:1px solid #001a33; background:#003366 !important; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
+                        <tr style="background:#01579b; border-bottom:4px solid #014175;">
+                            <th style="padding:14px 5px; text-align:center; border:1px solid #004ba0; background:#01579b !important; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">ลำดับ</th>
+                            <th style="padding:14px 10px; text-align:left; border:1px solid #004ba0; background:#01579b !important; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">หมายเลขพัสดุ</th>
+                            <th style="padding:14px 10px; text-align:left; border:1px solid #004ba0; background:#01579b !important; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
                         </tr>
                     </thead>
                     <tbody>${detailRowsHtml}</tbody>
