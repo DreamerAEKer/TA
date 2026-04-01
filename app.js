@@ -3891,10 +3891,10 @@ async function exportExceptionImage() {
                         <div style="font-size:1.1rem; font-weight:bold; color:#0d47a1; margin-bottom:8px;">📊 ตารางสรุปภาพรวม (Summary)</div>
                         <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #eee; font-size:0.95rem;">
                             <thead>
-                        <tr style="background:#01579b; border-bottom:3px solid #014175;">
-                                    <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-weight:bold;">หมวดงาน</th>
-                                    <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-weight:bold;">ชื่อบริษัท / ลูกค้า</th>
-                                    <th style="padding:12px 10px; text-align:center; border:1px solid #014175; color:#ffffff !important; font-weight:bold; width:15%;">รวม (ชิ้น)</th>
+                        <tr style="background:#01579b; border-bottom:3px solid #003366;">
+                                    <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-weight:bold; font-size:1rem;">หมวดงาน</th>
+                                    <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-weight:bold; font-size:1rem;">ชื่อบริษัท / ลูกค้า</th>
+                                    <th style="padding:12px 10px; text-align:center; border:1px solid #014175; color:#ffffff !important; font-weight:bold; width:15%; font-size:1rem;">รวม (ชิ้น)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -3998,10 +3998,10 @@ async function exportExceptionImage() {
                 <div style="font-size:1.1rem; font-weight:bold; color:#0d47a1; margin-bottom:8px;">🔍 รายละเอียดแยกตามรายการ (Itemized Details)</div>
                 <table style="width:100%; border-collapse:collapse; border:1px solid #ccc; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
                     <thead>
-                        <tr style="background:#014175; border-bottom:3px solid #002f56;">
-                            <th style="padding:12px 5px; text-align:center; border:1px solid #013157; color:#ffffff !important; font-size:0.95rem; font-weight:bold;">ลำดับ</th>
-                            <th style="padding:12px 10px; text-align:left; border:1px solid #013157; color:#ffffff !important; font-size:0.95rem; font-weight:bold;">หมายเลขพัสดุ</th>
-                            <th style="padding:12px 10px; text-align:left; border:1px solid #013157; color:#ffffff !important; font-size:0.95rem; font-weight:bold;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
+                        <tr style="background:#01579b; border-bottom:3px solid #003366;">
+                            <th style="padding:12px 5px; text-align:center; border:1px solid #014175; color:#ffffff !important; font-size:1rem; font-weight:bold;">ลำดับ</th>
+                            <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-size:1rem; font-weight:bold;">หมายเลขพัสดุ</th>
+                            <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-size:1rem; font-weight:bold;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
                         </tr>
                     </thead>
                     <tbody>${detailRowsHtml}</tbody>
