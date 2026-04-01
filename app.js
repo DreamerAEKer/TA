@@ -342,7 +342,7 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
     let html = `
         <div style="padding:10px; background:linear-gradient(to bottom, #fff, #f9f9f9); border-bottom:1px solid #ddd; position:sticky; top:0; z-index:99; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
             <div style="font-size:0.8rem; color:#666; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">🔍 ${title} (${mainItemTotal} รายการ)</div>
-            <button class="btn" style="padding:4px 12px; font-size:0.75rem; background:#fff; border:1px solid #0288d1; color:#0288d1; border-radius:4px; font-weight:bold; flex-shrink:0; margin-left:10px;" onclick="copyAllUnifiedNumbers()">📋 Copy All</button>
+            <button class="btn" style="padding:4px 12px; font-size:0.75rem; background:#fff; border:1px solid #0288d1; color:#0288d1; border-radius:4px; font-weight:bold; flex-shrink:0; margin-left:10px;" onclick="copyAllSearchTrackings()">📋 คัดลอกเลขทั้งหมด</button>
         </div>
         <div style="padding:10px;">
     `;
@@ -501,7 +501,7 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
             <div style="display:flex; flex-direction:column; gap:8px;">
                 <button class="btn btn-success" onclick="stagingAllCheckedItems()" style="width:100%; font-size:1.16rem; padding:15px; font-weight:bold; border-radius:10px; box-shadow:0 4px 15px rgba(46,125,50,0.2);">🚩 เพิ่มรายการที่เลือกเข้าตารางร่าง (${mainItemTotal})</button>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn btn-neutral" onclick="copyAllUnifiedNumbers()" style="flex:1; font-size:0.85rem; padding:8px; background:#fff; border:1px solid #ccc;">📋 คัดลอกเลขหลักทั้งหมด</button>
+                    <button class="btn btn-neutral" onclick="copySelectedUnifiedNumbers()" style="flex:1; font-size:0.85rem; padding:8px; background:#fff; border:1px solid #ccc;">📋 คัดลอกเฉพาะที่ติ๊กเลือก</button>
                     <button class="btn btn-neutral" onclick="document.querySelectorAll('[class^=group-checkbox-]').forEach(cb=>cb.checked=false)" style="flex:1; font-size:0.85rem; padding:8px; background:#fff; border:1px solid #ccc;">❌ ยกเลิกการเลือก</button>
                 </div>
             </div>
@@ -692,9 +692,28 @@ function stagingAllCheckedItems() {
 }
 
 /**
- * v1.73: Copy all selected numbers as clean raw strings (no spaces)
+ * Copy all main numbers from current result (regardless of checkboxes)
  */
-function copyAllUnifiedNumbers() {
+function copyAllSearchTrackings() {
+    if (!currentUnifiedResults) return;
+    const allTracks = currentUnifiedResults
+        .filter(i => i.isCenter)
+        .map(i => i.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, ''));
+
+    if (allTracks.length === 0) {
+        alert('ไม่พบเลขที่ต้องการคัดลอก');
+        return;
+    }
+
+    navigator.clipboard.writeText(allTracks.join('\n')).then(() => {
+        window.showToast(`คัดลอกทั้งหมด ${allTracks.length} รายการแล้ว`, 'success');
+    });
+}
+
+/**
+ * v1.73/v1.81: Copy only selected numbers as clean raw strings (no spaces)
+ */
+function copySelectedUnifiedNumbers() {
     const cbks = document.querySelectorAll('[class^="group-checkbox-"]');
     const selectedTracks = [];
 
@@ -709,11 +728,8 @@ function copyAllUnifiedNumbers() {
         return;
     }
 
-    const text = selectedTracks.join('\n');
-    navigator.clipboard.writeText(text).then(() => {
-        alert(`คัดลอกเลขพัสดุสำเร็จ ${selectedTracks.length} รายการ (แบบไม่มีช่องว่าง)`);
-    }).catch(err => {
-        alert('ไม่สามารถคัดลอกได้: ' + err);
+    navigator.clipboard.writeText(selectedTracks.join('\n')).then(() => {
+        window.showToast(`คัดลอกเฉพาะที่เลือก ${selectedTracks.length} รายการแล้ว`, 'success');
     });
 }
 
