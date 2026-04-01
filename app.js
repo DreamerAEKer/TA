@@ -351,8 +351,8 @@ function getCurrentDraftNumbers() {
         }
     }
 
-    // 3. Extra Items
-    const extras = document.querySelectorAll('.exception-extra-input');
+    // 3. Extra Items (v1.91 Fix: match class used in generator)
+    const extras = document.querySelectorAll('.exception-extra-track');
     extras.forEach(ex => {
         const clean = ex.value.trim().toUpperCase().replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
         if (clean) numbers.add(clean);
@@ -3003,6 +3003,16 @@ async function stagingQuickReport(tracks, companyName, metadata = {}) {
             setTimeout(() => formSec.style.boxShadow = "", 2000);
         }
 
+        // 6. Refresh Results Search Panel (v1.91 Sync)
+        if (typeof renderStoredUnifiedNumbers === 'function' && currentUnifiedResults && currentUnifiedResults.length > 0) {
+            sanitizedTracks.forEach(t => {
+                const item = currentUnifiedResults.find(i => i.number.replace(/\s/g,'') === t);
+                if (item) item.moved = true;
+            });
+            localStorage.setItem('thp_last_search_results', JSON.stringify(currentUnifiedResults));
+            renderStoredUnifiedNumbers(currentUnifiedTitle || "", currentUnifiedResults);
+        }
+
         window.showToast(`เพิ่มแล้ว! รวมทั้งหมด ${combined.length} รายการ`, 'info');
         return;
     }
@@ -3208,9 +3218,9 @@ function addExceptionExtraItem() {
     div.style.cssText = 'display:flex; gap:10px; margin-top:10px; align-items:center;';
     div.innerHTML = `
         <input type="text" class="exception-extra-track" placeholder="เลขที่เพิ่มเติม (เช่น EQ123499999TH)" maxlength="13"
-            oninput="checkDbWarningForReport(this)"
+            oninput="checkDbWarningForReport(this); if(typeof renderStoredUnifiedNumbers === 'function') renderStoredUnifiedNumbers(currentUnifiedTitle || '', currentUnifiedResults || []);"
             style="flex:1; text-transform:uppercase; padding:10px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; font-family:inherit; font-size:inherit;">
-        <button type="button" onclick="document.getElementById('extra-item-${extraItemCount}').remove()"
+        <button type="button" onclick="document.getElementById('extra-item-${extraItemCount}').remove(); if(typeof renderStoredUnifiedNumbers === 'function') renderStoredUnifiedNumbers(currentUnifiedTitle || '', currentUnifiedResults || []);"
             style="padding:10px 14px; border:1px solid #ffcdd2; border-radius:4px; background:#ffebee; color:#d32f2f; cursor:pointer;">✕</button>
     `;
     container.appendChild(div);
@@ -3362,6 +3372,24 @@ async function addExceptionEntry() {
     updateBEDisplay();
     extraItemCount = 0;
 
+    // v1.91: Sync Result Panel after save (so "Already Reported" badges show up)
+    if (typeof renderStoredUnifiedNumbers === 'function' && currentUnifiedResults && currentUnifiedResults.length > 0) {
+        // Re-check history for all items in results
+        const allExceptions = await ExceptionManager.getAll();
+        currentUnifiedResults.forEach(item => {
+            const trackClean = item.number.replace(/\s/g,'');
+            const found = allExceptions.find(e => e.trackNum === trackClean);
+            if (found) {
+                item.history = { date: found.timestamp, company: found.companyName, reason: found.reason, sessionId: found.sessionId || found.id };
+                item.moved = false; // It's out of draft now, show as "Reported" instead
+            } else {
+                item.moved = false; // Form was cleared, reappear in results
+            }
+        });
+        localStorage.setItem('thp_last_search_results', JSON.stringify(currentUnifiedResults));
+        renderStoredUnifiedNumbers(currentUnifiedTitle || "", currentUnifiedResults);
+    }
+
     await renderExceptionTable();
 
     // Scroll to the new entry
@@ -3446,6 +3474,23 @@ async function clearFilteredExceptions() {
     
     await StorageV2.set(EXCEPTION_KEY, toKeep);
     await renderExceptionTable();
+
+    // v1.91 Sync
+    if (typeof renderStoredUnifiedNumbers === 'function' && currentUnifiedResults && currentUnifiedResults.length > 0) {
+        // Re-check everything since some history has been wiped
+        const allExceptions = await ExceptionManager.getAll();
+        currentUnifiedResults.forEach(item => {
+            const trackClean = item.number.replace(/\s/g,'');
+            const found = allExceptions.find(e => e.trackNum === trackClean);
+            if (found) {
+                item.history = { date: found.timestamp, company: found.companyName, reason: found.reason, sessionId: found.sessionId || found.id };
+            } else {
+                item.history = null;
+            }
+        });
+        localStorage.setItem('thp_last_search_results', JSON.stringify(currentUnifiedResults));
+        renderStoredUnifiedNumbers(currentUnifiedTitle || "", currentUnifiedResults);
+    }
 }
 
 function validateCheckDigitUI(trackNum) {
