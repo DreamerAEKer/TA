@@ -696,6 +696,26 @@ function stagingAllCheckedItems() {
 }
 
 /**
+ * Check if a list of tracking numbers is a perfectly consecutive range.
+ */
+function isConsecutive(nums) {
+    if (nums.length < 2) return false;
+    const parsed = nums.map(n => parseExceptionTrackNum(n)).filter(p => !!p);
+    if (parsed.length !== nums.length) return false;
+    
+    // Sort by numerical part
+    parsed.sort((a,b) => a.bodyInt - b.bodyInt);
+    
+    const prefix = parsed[0].prefix;
+    const suffix = parsed[0].suffix;
+    for (let i = 1; i < parsed.length; i++) {
+        if (parsed[i].prefix !== prefix || parsed[i].suffix !== suffix) return false;
+        if (parsed[i].bodyInt !== parsed[i-1].bodyInt + 1) return false;
+    }
+    return true;
+}
+
+/**
  * Copy all main numbers from current result (regardless of checkboxes)
  */
 function copyAllSearchTrackings() {
@@ -2810,26 +2830,24 @@ function draftReportFromGroup(prefix) {
  */
 async function stagingQuickReport(tracks, companyName, metadata = {}) {
     if (!tracks) return;
-    const inputTracks = Array.isArray(tracks) ? tracks : [tracks];
+    let inputTracks = Array.isArray(tracks) ? tracks : [tracks];
     
-    // 1. Detect Range Title (ignore for direct move, just fill form)
+    // 1. Convert Range Titles (e.g. "STR ถึง END") to individual numbers for processing
     if (inputTracks.length === 1 && inputTracks[0].includes(' ถึง ')) {
         const parts = inputTracks[0].split(' ถึง ');
         if (parts.length === 2) {
             const startStr = parts[0].replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
             const endStr = parts[1].replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
-            const rangeToggle = document.getElementById('exception-range-toggle');
-            if (rangeToggle && !rangeToggle.checked) {
-                rangeToggle.checked = true;
-                if (typeof toggleExceptionRangeMode === 'function') toggleExceptionRangeMode();
+            const startP = parseExceptionTrackNum(startStr);
+            const endP = parseExceptionTrackNum(endStr);
+            if (startP && endP && startP.prefix === endP.prefix && startP.suffix === endP.suffix) {
+                inputTracks = [];
+                for (let i = startP.bodyInt; i <= endP.bodyInt; i++) {
+                    inputTracks.push(buildExceptionTrackNum(startP.prefix, i, startP.suffix));
+                }
+            } else {
+                inputTracks = [startStr, endStr];
             }
-            const startInput = document.getElementById('exception-start-input');
-            const endInput = document.getElementById('exception-end-input');
-            if (startInput) startInput.value = startStr;
-            if (endInput) endInput.value = endStr;
-            const reasonInput = document.getElementById('exception-reason-input');
-            if (reasonInput) reasonInput.value = metadata.status || "กลุ่มเลขต่อเนื่อง";
-            return;
         }
     }
 
