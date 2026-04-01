@@ -412,6 +412,7 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
 
         // Render each cluster
         seriesList.forEach((series, sIdx) => {
+            const clusterId = `${companyId}-s${sIdx}`;
             const firstMain = series[0].main;
             const lastMain  = series[series.length - 1].main;
             const isSingle  = series.length === 1;
@@ -445,7 +446,6 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
             const leadingSats = allSats.filter(s => {
                 const pS = parseExceptionTrackNum(s.number);
                 const pF = parseExceptionTrackNum(firstMain.number);
-                // DEDUPLICATE: Don't show as satellite if it's already a main item in this series/group
                 if (mainNumbersInGroup.has(s.number)) return false; 
                 return pS && pF && pS.bodyInt < pF.bodyInt;
             }).sort((a,b) => a.number.localeCompare(b.number));
@@ -453,7 +453,6 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
             const trailingSats = allSats.filter(s => {
                 const pS = parseExceptionTrackNum(s.number);
                 const pL = parseExceptionTrackNum(lastMain.number);
-                // DEDUPLICATE: Don't show as satellite if it's already a main item in this series/group
                 if (mainNumbersInGroup.has(s.number)) return false;
                 return pS && pL && pS.bodyInt > pL.bodyInt;
             }).sort((a,b) => a.number.localeCompare(b.number));
@@ -462,16 +461,16 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
 
             html += `
                 <div style="border:1px solid #90caf9; border-radius:10px; overflow:hidden; background:white; margin-bottom:12px; box-shadow:0 3px 10px rgba(2,136,209,0.05);">
-                    ${renderUnifiedRow(summaryRowData, companyId, companyEscaped, hasAnySats)}
+                    ${renderUnifiedRow(summaryRowData, companyId, companyEscaped, hasAnySats, clusterId)}
                     <div class="satellite-wrapper">
                         <!-- 1. Before Satellite -->
-                        ${leadingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped)).join('')}
+                        ${leadingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped, false, clusterId)).join('')}
 
                         <!-- 2. Main List -->
-                        ${series.map(wrap => renderUnifiedRow(wrap.main, companyId, companyEscaped)).join('')}
+                        ${series.map(wrap => renderUnifiedRow(wrap.main, companyId, companyEscaped, false, clusterId)).join('')}
 
                         <!-- 3. After Satellite -->
-                        ${trailingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped)).join('')}
+                        ${trailingSats.map(s => renderUnifiedRow(s, companyId, companyEscaped, false, clusterId)).join('')}
                     </div>
                 </div>
             `;
@@ -503,7 +502,7 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
  * Helper to render a single row in the Results Sidebar.
  * v1.70: Distinctive styling for Main vs Satellite row.
  */
-function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
+function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, clusterId = null) {
     const isMain = row.isCenter === true;
     const rowClass = isMain ? 'unified-row center-row' : 'unified-row satellite-row';
     const rowBg = isMain ? '#fff9c4' : '#fff';
@@ -529,10 +528,14 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false) {
         <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem; min-height:48px; cursor:${hasSatellites ? 'pointer' : 'default'};">
             <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
                 ${isMain ? `
-                    <input type="checkbox" class="group-checkbox-${groupId}" value="${rawNum}" 
+                    <input type="checkbox" class="group-checkbox-${groupId} cluster-checkbox-${clusterId}" value="${rawNum}" 
                         data-metadata="${metadataJson}"
                         style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation()">
-                ` : ''}
+                ` : (hasSatellites && clusterId ? `
+                    <input type="checkbox" class="cluster-master-${clusterId}" 
+                        style="width:18px; height:18px; cursor:pointer;" 
+                        onclick="event.stopPropagation(); toggleClusterCheckboxes('${clusterId}', this.checked)" checked>
+                ` : '')}
             </div>
             <div style="width:30px; text-align:center; font-weight:bold; font-size:0.75rem; color:#bbb;">
                 ${hasSatellites ? '<span class="toggle-icon">▶</span>' : ''}
@@ -589,6 +592,19 @@ function toggleSatelliteGroup(el) {
  */
 function toggleGroupCheckboxes(groupId, checked) {
     const selector = `.group-checkbox-${groupId}`;
+    const cbks = document.querySelectorAll(selector);
+    cbks.forEach(cb => cb.checked = checked);
+    
+    // Also toggle all cluster master checkboxes in this group
+    const clusterMasters = document.querySelectorAll(`input[class^="cluster-master-${groupId}"]`);
+    clusterMasters.forEach(cb => cb.checked = checked);
+}
+
+/**
+ * Toggle all checkboxes in a specific cluster/series.
+ */
+function toggleClusterCheckboxes(clusterId, checked) {
+    const selector = `.cluster-checkbox-${clusterId}`;
     const cbks = document.querySelectorAll(selector);
     cbks.forEach(cb => cb.checked = checked);
 }
