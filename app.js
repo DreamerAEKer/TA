@@ -3223,7 +3223,10 @@ async function addExceptionEntry() {
     } else {
         const rawInput = document.getElementById('exception-track-input').value.trim().toUpperCase();
         // Split by comma, space, or newline
-        const inputs = rawInput.split(/[\s,]+/).filter(v => v.length > 0);
+        let inputs = rawInput.split(/[\s,]+/).filter(v => v.length > 3);
+        // Deduplicate and fix common OCR typos
+        inputs = [...new Set(inputs.map(v => v.replace(/O/g, '0').replace(/I/g, '1')))]; 
+        
         
         if (inputs.length === 0) {
             alert('กรุณากรอกเลขพัสดุ');
@@ -3457,7 +3460,18 @@ async function renderExceptionTable() {
 
     const sessions = Array.from(sessionMap.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
+    let html = `
+        <div class="rpt-header-navy" style="margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <input type="checkbox" id="sess-select-all" checked onclick="toggleAllSessions(this.checked)">
+                <span>รายการดราฟต์ทั้งหมด (${sessions.length} ชุด)</span>
+            </div>
+            <div style="font-size:0.8rem; font-weight:normal; opacity:0.9;">
+                ${exceptionFilterMode === 'today' ? '📅 รายการของวันนี้' : '📜 ประวัติย้อนหลัง'}
+            </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:0;">
+    `;
 
     sessions.forEach((session, idx) => {
         const firstEntry = session.entries[0];
@@ -3466,10 +3480,9 @@ async function renderExceptionTable() {
         const timeStr = dObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
         const dateStr = dObj.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
         
-        // Alternating background shades and a left-border "Group ID" marker for clarity
+        // Alternating background shades for clear separation
         const isAlternate = idx % 2 === 1;
-        const groupBg = isAlternate ? '#f5faff' : '#ffffff';
-        const markerColor = isAlternate ? '#0288d1' : '#ccc';
+        const groupBg = isAlternate ? '#fcfdfe' : '#ffffff';
 
         // Find images
         let images = [];
@@ -3486,60 +3499,62 @@ async function renderExceptionTable() {
         // Check digit validation for alert
         const invalidTracks = session.entries.filter(e => !validateCheckDigitUI(e.trackNum)).map(e => e.trackNum);
         const cdWarning = invalidTracks.length > 0 
-            ? `<div style="background:#fff3e0; color:#e65100; font-size:0.75rem; padding:4px 8px; border-radius:4px; margin-top:6px; display:inline-flex; align-items:center; gap:5px; border:1px solid #ffe0b2;">
-                 ⚠️ เลข Check Digit ไม่ถูกต้อง: ${invalidTracks.join(', ')}
+            ? `<div class="badge-invalid" style="margin-top:6px;">
+                 ⚠️ Check Digit ผิด: ${invalidTracks.join(', ')}
                </div>` 
             : '';
 
         html += `
-            <div class="report-card" style="background:${groupBg}; border:1px solid #e0e0e0; border-left:4px solid ${markerColor}; border-radius:10px; padding:15px; position:relative; box-shadow:0 2px 5px rgba(0,0,0,0.03); display:flex; gap:12px; align-items:flex-start;">
-                <input type="checkbox" class="sess-select" value="${session.sessionId}" checked style="margin-top:5px; transform:scale(1.2); cursor:pointer;">
-                <div style="flex:1;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                        <div>
-                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                <strong style="font-size:1.05rem; color:#333;">🏢 ${session.companyName || 'ทั่วไป'}</strong>
-                                ${isUnknownComp ? `<button class="btn btn-neutral" style="padding:2px 8px; font-size:0.7rem; border:1px solid #0288d1; color:#0288d1; background:#e1f5fe; border-radius:12px;" onclick="saveSessionAsCompany('${session.sessionId}')">💾 บันทึก บ.</button>` : ''}
-                            </div>
-                            <div style="font-size:0.8rem; color:#777; margin-top:2px;">
-                                🕒 ${dateStr} ${timeStr} • 📦 ${totalCount} ชิ้น • 📂 ${firstEntry.category || 'เงินสด'}
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:4px;">
-                            <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.75rem; border:1px solid #ddd; background:#fff; border-radius:4px;" title="Layout Edit" onclick="editExceptionSession('${session.sessionId}')">✏️</button>
-                            <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.75rem; border:1px solid #ffcdd2; color:#d32f2f; background:#fff; border-radius:4px;" title="Delete" onclick="deleteExceptionSession('${session.sessionId}')">🗑️</button>
-                        </div>
-                    </div>
-
-                    <div style="background:#fcfcfc; border-radius:8px; padding:10px 70px 10px 10px; margin-bottom:8px; border:1px solid #f0f0f0; position:relative;">
-                        <button style="position:absolute; top:8px; right:8px; background:none; border:none; color:#0288d1; font-size:0.75rem; cursor:pointer;" onclick="copySessionTracks('${session.sessionId}')">📋 คัดลอก</button>
-                        <div style="display:flex; flex-wrap:wrap; gap:4px; font-family:monospace; font-size:0.95rem;">
-                            ${compressed.map(g => `<span style="background:#fff; border:1px solid #eee; padding:2px 8px; border-radius:4px; color:#0277bd;">${g.display}</span>`).join('')}
-                        </div>
-                        ${cdWarning}
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="font-size:0.95rem; color:#d32f2f; font-weight:500;">
-                            <span style="color:#888; font-size:0.8rem; font-weight:normal;">สาเหตุ:</span> ${session.reason || '-'}
-                        </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            ${hasImages ? `
-                                <div style="display:flex; gap:4px;" id="imgs-preview-${session.sessionId}">
-                                    ${images.slice(0, 3).map(img => `<img src="${img.dataUrl}" style="width:32px; height:32px; object-fit:cover; border-radius:4px; border:1px solid #ddd; cursor:pointer;" onclick="toggleCardImages('${session.sessionId}')">`).join('')}
-                                    ${images.length > 3 ? `<span style="font-size:0.7rem; color:#666;">+${images.length - 3}</span>` : ''}
+            <div class="report-card premium" style="background:${groupBg}; ${idx === 0 ? 'border-top:1px solid #e0e0e0;' : 'border-top:1px solid #f0f0f0;'}">
+                <div class="card-inner" style="display:flex; gap:12px; align-items:flex-start;">
+                    <input type="checkbox" class="sess-select" value="${session.sessionId}" checked style="margin-top:5px; transform:scale(1.2); cursor:pointer;" onclick="updateSelectAllState()">
+                    <div style="flex:1;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                            <div>
+                                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                    <strong style="font-size:1.05rem; color:#003366;">🏢 ${session.companyName || 'ทั่วไป'}</strong>
+                                    ${isUnknownComp ? `<button class="btn btn-neutral" style="padding:2px 8px; font-size:0.7rem; border:1px solid #0288d1; color:#0288d1; background:#e1f5fe; border-radius:12px;" onclick="saveSessionAsCompany('${session.sessionId}')">💾 บันทึก บ.</button>` : ''}
                                 </div>
-                            ` : ''}
-                        </div>
-                    </div>
-
-                    <div id="imgs-full-${session.sessionId}" style="display:none; margin-top:10px; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:8px; border-top:1px dashed #eee; padding-top:10px;">
-                        ${images.map(img => `
-                            <div style="position:relative;">
-                                <img src="${img.dataUrl}" style="width:100%; border-radius:6px; border:1px solid #eee;">
-                                <div style="font-size:0.6rem; color:#999; text-align:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${img.name}</div>
+                                <div style="font-size:0.8rem; color:#777; margin-top:2px;">
+                                    🕒 ${dateStr} ${timeStr} • 📦 ${totalCount} ชิ้น • 📂 ${firstEntry.category || 'เงินสด'}
+                                </div>
                             </div>
-                        `).join('')}
+                            <div style="display:flex; gap:4px;">
+                                <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.75rem; border:1px solid #ddd; background:#fff; border-radius:4px;" title="Layout Edit" onclick="editExceptionSession('${session.sessionId}')">✏️ Edit</button>
+                                <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.75rem; border:1px solid #ffcdd2; color:#d32f2f; background:#fff; border-radius:4px;" title="Delete" onclick="deleteExceptionSession('${session.sessionId}')">🗑️</button>
+                            </div>
+                        </div>
+
+                        <div style="background:#fcfcfc; border-radius:8px; padding:10px 70px 10px 10px; margin-bottom:8px; border:1px solid #f0f0f0; position:relative;">
+                            <button style="position:absolute; top:8px; right:8px; background:none; border:none; color:#0288d1; font-size:0.75rem; cursor:pointer;" onclick="copySessionTracks('${session.sessionId}')">📋 คัดลอก</button>
+                            <div style="display:flex; flex-wrap:wrap; gap:4px; font-family:monospace; font-size:0.95rem;">
+                                ${compressed.map(g => `<span style="background:#fff; border:1px solid #eee; padding:2px 8px; border-radius:4px; color:#0277bd;">${g.display}</span>`).join('')}
+                            </div>
+                            ${cdWarning}
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-size:0.95rem; color:#d32f2f; font-weight:500;">
+                                <span style="color:#888; font-size:0.8rem; font-weight:normal;">สาเหตุ:</span> ${session.reason || '-'}
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                ${hasImages ? `
+                                    <div style="display:flex; gap:4px;" id="imgs-preview-${session.sessionId}">
+                                        ${images.slice(0, 3).map(img => `<img src="${img.dataUrl}" style="width:32px; height:32px; object-fit:cover; border-radius:4px; border:1px solid #ddd; cursor:pointer;" onclick="toggleCardImages('${session.sessionId}')">`).join('')}
+                                        ${images.length > 3 ? `<span style="font-size:0.7rem; color:#666;">+${images.length - 3}</span>` : ''}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <div id="imgs-full-${session.sessionId}" style="display:none; margin-top:10px; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:8px; border-top:1px dashed #eee; padding-top:10px;">
+                            ${images.map(img => `
+                                <div style="position:relative;">
+                                    <img src="${img.dataUrl}" style="width:100%; border-radius:6px; border:1px solid #eee;">
+                                    <div style="font-size:0.6rem; color:#999; text-align:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${img.name}</div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3548,6 +3563,29 @@ async function renderExceptionTable() {
 
     html += '</div>';
     container.innerHTML = html;
+    updateSelectAllState(); // Sync state initially
+}
+
+/**
+ * Updates the 'Select All' checkbox state based on individual selections
+ */
+function updateSelectAllState() {
+    const allCbs = document.querySelectorAll('.sess-select');
+    const checkedCbs = document.querySelectorAll('.sess-select:checked');
+    const selectAllCb = document.getElementById('sess-select-all');
+    if (selectAllCb) {
+        selectAllCb.checked = (allCbs.length > 0 && allCbs.length === checkedCbs.length);
+        selectAllCb.indeterminate = (checkedCbs.length > 0 && checkedCbs.length < allCbs.length);
+    }
+}
+
+/**
+ * Toggles all session checkboxes in the drafts list
+ */
+function toggleAllSessions(checked) {
+    const allCbs = document.querySelectorAll('.sess-select');
+    allCbs.forEach(cb => cb.checked = checked);
+    updateSelectAllState();
 }
 
 /**
@@ -3867,7 +3905,7 @@ async function exportExceptionImage() {
                         <div style="font-size:1.1rem; color:#0288d1; margin-top:2px; font-weight:500;">(Exception & Missing Items Report)</div>
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-size:1.1rem; font-weight:bold; color:#000;">${reportDateDisp}</div>
+                        <div style="font-size:1.1rem; font-weight:bold; color:#d32f2f;">${reportDateDisp}</div>
                         ${totalPages > 1 ? `<div style="font-size:0.9rem; color:#d32f2f; font-weight:bold; margin-top:4px;">${pageNumText.trim()}</div>` : ''}
                     </div>
                 </div>
@@ -3891,10 +3929,10 @@ async function exportExceptionImage() {
                         <div style="font-size:1.1rem; font-weight:bold; color:#0d47a1; margin-bottom:8px;">📊 ตารางสรุปภาพรวม (Summary)</div>
                         <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #eee; font-size:0.95rem;">
                             <thead>
-                        <tr style="background:#01579b; border-bottom:3px solid #003366;">
-                                    <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-weight:bold; font-size:1rem;">หมวดงาน</th>
-                                    <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-weight:bold; font-size:1rem;">ชื่อบริษัท / ลูกค้า</th>
-                                    <th style="padding:12px 10px; text-align:center; border:1px solid #014175; color:#ffffff !important; font-weight:bold; width:15%; font-size:1rem;">รวม (ชิ้น)</th>
+                        <tr style="background:#003366; border-bottom:3px solid #00264d;">
+                                    <th style="padding:12px 10px; text-align:left; border:1px solid #00264d; color:#ffffff !important; font-weight:bold; font-size:1.05rem;">หมวดงาน</th>
+                                    <th style="padding:12px 10px; text-align:left; border:1px solid #00264d; color:#ffffff !important; font-weight:bold; font-size:1.05rem;">ชื่อบริษัท / ลูกค้า</th>
+                                    <th style="padding:12px 10px; text-align:center; border:1px solid #00264d; color:#ffffff !important; font-weight:bold; width:15%; font-size:1.05rem;">รวม (ชิ้น)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -3927,7 +3965,7 @@ async function exportExceptionImage() {
 
                 if (block.type === 'categoryHeader') {
                     detailRowsHtml += `
-                        <tr style="background:#014175; color:#ffffff !important; font-weight:bold; border-bottom:2px solid #002f56;">
+                        <tr style="background:#003366; color:#ffffff !important; font-weight:bold; border-bottom:2px solid #001a33;">
                             <td colspan="3" style="padding:12px 15px; font-size:1.2rem;">📁 หมวด: ${block.title}</td>
                         </tr>`;
                 } else if (block.type === 'companyHeader') {
@@ -3998,10 +4036,10 @@ async function exportExceptionImage() {
                 <div style="font-size:1.1rem; font-weight:bold; color:#0d47a1; margin-bottom:8px;">🔍 รายละเอียดแยกตามรายการ (Itemized Details)</div>
                 <table style="width:100%; border-collapse:collapse; border:1px solid #ccc; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
                     <thead>
-                        <tr style="background:#01579b; border-bottom:3px solid #003366;">
-                            <th style="padding:12px 5px; text-align:center; border:1px solid #014175; color:#ffffff !important; font-size:1rem; font-weight:bold;">ลำดับ</th>
-                            <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-size:1rem; font-weight:bold;">หมายเลขพัสดุ</th>
-                            <th style="padding:12px 10px; text-align:left; border:1px solid #014175; color:#ffffff !important; font-size:1rem; font-weight:bold;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
+                        <tr style="background:#003366; border-bottom:4px solid #001a33;">
+                            <th style="padding:14px 5px; text-align:center; border:1px solid #001a33; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">ลำดับ</th>
+                            <th style="padding:14px 10px; text-align:left; border:1px solid #001a33; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">หมายเลขพัสดุ</th>
+                            <th style="padding:14px 10px; text-align:left; border:1px solid #001a33; color:#ffffff !important; font-size:1.1rem; font-weight:bold;">สาเหตุ / ข้อมูลสแกน / รูปภาพประกอบ</th>
                         </tr>
                     </thead>
                     <tbody>${detailRowsHtml}</tbody>

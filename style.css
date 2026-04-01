@@ -976,4 +976,51 @@ body.user-mode button[onclick="confirmAndBackup()"] {
     border-left: 3px solid #e1f5fe;
     background: #fffafa;
 }
+
+/* --- High-Contrast Reporting Styles (v1.90) --- */
+.rpt-header-navy {
+    background: #003366;
+    color: white !important;
+    padding: 10px 15px;
+    border-radius: 8px 8px 0 0;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+    border: 1px solid #00264d;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.rpt-header-navy input[type="checkbox"] {
+    accent-color: #fff;
+    cursor: pointer;
+    transform: scale(1.2);
+}
+
+.report-card.premium {
+    border: 1px solid #e0e0e0;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    background: white;
+}
+
+.report-card.premium .card-inner {
+    padding: 15px;
+}
+
+.badge-invalid {
+    background: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffe0b2;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
 
