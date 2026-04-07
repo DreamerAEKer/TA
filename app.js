@@ -575,11 +575,12 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
     
     // v1.73/v1.74/v1.75: Only sanitize and re-format if it's a single tracking number (approx 13 chars)
     // If it's a range summary title (longer, contains "ถึง"), keep it as is for the UI.
+    const cleanNum = row.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
     const isRangeTitle = hasSatellites || row.number.includes(' ถึง ');
-    const isSingleTrack = !isRangeTitle && row.number.replace(/\s/g,'').length <= 15;
+    const isSingleTrack = !isRangeTitle && cleanNum.length <= 15;
     
     // For actions, if it's a range title, don't strip spaces yet so stagingQuickReport can parse it
-    const rawNum = isSingleTrack ? row.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '') : row.number;
+    const rawNum = isSingleTrack ? cleanNum : row.number;
     const formattedNum = isSingleTrack ? TrackingUtils.formatTrackingNumber(rawNum) : row.number;
 
     // Metadata encoding (v1.73: use rawNum)
