@@ -633,7 +633,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
                 ` : ''}
             </div>
             <div style="padding-right:10px; display:flex; gap:4px;" onclick="event.stopPropagation()">
-                <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${rawNum}').then(()=>alert('คัดลอก ${rawNum}'))">📋</button>
+                <button class="btn btn-neutral" style="padding:1px 5px; font-size:0.65rem; background:#fff; border:1px solid #ddd; color:#999;" title="คัดลอกเลข" onclick="navigator.clipboard.writeText('${rawNum}').then(()=>alert('คัดลอก ${rawNum} สำเร็จ!'))">📋</button>
                 <button class="btn btn-trace" style="padding:1px 5px; font-size:0.65rem;" title="เช็คสถานะ" onclick="window.open('https://track.thailandpost.co.th/?trackNumber=${rawNum}&lang=th', '_blank')">🔍</button>
             </div>
         </div>
@@ -2272,10 +2272,11 @@ function _performCrossRef(trackingArray) {
                 indexCol = (idx + 1).toString();
             }
 
+            const cleanId = item.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
             const actionsHtml = `
                 <div class="status-actions" style="margin-top:${isMain ? '5px' : '2px'}; margin-bottom: 5px; ${isMain ? '' : 'font-size: 0.8em; opacity: 0.8;'}">
-                    <a href="https://track.thailandpost.co.th/?trackNumber=${item.number}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9; ${isMain ? '' : 'padding: 2px 4px;'}" title="ติดตามพัสดุ (External Link)">📌 สถานะ</a>
-                    <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer; ${isMain ? '' : 'padding: 2px 4px;'}" onclick="navigator.clipboard.writeText('${item.number}').then(() => alert('คัดลอก ${item.number} แล้ว'))" title="Copy ID">📋 Copy</button>
+                    <a href="https://track.thailandpost.co.th/?trackNumber=${cleanId}&lang=th" target="_blank" class="badge badge-neutral" style="background-color:#e3f2fd; color:#0d47a1; border-color:#90caf9; ${isMain ? '' : 'padding: 2px 4px;'}" title="ติดตามพัสดุ (External Link)">📌 สถานะ</a>
+                    <button class="badge badge-neutral" style="border:1px solid #999; cursor:pointer; ${isMain ? '' : 'padding: 2px 4px;'}" onclick="navigator.clipboard.writeText('${cleanId}').then(() => alert('คัดลอก ${cleanId} แล้ว'))" title="Copy ID">📋 Copy</button>
                 </div>
             `;
 
