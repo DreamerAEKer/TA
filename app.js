@@ -4615,51 +4615,60 @@ function updateDbCount(count) {
 /**
  * UI Wrapper for confirmed batch deletion
  */
+/**
+ * UI Wrapper for confirmed batch deletion
+ */
 function deleteBatchConfirmed(batchId, batchName) {
     if (confirm(`คุณต้องการย้ายชุดข้อมูล "${batchName}" ไปยังถังขยะหรือไม่?`)) {
-        CustomerDB.deleteBatch(batchId).then(async () => {
-            if (typeof updateDbViews === 'function') await updateDbViews();
-            
-            // v1.94-patch: Robust Sync Search Results (Re-fetch current ownership from DB)
-            if (window.currentUnifiedResults && window.currentUnifiedResults.length > 0) {
-                console.log('[Sync] Database changed, updating search results ownership...');
-                const updatePromises = window.currentUnifiedResults.map(async (item) => {
-                    // Sanitize and re-fetch owner from DB
-                    const cleanNum = item.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
-                    item.owner = await CustomerDB.get(cleanNum);
-                    return item;
-                });
-                
-                await Promise.all(updatePromises);
-                
-                // Save and Re-render
-                localStorage.setItem('thp_last_search_results', JSON.stringify(window.currentUnifiedResults));
-                if (typeof renderStoredUnifiedNumbers === 'function') {
-                    renderStoredUnifiedNumbers(window.currentUnifiedTitle || "", window.currentUnifiedResults);
-                }
-            }
-
-            // v1.94-patch: Sync Draft Report (Exception Table)
-            if (typeof ExceptionManager !== 'undefined') {
-                const draftItems = await ExceptionManager.getAll();
-                let draftChanged = false;
-                for (const item of draftItems) {
-                    const clean = item.trackNum.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
-                    const newOwner = await CustomerDB.get(clean);
-                    const newName = newOwner ? newOwner.name : '-';
-                    if (item.companyName !== newName) {
-                        item.companyName = newName;
-                        draftChanged = true;
-                    }
-                }
-                if (draftChanged) {
-                    await StorageV2.set(EXCEPTION_KEY, draftItems); // EXCEPTION_KEY is 'thp_exception_db_v1'
-                    if (typeof renderExceptionTable === 'function') await renderExceptionTable();
-                }
-            }
-
+        CustomerDB.deleteBatch(batchId).then(() => {
+            refreshUI();
             if (typeof window.showToast === 'function') window.showToast('ย้ายไปยังถังขยะเรียบร้อย');
         });
+    }
+}
+
+/**
+ * v1.95: Comprehensive UI Refresh
+ * Syncs Database views, Search Results ownership, and Draft Reports.
+ */
+async function refreshUI() {
+    console.log('[v1.95] Global UI Refresh triggered...');
+    
+    // 1. Update Customer DB views
+    if (typeof updateDbViews === 'function') await updateDbViews();
+
+    // 2. Sync Search Results Sidebar (Remove deleted owners)
+    if (window.currentUnifiedResults && window.currentUnifiedResults.length > 0) {
+        const updatePromises = window.currentUnifiedResults.map(async (item) => {
+            const cleanNum = item.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+            item.owner = await CustomerDB.get(cleanNum);
+            return item;
+        });
+        await Promise.all(updatePromises);
+        
+        localStorage.setItem('thp_last_search_results', JSON.stringify(window.currentUnifiedResults));
+        if (typeof renderStoredUnifiedNumbers === 'function') {
+            renderStoredUnifiedNumbers(window.currentUnifiedTitle || "", window.currentUnifiedResults);
+        }
+    }
+
+    // 3. Sync Draft Report (Exception Table)
+    if (typeof ExceptionManager !== 'undefined') {
+        const draftItems = await ExceptionManager.getAll();
+        let draftChanged = false;
+        for (const item of draftItems) {
+            const clean = item.trackNum.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+            const newOwner = await CustomerDB.get(clean);
+            const newName = newOwner ? newOwner.name : '-';
+            if (item.companyName !== newName) {
+                item.companyName = newName;
+                draftChanged = true;
+            }
+        }
+        if (draftChanged) {
+            await StorageV2.set(EXCEPTION_KEY, draftItems); // EXCEPTION_KEY is 'thp_exception_db_v1'
+            if (typeof renderExceptionTable === 'function') await renderExceptionTable();
+        }
     }
 }
 
