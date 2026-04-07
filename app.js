@@ -631,7 +631,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
     return `
         <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem; min-height:48px; cursor:${hasSatellites ? 'pointer' : 'default'};">
             <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
-                ${hideCheckbox ? warningIcon : (isMain ? `
+                ${hideCheckbox ? warningIcon : (isSingleTrack ? `
                     <input type="checkbox" class="group-checkbox-${groupId} cluster-checkbox-${clusterId}" value="${rawNum}" 
                         data-metadata="${metadataJson}"
                         style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation()" ${checkedAttr}>
