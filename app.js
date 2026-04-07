@@ -573,7 +573,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
     const rowBg = isMain ? '#fff9c4' : '#fff';
     const opacity = isMain ? '1' : '0.75';
     
-    // v1.73/v1.74/v1.75: Only sanitize and re-format if it's a single tracking number (approx 13 chars)
+    // v1.73/v1.74/v1.75/v1.92 Fix: Only sanitize and re-format if it's a single tracking number (approx 13 chars)
     // If it's a range summary title (longer, contains "ถึง"), keep it as is for the UI.
     const cleanNum = row.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
     const isRangeTitle = hasSatellites || row.number.includes(' ถึง ');
