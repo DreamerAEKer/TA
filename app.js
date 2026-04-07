@@ -4615,9 +4615,6 @@ function updateDbCount(count) {
 /**
  * UI Wrapper for confirmed batch deletion
  */
-/**
- * UI Wrapper for confirmed batch deletion
- */
 function deleteBatchConfirmed(batchId, batchName) {
     if (confirm(`คุณต้องการย้ายชุดข้อมูล "${batchName}" ไปยังถังขยะหรือไม่?`)) {
         CustomerDB.deleteBatch(batchId).then(() => {
@@ -4628,28 +4625,36 @@ function deleteBatchConfirmed(batchId, batchName) {
 }
 
 /**
- * v1.95: Comprehensive UI Refresh
+ * v1.96: Comprehensive UI Refresh (Fixed Scope & Robust Sync)
  * Syncs Database views, Search Results ownership, and Draft Reports.
  */
 async function refreshUI() {
-    console.log('[v1.95] Global UI Refresh triggered...');
+    console.info('[v1.96] Global UI Refresh started...');
     
     // 1. Update Customer DB views
     if (typeof updateDbViews === 'function') await updateDbViews();
 
     // 2. Sync Search Results Sidebar (Remove deleted owners)
-    if (window.currentUnifiedResults && window.currentUnifiedResults.length > 0) {
-        const updatePromises = window.currentUnifiedResults.map(async (item) => {
+    // Access directly (let variables at top level of app.js)
+    if (typeof currentUnifiedResults !== 'undefined' && currentUnifiedResults && currentUnifiedResults.length > 0) {
+        console.info(`[v1.96] Syncing ${currentUnifiedResults.length} search results...`);
+        const updatePromises = currentUnifiedResults.map(async (item) => {
+            // Re-fetch current owner state from DB
             const cleanNum = item.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
-            item.owner = await CustomerDB.get(cleanNum);
+            const newOwner = await CustomerDB.get(cleanNum);
+            
+            // Critical Update: 
+            item.owner = newOwner || null;
             return item;
         });
         await Promise.all(updatePromises);
         
-        localStorage.setItem('thp_last_search_results', JSON.stringify(window.currentUnifiedResults));
+        // Persist and re-render
+        localStorage.setItem('thp_last_search_results', JSON.stringify(currentUnifiedResults));
         if (typeof renderStoredUnifiedNumbers === 'function') {
-            renderStoredUnifiedNumbers(window.currentUnifiedTitle || "", window.currentUnifiedResults);
+            renderStoredUnifiedNumbers(currentUnifiedTitle || "", currentUnifiedResults);
         }
+        console.info('[v1.96] Search Results synced successfully.');
     }
 
     // 3. Sync Draft Report (Exception Table)
@@ -4666,8 +4671,9 @@ async function refreshUI() {
             }
         }
         if (draftChanged) {
-            await StorageV2.set(EXCEPTION_KEY, draftItems); // EXCEPTION_KEY is 'thp_exception_db_v1'
+            await StorageV2.set(EXCEPTION_KEY, draftItems);
             if (typeof renderExceptionTable === 'function') await renderExceptionTable();
+            console.info('[v1.96] Draft Report names synced.');
         }
     }
 }
