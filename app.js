@@ -4617,24 +4617,25 @@ function updateDbCount(count) {
  */
 function deleteBatchConfirmed(batchId, batchName) {
     if (confirm(`คุณต้องการย้ายชุดข้อมูล "${batchName}" ไปยังถังขยะหรือไม่?`)) {
-        CustomerDB.deleteBatch(batchId).then(() => {
-            if (typeof updateDbViews === 'function') updateDbViews();
+        CustomerDB.deleteBatch(batchId).then(async () => {
+            if (typeof updateDbViews === 'function') await updateDbViews();
             
-            // v1.94: Sync Search Results (Remove deleted owner info immediately)
-            if (typeof currentUnifiedResults !== 'undefined' && currentUnifiedResults) {
-                let changed = false;
-                currentUnifiedResults.forEach(item => {
-                    // Check item.owner for matching batch ID
-                    if (item.owner && (item.owner.id === batchId || item.owner.batchId === batchId)) {
-                        item.owner = null;
-                        changed = true;
-                    }
+            // v1.94-patch: Robust Sync Search Results (Re-fetch current ownership from DB)
+            if (window.currentUnifiedResults && window.currentUnifiedResults.length > 0) {
+                console.log('[Sync] Database changed, updating search results ownership...');
+                const updatePromises = window.currentUnifiedResults.map(async (item) => {
+                    // Sanitize and re-fetch owner from DB
+                    const cleanNum = item.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+                    item.owner = await CustomerDB.get(cleanNum);
+                    return item;
                 });
-                if (changed) {
-                    localStorage.setItem('thp_last_search_results', JSON.stringify(currentUnifiedResults));
-                    if (typeof renderStoredUnifiedNumbers === 'function') {
-                        renderStoredUnifiedNumbers(currentUnifiedTitle || "", currentUnifiedResults);
-                    }
+                
+                await Promise.all(updatePromises);
+                
+                // Save and Re-render
+                localStorage.setItem('thp_last_search_results', JSON.stringify(window.currentUnifiedResults));
+                if (typeof renderStoredUnifiedNumbers === 'function') {
+                    renderStoredUnifiedNumbers(window.currentUnifiedTitle || "", window.currentUnifiedResults);
                 }
             }
 
