@@ -1624,6 +1624,25 @@ function saveImportedBatch(isAuto = false) {
                 switchTab('customer');
                 if (typeof updateDbViews === 'function') await updateDbViews();
             }
+
+            // v2.0-stable: Auto-Cleanup Search Results after Batch Save
+            if (typeof currentUnifiedResults !== 'undefined' && currentUnifiedResults && currentUnifiedResults.length > 0) {
+                const savedSet = new Set(allItemsToSave.map(t => t.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '')));
+                console.info(`[v2.0-stable] Cleaning up ${savedSet.size} items from search results...`);
+                
+                currentUnifiedResults = currentUnifiedResults.filter(item => {
+                    const cleanNum = item.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+                    return !savedSet.has(cleanNum);
+                });
+
+                // Persist new state
+                await saveLastSearchResults(currentUnifiedTitle || "", currentUnifiedResults, false);
+                
+                // Re-render
+                if (typeof renderStoredUnifiedNumbers === 'function') {
+                    renderStoredUnifiedNumbers(currentUnifiedTitle || "", currentUnifiedResults);
+                }
+            }
         } catch (err) {
             console.error("saveImportedBatch Error:", err);
             alert("เกิดข้อผิดพลาดในการบันทึกชุดข้อมูล: " + err.message);
@@ -3416,21 +3435,20 @@ async function addExceptionEntry() {
     updateBEDisplay();
     extraItemCount = 0;
 
-    // v1.91: Sync Result Panel after save (so "Already Reported" badges show up)
+    // v2.0-stable: Auto-Cleanup Search Results after Exception Save
     if (typeof renderStoredUnifiedNumbers === 'function' && currentUnifiedResults && currentUnifiedResults.length > 0) {
-        // Re-check history for all items in results
-        const allExceptions = await ExceptionManager.getAll();
-        currentUnifiedResults.forEach(item => {
-            const trackClean = item.number.replace(/\s/g,'');
-            const found = allExceptions.find(e => e.trackNum === trackClean);
-            if (found) {
-                item.history = { date: found.timestamp, company: found.companyName, reason: found.reason, sessionId: found.sessionId || found.id };
-                item.moved = false; // It's out of draft now, show as "Reported" instead
-            } else {
-                item.moved = false; // Form was cleared, reappear in results
-            }
+        console.info(`[v2.0-stable] Auto-cleaning ${trackNums.length} saved items from search results...`);
+        const savedSet = new Set(trackNums.map(t => t.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '')));
+        
+        currentUnifiedResults = currentUnifiedResults.filter(item => {
+            const cleanNum = item.number.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+            return !savedSet.has(cleanNum);
         });
-        localStorage.setItem('thp_last_search_results', JSON.stringify(currentUnifiedResults));
+
+        // Persist (v1.97 migration)
+        await saveLastSearchResults(currentUnifiedTitle || "", currentUnifiedResults, false);
+        
+        // Re-render sidebar
         renderStoredUnifiedNumbers(currentUnifiedTitle || "", currentUnifiedResults);
     }
 
