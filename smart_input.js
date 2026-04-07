@@ -298,12 +298,27 @@ async function addSmartEntryAndSave() {
 
         window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${itemsToAdd.length} รายการ สำเร็จ`);
 
-        // Complete cleanup for UI
+        // Complete cleanup for UI (v1.94: Clear ALL inputs after save)
         if (dbNameInput) dbNameInput.value = '';
         if (document.getElementById('db-contract')) document.getElementById('db-contract').value = '';
         if (document.getElementById('db-request-date')) document.getElementById('db-request-date').value = '';
+        
+        document.getElementById('smart-prefix').value = '';
+        document.getElementById('smart-block1').value = '';
         document.getElementById('smart-block2').value = '';
         document.getElementById('smart-check-digit').value = '-';
+        
+        // Clear helpers
+        if(document.getElementById('smart-box')) document.getElementById('smart-box').value = '';
+        if(document.getElementById('smart-book')) document.getElementById('smart-book').value = '';
+        if(document.getElementById('smart-qty')) document.getElementById('smart-qty').value = '';
+        
+        // Reset and hide Batch Mode
+        const rangeEnable = document.getElementById('smart-range-enable');
+        if(rangeEnable) {
+            rangeEnable.checked = false;
+            toggleSmartRange();
+        }
         
         // Refresh tables (Now Async)
         if(typeof updateDbViews === 'function') await updateDbViews();
