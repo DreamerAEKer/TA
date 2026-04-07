@@ -631,7 +631,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
     return `
         <div class="${rowClass}" ${toggleAction} style="background:${rowBg}; opacity:${opacity}; display:flex; align-items:center; border-bottom:1px solid #f2f2f2; font-size:0.88rem; min-height:48px; cursor:${hasSatellites ? 'pointer' : 'default'};">
             <div style="width:35px; text-align:center; padding:8px 0 8px 8px;">
-                ${hideCheckbox ? warningIcon : (isSingleTrack ? `
+                ${hideCheckbox ? warningIcon : (isMain ? `
                     <input type="checkbox" class="group-checkbox-${groupId} cluster-checkbox-${clusterId}" value="${rawNum}" 
                         data-metadata="${metadataJson}"
                         style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation()" ${checkedAttr}>
@@ -643,13 +643,14 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
             </div>
             <div style="width:30px; text-align:center; font-weight:bold; font-size:0.75rem; color:#bbb;">
                 ${hasSatellites ? '<span class="toggle-icon">▶</span>' : ''}
-                ${isMain ? '<span style="color:#2e7d32; font-size:1.2rem;">•</span>' : '<span style="color:#ccc; font-size:1rem;">•</span>'}
+                ${isMain ? '<span style="color:#2e7d32; font-size:1.2rem;">•</span>' : '<span style="color:#aaa; font-size:1rem;">•</span>'}
             </div>
             <div style="width:35px; text-align:center;">
                 <button class="btn" style="padding:2px 5px; font-size:1.1rem; border:none; background:none; cursor:pointer;" title="รายงานรายการนี้" onclick="event.stopPropagation(); stagingQuickReport(['${rawNum}'], '${companyEscaped}', ${metadataJson})">🚩</button>
             </div>
             <div style="flex:1; font-family:monospace; font-weight:bold; color:${trackColor}; padding:8px 5px;">
-                ${formattedNum} ${(!isMain && !hasSatellites) ? warningIcon : ''}
+                ${formattedNum} 
+                ${!isMain && !hasSatellites ? '<span style="font-size:0.65rem; color:#999; font-weight:normal; margin-left:4px;">(เลขแวดล้อม)</span>' : ''}
                 ${(hasSatellites && row.hasHistory) ? '<span style="font-size:0.75rem; color:#d32f2f; margin-left:5px; font-weight:bold;">(แจ้งรายงานแล้ว)</span>' : ''}
                 ${row.history ? `
                     <div class="reported-badge" style="margin-top:4px; font-weight:normal; border-top:1px dashed #ffcdd2; padding-top:4px;">
