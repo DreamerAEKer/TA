@@ -625,6 +625,44 @@ function parseThaiDateBE(dateStr) {
 }
 
 /**
+ * Prefix & Block1 Memory Managers
+ */
+const PrefixManager = {
+    key: 'thp_prefix_memories',
+    getAll: () => JSON.parse(localStorage.getItem(PrefixManager.key) || '["EA", "EB", "EF", "EG", "EH", "EI", "EK", "EM", "EO", "EQ", "ER", "ET", "EU", "EW", "EX", "EY", "EZ"]'),
+    add: (p) => {
+        const all = PrefixManager.getAll();
+        if (!all.includes(p)) {
+            all.push(p);
+            localStorage.setItem(PrefixManager.key, JSON.stringify(all.sort()));
+        }
+    },
+    remove: (p) => {
+        const all = PrefixManager.getAll().filter(x => x !== p);
+        localStorage.setItem(PrefixManager.key, JSON.stringify(all));
+    }
+};
+
+const Block1Manager = {
+    key: 'thp_block1_memories',
+    getAll: () => JSON.parse(localStorage.getItem(Block1Manager.key) || '[]'),
+    add: (b) => {
+        const all = Block1Manager.getAll();
+        if (!all.includes(b)) {
+            all.push(b);
+            localStorage.setItem(Block1Manager.key, JSON.stringify(all.sort()));
+        }
+    },
+    remove: (b) => {
+        const all = Block1Manager.getAll().filter(x => x !== b);
+        localStorage.setItem(Block1Manager.key, JSON.stringify(all));
+    }
+};
+
+window.PrefixManager = PrefixManager;
+window.Block1Manager = Block1Manager;
+
+/**
  * UI Utilities
  */
 
