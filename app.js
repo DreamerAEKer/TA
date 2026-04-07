@@ -4639,6 +4639,25 @@ function deleteBatchConfirmed(batchId, batchName) {
                 }
             }
 
+            // v1.94-patch: Sync Draft Report (Exception Table)
+            if (typeof ExceptionManager !== 'undefined') {
+                const draftItems = await ExceptionManager.getAll();
+                let draftChanged = false;
+                for (const item of draftItems) {
+                    const clean = item.trackNum.replace(/[\s\u200B-\u200D\uFEFF\u202F]/g, '');
+                    const newOwner = await CustomerDB.get(clean);
+                    const newName = newOwner ? newOwner.name : '-';
+                    if (item.companyName !== newName) {
+                        item.companyName = newName;
+                        draftChanged = true;
+                    }
+                }
+                if (draftChanged) {
+                    await StorageV2.set(EXCEPTION_KEY, draftItems); // EXCEPTION_KEY is 'thp_exception_db_v1'
+                    if (typeof renderExceptionTable === 'function') await renderExceptionTable();
+                }
+            }
+
             if (typeof window.showToast === 'function') window.showToast('ย้ายไปยังถังขยะเรียบร้อย');
         });
     }
