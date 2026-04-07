@@ -77,19 +77,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (typeof checkDbWarningForReport === 'function') checkDbWarningForReport(e.target);
     });
 
-    // --- Persistence: Load last search results (v1.79) ---
-    const lastResults = localStorage.getItem('thp_last_search_results');
-    const lastTitle = localStorage.getItem('thp_last_search_title');
-    const lastIsOcr = localStorage.getItem('thp_last_search_is_ocr') === 'true';
-
-    if (lastResults && lastTitle) {
+    // --- Persistence: Load last search results (v1.97: Migrate to StorageV2/IndexedDB) ---
+    (async () => {
         try {
-            currentUnifiedResults = JSON.parse(lastResults);
-            currentUnifiedTitle = lastTitle;
-            // Immediate silent render (skip async fetch as they are already enriched)
-            renderStoredUnifiedNumbers(currentUnifiedTitle, currentUnifiedResults, lastIsOcr);
+            // Check new storage first
+            let lastResults = await StorageV2.get('thp_last_search_results');
+            let lastTitle = await StorageV2.get('thp_last_search_title');
+            let lastIsOcrStr = await StorageV2.get('thp_last_search_is_ocr');
+            
+            // Fallback to legacy localStorage if new storage is empty
+            if (!lastResults) {
+                const legacyResults = localStorage.getItem('thp_last_search_results');
+                if (legacyResults) {
+                    lastResults = JSON.parse(legacyResults);
+                    lastTitle = localStorage.getItem('thp_last_search_title');
+                    lastIsOcrStr = localStorage.getItem('thp_last_search_is_ocr');
+                    
+                    // Migrate and Cleanup
+                    await saveLastSearchResults(lastTitle, lastResults, lastIsOcrStr === 'true');
+                    localStorage.removeItem('thp_last_search_results');
+                    localStorage.removeItem('thp_last_search_title');
+                    localStorage.removeItem('thp_last_search_is_ocr');
+                }
+            }
+
+            if (lastResults && lastTitle) {
+                currentUnifiedResults = lastResults;
+                currentUnifiedTitle = lastTitle;
+                renderStoredUnifiedNumbers(currentUnifiedTitle, currentUnifiedResults, lastIsOcrStr === 'true');
+            }
         } catch(e) { console.error("Failed to load last results", e); }
-    }
+    })();
 });
 
 /**
@@ -311,12 +329,23 @@ async function renderUnifiedNumbers(title, items, isOcr = false) {
     currentUnifiedResults = enrichedItems;
     currentUnifiedTitle = title;
     
-    // Save for F5 persistence
-    localStorage.setItem('thp_last_search_results', JSON.stringify(enrichedItems));
-    localStorage.setItem('thp_last_search_title', title);
-    localStorage.setItem('thp_last_search_is_ocr', isOcr ? 'true' : 'false');
+    // Save for F5 persistence (v1.97: Use IndexedDB to avoid QuotaExceededError)
+    await saveLastSearchResults(title, enrichedItems, isOcr);
 
     renderStoredUnifiedNumbers(title, enrichedItems, isOcr);
+}
+
+/**
+ * v1.97: Helper to save search results to large storage (IndexedDB)
+ */
+async function saveLastSearchResults(title, items, isOcr) {
+    try {
+        await StorageV2.set('thp_last_search_results', items);
+        await StorageV2.set('thp_last_search_title', title);
+        await StorageV2.set('thp_last_search_is_ocr', isOcr ? 'true' : 'false');
+    } catch (e) {
+        console.error("Failed to save persistence to IndexedDB:", e);
+    }
 }
 
 /**
@@ -4649,8 +4678,9 @@ async function refreshUI() {
         });
         await Promise.all(updatePromises);
         
-        // Persist and re-render
-        localStorage.setItem('thp_last_search_results', JSON.stringify(currentUnifiedResults));
+        // Persist and re-render (v1.97: Migration to StorageV2)
+        await saveLastSearchResults(currentUnifiedTitle, currentUnifiedResults, false);
+        
         if (typeof renderStoredUnifiedNumbers === 'function') {
             renderStoredUnifiedNumbers(currentUnifiedTitle || "", currentUnifiedResults);
         }
