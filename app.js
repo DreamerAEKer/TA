@@ -1562,34 +1562,45 @@ function saveImportedBatch(isAuto = false) {
     const originalHtml = btn ? btn.innerHTML : '💾 บันทึกข้อมูล';
     if (btn) window.setButtonLoading(btn, true);
 
-    setTimeout(() => {
-        // Save
-        const result = CustomerDB.addBatch(batchInfo, allItemsToSave);
-        const addedCount = typeof result === 'object' ? result.count : result;
-        const newBatchId = typeof result === 'object' ? result.id : null;
+    // v1.93 Refactor: Use async/await for more reliable error handling
+    (async () => {
+        try {
+            // Give UI a moment to show loading state
+            await new Promise(r => setTimeout(r, 100));
 
-        if (btn) window.setButtonLoading(btn, false, originalHtml);
+            // Save
+            const result = await CustomerDB.addBatch(batchInfo, allItemsToSave);
+            const addedCount = typeof result === 'object' ? result.count : result;
+            const newBatchId = typeof result === 'object' ? result.id : null;
 
-        if (result && result.error === 'DUPLICATE') {
-            window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'info');
-        } else {
-            window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${addedCount} รายการ`);
+            if (result && result.error === 'DUPLICATE') {
+                window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'info');
+            } else {
+                window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${addedCount} รายการ`);
+            }
+
+            // Reset inputs
+            const uploadBtn = document.getElementById('excel-upload');
+            if (uploadBtn) uploadBtn.value = '';
+            const previewSec = document.getElementById('import-preview');
+            if (previewSec) previewSec.classList.add('hidden');
+            currentImportedBatches = [];
+
+            // DIRECTLY VIEW THE REPORT
+            if (newBatchId && typeof loadBatchToView === 'function') {
+                loadBatchToView(newBatchId);
+            } else {
+                // Fallback
+                switchTab('customer');
+                if (typeof updateDbViews === 'function') await updateDbViews();
+            }
+        } catch (err) {
+            console.error("saveImportedBatch Error:", err);
+            alert("เกิดข้อผิดพลาดในการบันทึกชุดข้อมูล: " + err.message);
+        } finally {
+            if (btn) window.setButtonLoading(btn, false, originalHtml);
         }
-
-        // Reset inputs
-        document.getElementById('excel-upload').value = '';
-        document.getElementById('import-preview').classList.add('hidden');
-        currentImportedBatches = [];
-
-        // DIRECTLY VIEW THE REPORT
-        if (newBatchId && typeof loadBatchToView === 'function') {
-            loadBatchToView(newBatchId);
-        } else {
-            // Fallback
-            switchTab('customer');
-            if (typeof renderDBTable === 'function') renderDBTable();
-        }
-    }, 500);
+    })();
 }
 
 function toggleImportHistory() {

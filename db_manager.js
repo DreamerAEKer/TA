@@ -20,10 +20,13 @@ const STORE_NAME = 'key_value_store';
 
 const StorageV2 = {
     _db: null,
+    _initPromise: null,
 
     init: () => {
-        return new Promise((resolve, reject) => {
-            if (StorageV2._db) return resolve(StorageV2._db);
+        if (StorageV2._db) return Promise.resolve(StorageV2._db);
+        if (StorageV2._initPromise) return StorageV2._initPromise;
+
+        StorageV2._initPromise = new Promise((resolve, reject) => {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
             request.onupgradeneeded = (e) => {
                 const db = e.target.result;
@@ -35,8 +38,12 @@ const StorageV2 = {
                 StorageV2._db = e.target.result;
                 resolve(StorageV2._db);
             };
-            request.onerror = (e) => reject(e.target.error);
+            request.onerror = (e) => {
+                StorageV2._initPromise = null; // Allow retry on error
+                reject(e.target.error);
+            };
         });
+        return StorageV2._initPromise;
     },
 
     get: async (key) => {
@@ -137,6 +144,17 @@ const CustomerDB = {
     addBatch: async (batchInfo, trackingList) => {
         const batches = await CustomerDB.getBatches();
         const lookup = await CustomerDB.getLookup();
+        
+        // v1.93: Duplicate Prevention (Check same name + rangeDesc to prevent accidental double-clicks)
+        const currentDesc = trackingList.length > 1
+            ? `${trackingList[0]} - ${trackingList[trackingList.length - 1]}`
+            : trackingList[0] || 'No Data';
+
+        const possibleDup = Object.values(batches).find(b => b.name === batchInfo.name && b.rangeDesc === currentDesc);
+        if (possibleDup) {
+            return { error: 'DUPLICATE', id: possibleDup.id };
+        }
+
         const batchId = Date.now().toString();
 
         batches[batchId] = {
@@ -297,12 +315,22 @@ async function updateDbViews() {
 }
 
 async function saveCustomerData() {
-    const name = document.getElementById('db-name').value.trim();
-    const type = document.getElementById('db-type').value;
-    const loadedList = document.getElementById('db-tracking-list').value.trim();
+    const nameInput = document.getElementById('db-name');
+    const listInput = document.getElementById('db-tracking-list');
+    const name = nameInput ? nameInput.value.trim() : '';
+    const type = document.getElementById('db-type') ? document.getElementById('db-type').value : 'Credit';
+    const loadedList = listInput ? listInput.value.trim() : '';
+
     if (!name || !loadedList) { alert('กรุณากรอกชื่อและรายการพัสดุ'); return; }
 
-    const batchInfo = { name, type, contract: document.getElementById('db-contract').value.trim(), requestDate: document.getElementById('db-request-date').value.trim(), timestamp: Date.now() };
+    const batchInfo = { 
+        name, 
+        type, 
+        contract: document.getElementById('db-contract') ? document.getElementById('db-contract').value.trim() : '', 
+        requestDate: document.getElementById('db-request-date') ? document.getElementById('db-request-date').value.trim() : '', 
+        timestamp: Date.now() 
+    };
+
     const numbers = [], lines = loadedList.split(/[\r\n,]+/), regex = /([A-Z]{2})(\d{8})(\d)([A-Z]{2})/;
 
     lines.forEach(line => {
@@ -320,14 +348,32 @@ async function saveCustomerData() {
     });
 
     if (numbers.length === 0) { alert('ไม่พบเลขพัสดุที่ถูกต้อง'); return; }
+
     const btn = document.querySelector('button[onclick="saveCustomerData()"]');
     if (btn) window.setButtonLoading(btn, true);
-    await CustomerDB.addBatch(batchInfo, numbers);
-    if (btn) window.setButtonLoading(btn, false, 'บันทึกข้อมูล (Save)');
-    
-    document.getElementById('db-name').value = ''; document.getElementById('db-tracking-list').value = '';
-    document.getElementById('db-edit-section').classList.add('hidden');
-    currentDbView = 'recent'; await updateDbViews();
+
+    try {
+        const result = await CustomerDB.addBatch(batchInfo, numbers);
+        if (result && result.error === 'DUPLICATE') {
+            window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'info');
+        } else {
+             window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${numbers.length} รายการ`);
+        }
+
+        if(nameInput) nameInput.value = ''; 
+        if(listInput) listInput.value = '';
+        
+        const editSec = document.getElementById('db-edit-section');
+        if (editSec) editSec.classList.add('hidden');
+        
+        currentDbView = 'recent'; 
+        if (typeof updateDbViews === 'function') await updateDbViews();
+    } catch (err) {
+        console.error("saveCustomerData Error:", err);
+        alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + err.message);
+    } finally {
+        if (btn) window.setButtonLoading(btn, false, 'บันทึกข้อมูล (Save)');
+    }
 }
 
 // Note: Initialization is now handled by app.js to ensure UI readiness.

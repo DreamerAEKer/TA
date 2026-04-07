@@ -290,7 +290,9 @@ async function addSmartEntryAndSave() {
         const result = await CustomerDB.addBatch(batchInfo, itemsToAdd);
 
         if (result && result.error === 'DUPLICATE') {
-            window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'warning');
+            window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'info');
+            // Reset button and return
+            if (btn) window.setButtonLoading(btn, false, originalText);
             return;
         }
 
@@ -308,6 +310,7 @@ async function addSmartEntryAndSave() {
         
     } catch (err) {
         console.error("addSmartEntryAndSave Error:", err);
+        alert("เกิดข้อผิดพลาดในการบันทึก: " + err.message);
     } finally {
         if (btn) window.setButtonLoading(btn, false, originalText);
     }
