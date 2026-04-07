@@ -4534,7 +4534,7 @@ window.renderRecentBatches = function(batches) {
                 ${new Date(b.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}
             </td>
             <td style="text-align:center;" onclick="event.stopPropagation()">
-                <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.7rem; color:#d32f2f; border:1px solid #ffcdd2;" onclick="CustomerDB.deleteBatch('${b.id}').then(()=>updateDbViews())">🗑️ ลบ</button>
+                <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.7rem; color:#d32f2f; border:1px solid #ffcdd2;" onclick="deleteBatchConfirmed('${b.id}', '${b.name}')">🗑️ ลบ</button>
             </td>
         </tr>
     `).join('');
@@ -4567,7 +4567,7 @@ window.renderCompanySummaries = function(sums) {
                 <td style="text-align:center; color:#888;">${b.type}</td>
                 <td style="text-align:center; color:#999; font-size:0.75rem;">${new Date(b.timestamp).toLocaleDateString('th-TH')}</td>
                 <td style="text-align:center;" onclick="event.stopPropagation()">
-                    <button class="btn btn-neutral" style="padding:2px 6px; font-size:0.65rem; color:#d32f2f;" onclick="CustomerDB.deleteBatch('${b.id}').then(()=>updateDbViews())">🗑️</button>
+                    <button class="btn btn-neutral" style="padding:2px 6px; font-size:0.65rem; color:#d32f2f;" onclick="deleteBatchConfirmed('${b.id}', '${b.name}')">🗑️</button>
                 </td>
             </tr>
         `).join('')}
@@ -4600,7 +4600,7 @@ window.renderTrashBatches = function(trash) {
             <td style="text-align:center;" onclick="event.stopPropagation()">
                 <div style="display:flex; flex-direction:column; gap:4px;">
                     <button class="btn btn-neutral" style="padding:2px 8px; font-size:0.65rem; color:#2e7d32; border:1px solid #c8e6c9;" onclick="CustomerDB.restoreTrash('${b.id}').then(()=>updateDbViews())">🔄 กู้คืน</button>
-                    <button class="btn btn-neutral" style="padding:2px 8px; font-size:0.65rem; color:#d32f2f; border:1px solid #ffcdd2;" onclick="CustomerDB.permanentDeleteTrash('${b.id}').then(()=>updateDbViews())">❌ ลบทิ้ง</button>
+                    <button class="btn btn-neutral" style="padding:2px 8px; font-size:0.65rem; color:#d32f2f; border:1px solid #ffcdd2;" onclick="if(confirm('ต้องการลบข้อมูลนี้ทิ้งถาวรหรือไม่?')) CustomerDB.permanentDeleteTrash('${b.id}').then(()=>updateDbViews())">❌ ลบทิ้ง</button>
                 </div>
             </td>
         </tr>
@@ -4610,6 +4610,18 @@ window.renderTrashBatches = function(trash) {
 function updateDbCount(count) {
     const countEl = document.getElementById('db-count');
     if (countEl) countEl.innerText = count;
+}
+
+/**
+ * UI Wrapper for confirmed batch deletion
+ */
+function deleteBatchConfirmed(batchId, batchName) {
+    if (confirm(`คุณต้องการย้ายชุดข้อมูล "${batchName}" ไปยังถังขยะหรือไม่?`)) {
+        CustomerDB.deleteBatch(batchId).then(() => {
+            if (typeof updateDbViews === 'function') updateDbViews();
+            if (typeof window.showToast === 'function') window.showToast('ย้ายไปยังถังขยะเรียบร้อย');
+        });
+    }
 }
 
 /**
