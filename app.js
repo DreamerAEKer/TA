@@ -421,7 +421,10 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
     // 4. Build HTML Header
     let html = `
         <div style="padding:10px; background:linear-gradient(to bottom, #fff, #f9f9f9); border-bottom:1px solid #ddd; position:sticky; top:0; z-index:99; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-            <div style="font-size:0.8rem; color:#666; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">🔍 ${title} (${mainItemTotal} รายการ)</div>
+            <div style="font-size:0.8rem; color:#666; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="global-master-select-all" style="width:18px; height:18px; cursor:pointer;" onclick="toggleAllSearchCheckboxes(this.checked)" ${isOcr ? '' : 'checked'}>
+                <span title="${title}">🔍 ${title} (${mainItemTotal} รายการ)</span>
+            </div>
             <button class="btn" style="padding:4px 12px; font-size:0.75rem; background:#fff; border:1px solid #0288d1; color:#0288d1; border-radius:4px; font-weight:bold; flex-shrink:0; margin-left:10px;" onclick="copyAllSearchTrackings()">📋 คัดลอกเลขทั้งหมด</button>
         </div>
         <div style="padding:10px;">
@@ -581,10 +584,11 @@ function renderStoredUnifiedNumbers(title, enrichedItems, isOcr = false) {
     if (copyBar) {
         copyBar.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:8px;">
-                <button class="btn btn-success" onclick="stagingAllCheckedItems()" style="width:100%; font-size:1.16rem; padding:15px; font-weight:bold; border-radius:10px; box-shadow:0 4px 15px rgba(46,125,50,0.2);">🚩 เพิ่มรายการที่เลือกเข้าตารางร่าง (${mainItemTotal})</button>
+                <button class="btn btn-success" onclick="stagingAllCheckedItems()" style="width:100%; font-size:1.16rem; padding:15px; font-weight:bold; border-radius:10px; box-shadow:0 4px 15px rgba(46,125,50,0.2);">🚩 เพิ่มรายการที่เลือกเข้าตารางร่าง (<span id="search-selection-count">${mainItemTotal}</span>)</button>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn btn-neutral" onclick="copySelectedUnifiedNumbers()" style="flex:1; font-size:0.85rem; padding:8px; background:#fff; border:1px solid #ccc;">📋 คัดลอกเฉพาะที่ติ๊กเลือก</button>
-                    <button class="btn btn-neutral" onclick="document.querySelectorAll('[class^=group-checkbox-]').forEach(cb=>cb.checked=false)" style="flex:1; font-size:0.85rem; padding:8px; background:#fff; border:1px solid #ccc;">❌ ยกเลิกการเลือก</button>
+                    <button class="btn btn-neutral" onclick="toggleAllSearchCheckboxes(true)" style="flex:1; font-size:0.8rem; padding:8px; background:#fff; border:1px solid #ccc; font-weight:bold;">✅ เลือกทั้งหมด</button>
+                    <button class="btn btn-neutral" onclick="toggleAllSearchCheckboxes(false)" style="flex:1; font-size:0.8rem; padding:8px; background:#fff; border:1px solid #ccc;">❌ ยกเลิก</button>
+                    <button class="btn btn-neutral" onclick="copySelectedUnifiedNumbers()" style="flex:1.2; font-size:0.8rem; padding:8px; background:#fff; border:1px solid #ccc;">📋 คัดลอกที่เลือก</button>
                 </div>
             </div>
         `;
@@ -634,7 +638,7 @@ function renderUnifiedRow(row, groupId, companyEscaped, hasSatellites = false, c
                 ${hideCheckbox ? warningIcon : (isMain ? `
                     <input type="checkbox" class="group-checkbox-${groupId} cluster-checkbox-${clusterId}" value="${rawNum}" 
                         data-metadata="${metadataJson}"
-                        style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation()" ${checkedAttr}>
+                        style="width:18px; height:18px; cursor:pointer;" onclick="event.stopPropagation(); updateSearchSelectionCount()" ${checkedAttr}>
                 ` : (hasSatellites && clusterId ? `
                     <input type="checkbox" class="cluster-master-${clusterId}" 
                         style="width:18px; height:18px; cursor:pointer;" 
@@ -708,6 +712,52 @@ function toggleGroupCheckboxes(groupId, checked) {
     // Also toggle all cluster master checkboxes in this group
     const clusterMasters = document.querySelectorAll(`input[class^="cluster-master-${groupId}"]`);
     clusterMasters.forEach(cb => cb.checked = checked);
+    updateSearchSelectionCount();
+}
+
+/**
+ * Toggle all checkboxes in a specific cluster/series.
+ */
+function toggleClusterCheckboxes(clusterId, checked) {
+    const selector = `.cluster-checkbox-${clusterId}`;
+    const cbks = document.querySelectorAll(selector);
+    cbks.forEach(cb => cb.checked = checked);
+    updateSearchSelectionCount();
+}
+
+/**
+ * Toggle all search result checkboxes at once (Global Select All)
+ */
+function toggleAllSearchCheckboxes(checked) {
+    // 1. All individual item checkboxes
+    const itemCbks = document.querySelectorAll('[class^="group-checkbox-"]');
+    itemCbks.forEach(cb => cb.checked = checked);
+
+    // 2. All company group master checkboxes (starts with master-group-)
+    const groupMasters = document.querySelectorAll('input[id^="master-group-"]');
+    groupMasters.forEach(cb => cb.checked = checked);
+
+    // 3. All cluster master checkboxes
+    const clusterMasters = document.querySelectorAll('input[class^="cluster-master-"]');
+    clusterMasters.forEach(cb => cb.checked = checked);
+
+    // 4. Update the global header checkbox if it exists
+    const globalHeaderCb = document.getElementById('global-master-select-all');
+    if (globalHeaderCb) globalHeaderCb.checked = checked;
+
+    updateSearchSelectionCount();
+}
+
+/**
+ * Update the UI count for selected search items
+ */
+function updateSearchSelectionCount() {
+    const cbks = document.querySelectorAll('[class^="group-checkbox-"]');
+    let count = 0;
+    cbks.forEach(cb => { if(cb.checked) count++; });
+    
+    const countSpan = document.getElementById('search-selection-count');
+    if (countSpan) countSpan.textContent = count;
 }
 
 /**
