@@ -3604,14 +3604,14 @@ async function renderExceptionTable() {
         return;
     }
 
-    // Group by sessionId
+    // 1. Group by sessionId into Sessions
     const sessionMap = new Map();
     exceptions.forEach(item => {
         const sid = item.sessionId || item.id;
         if (!sessionMap.has(sid)) {
             sessionMap.set(sid, {
                 sessionId: sid,
-                companyName: item.companyName,
+                companyName: item.companyName || 'ทั่วไป',
                 reason: item.reason,
                 timestamp: item.timestamp,
                 entries: []
@@ -3622,122 +3622,157 @@ async function renderExceptionTable() {
 
     const sessions = Array.from(sessionMap.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
+    // 2. Group Sessions by Company Name for "Independent Selection"
+    const companyGroups = new Map();
+    sessions.forEach(sess => {
+        const name = sess.companyName;
+        if (!companyGroups.has(name)) companyGroups.set(name, []);
+        companyGroups.get(name).push(sess);
+    });
+
+    const sortedCompanyNames = Array.from(companyGroups.keys()).sort((a,b) => {
+        if (a === 'ทั่วไป') return 1;
+        if (b === 'ทั่วไป') return -1;
+        return a.localeCompare(b);
+    });
+
     let html = `
-        <div class="rpt-header-navy" style="margin-bottom:12px;">
+        <div class="rpt-header-navy" style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; align-items:center; gap:10px;">
                 <input type="checkbox" id="sess-select-all" checked onclick="toggleAllSessions(this.checked)">
-                <span>รายการดราฟต์ทั้งหมด (${sessions.length} ชุด)</span>
+                <span>รายการดราฟต์ (${sessions.length} ชุด)</span>
             </div>
-            <div style="font-size:0.8rem; font-weight:normal; opacity:0.9;">
-                ${exceptionFilterMode === 'today' ? '📅 รายการของวันนี้' : '📜 ประวัติย้อนหลัง'}
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button class="btn btn-neutral" style="padding:2px 8px; font-size:0.7rem; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#666;" onclick="toggleAllSessions(false)">ยกเลิกทั้งหมด</button>
+                <div style="font-size:0.8rem; font-weight:normal; opacity:0.9;">
+                    ${exceptionFilterMode === 'today' ? '📅 วันนี้' : '📜 ประวัติ'}
+                </div>
             </div>
         </div>
-        <div style="display:flex; flex-direction:column; gap:0;">
+        <div style="display:flex; flex-direction:column; gap:15px;">
     `;
 
-    sessions.forEach((session, idx) => {
-        const firstEntry = session.entries[0];
-        const compressed = compressEntriesForDisplay(session.entries);
-        const dObj = new Date(session.timestamp);
-        const timeStr = dObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-        const dateStr = dObj.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-        
-        // Alternating background shades for clear separation
-        const isAlternate = idx % 2 === 1;
-        const groupBg = isAlternate ? '#fcfdfe' : '#ffffff';
-
-        // Find images
-        let images = [];
-        for (const entry of session.entries) {
-            if (entry.images && entry.images.length > 0) {
-                images = entry.images;
-                break;
-            }
-        }
-        const hasImages = images.length > 0;
-        const totalCount = session.entries.length;
-        const isUnknownComp = !session.companyName || session.companyName === '-' || session.companyName === 'Unknown';
-
-        // Check digit validation for alert
-        const invalidTracks = session.entries.filter(e => !validateCheckDigitUI(e.trackNum)).map(e => e.trackNum);
-        const cdWarning = invalidTracks.length > 0 
-            ? `<div class="badge-invalid" style="margin-top:6px;">
-                 ⚠️ Check Digit ผิด: ${invalidTracks.join(', ')}
-               </div>` 
-            : '';
+    sortedCompanyNames.forEach((companyName, companyIdx) => {
+        const companySessions = companyGroups.get(companyName);
+        const companyId = `comp-${companyIdx}`;
+        // v1.95: Pre-collect SIDs for the group export button
+        const companySessionSids = companySessions.map(s => s.sessionId);
+        const sidsJson = JSON.stringify(companySessionSids).replace(/"/g, '&quot;');
 
         html += `
-            <div class="report-card premium" style="background:${groupBg}; ${idx === 0 ? 'border-top:1px solid #e0e0e0;' : 'border-top:1px solid #f0f0f0;'}">
-                <div class="card-inner" style="display:flex; gap:12px; align-items:flex-start;">
-                    <input type="checkbox" class="sess-select" value="${session.sessionId}" checked style="margin-top:5px; transform:scale(1.2); cursor:pointer;" onclick="updateSelectAllState()">
-                    <div style="flex:1;">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                            <div>
-                                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                    <strong style="font-size:1.05rem; color:#003366;">🏢 ${session.companyName || 'ทั่วไป'}</strong>
-                                    ${isUnknownComp ? `<button class="btn btn-neutral" style="padding:2px 8px; font-size:0.7rem; border:1px solid #0288d1; color:#0288d1; background:#e1f5fe; border-radius:12px;" onclick="saveSessionAsCompany('${session.sessionId}')">💾 บันทึก บ.</button>` : ''}
-                                </div>
-                                <div style="font-size:0.8rem; color:#777; margin-top:2px;">
-                                    🕒 ${dateStr} ${timeStr} • 📦 ${totalCount} ชิ้น • 📂 ${firstEntry.category || 'เงินสด'}
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:4px;">
-                                <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.75rem; border:1px solid #ddd; background:#fff; border-radius:4px;" title="Layout Edit" onclick="editExceptionSession('${session.sessionId}')">✏️ Edit</button>
-                                <button class="btn btn-neutral" style="padding:4px 8px; font-size:0.75rem; border:1px solid #ffcdd2; color:#d32f2f; background:#fff; border-radius:4px;" title="Delete" onclick="deleteExceptionSession('${session.sessionId}')">🗑️</button>
-                            </div>
-                        </div>
+            <div class="company-report-group" style="border:1px solid #ddd; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 3px 6px rgba(0,0,0,0.04);">
+                <div style="background:#eef6ff; padding:10px 15px; border-bottom:1px solid #d0e1f9; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:200px;">
+                        <input type="checkbox" class="comp-select" data-comp="${companyId}" checked onclick="toggleSessionsInCompany('${companyId}', this.checked)" style="width:20px; height:20px; cursor:pointer;">
+                        <strong style="color:#004ba0; font-size:1.05rem;">🏢 ${companyName}</strong>
+                        <span style="font-size:0.8rem; color:#888; font-weight:normal;">(${companySessions.length} รายการ)</span>
+                    </div>
+                    <button class="btn btn-primary" style="padding:5px 15px; font-size:0.8rem; border-radius:30px; background:linear-gradient(135deg,#0288d1,#01579b); border:none; box-shadow:0 2px 4px rgba(2,136,209,0.2);" onclick="exportExceptionImage(${sidsJson})">
+                        📸 สร้างรายงาน บ.นี้
+                    </button>
+                </div>
+                <div style="display:flex; flex-direction:column;">
+        `;
 
-                        <div style="background:#fcfcfc; border-radius:8px; padding:10px 70px 10px 10px; margin-bottom:8px; border:1px solid #f0f0f0; position:relative;">
-                            <button style="position:absolute; top:8px; right:8px; background:none; border:none; color:#0288d1; font-size:0.75rem; cursor:pointer;" onclick="copySessionTracks('${session.sessionId}')">📋 คัดลอก</button>
-                            <div style="display:flex; flex-wrap:wrap; gap:4px; font-family:monospace; font-size:0.95rem;">
-                                ${compressed.map(g => `<span style="background:#fff; border:1px solid #eee; padding:2px 8px; border-radius:4px; color:#0277bd;">${g.display}</span>`).join('')}
-                            </div>
-                            ${cdWarning}
-                        </div>
+        companySessions.forEach((session, idx) => {
+            const firstEntry = session.entries[0];
+            const compressed = compressEntriesForDisplay(session.entries || []);
+            const dObj = new Date(session.timestamp);
+            const timeStr = dObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            
+            // Alternating background shades within group
+            const groupBg = (idx % 2 === 1) ? '#fafafa' : '#ffffff';
 
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div style="font-size:0.95rem; color:#d32f2f; font-weight:500;">
-                                <span style="color:#888; font-size:0.8rem; font-weight:normal;">สาเหตุ:</span> ${session.reason || '-'}
+            let images = [];
+            for (const entry of session.entries) {
+                if (entry.images && entry.images.length > 0) { images = entry.images; break; }
+            }
+            const hasImages = images.length > 0;
+            const totalCount = session.entries.length;
+            const isUnknownComp = !session.companyName || session.companyName === '-' || session.companyName === 'Unknown';
+
+            const invalidTracks = session.entries.filter(e => !validateCheckDigitUI(e.trackNum)).map(e => e.trackNum);
+            const cdWarning = invalidTracks.length > 0 
+                ? `<div class="badge-invalid" style="margin-top:6px;">⚠️ Check Digit ผิด: ${invalidTracks.join(', ')}</div>` 
+                : '';
+
+            html += `
+                <div class="report-card individual-session" style="background:${groupBg}; border-top:1px solid #f0f0f0; padding:12px 15px;">
+                    <div style="display:flex; gap:12px; align-items:flex-start;">
+                        <input type="checkbox" class="sess-select" data-comp="${companyId}" value="${session.sessionId}" checked style="margin-top:5px; transform:scale(1.1); cursor:pointer;" onclick="updateSelectAllState()">
+                        <div style="flex:1;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                                <div style="font-size:0.8rem; color:#777;">
+                                    🕒 ${timeStr} • 📦 ${totalCount} ชิ้น • 📂 ${firstEntry.category || 'เงินสด'}
+                                    ${isUnknownComp ? `<button class="btn btn-neutral" style="padding:0 6px; font-size:0.65rem; border:1px solid #0288d1; color:#0288d1; background:#e1f5fe; border-radius:12px; margin-left:5px;" onclick="saveSessionAsCompany('${session.sessionId}')">💾 บันทึก บ.</button>` : ''}
+                                </div>
+                                <div style="display:flex; gap:4px;">
+                                    <button class="btn btn-neutral" style="padding:3px 6px; font-size:0.7rem; border:1px solid #ddd; background:#fff;" title="รายงานเฉพาะชุดนี้" onclick="exportExceptionImage(['${session.sessionId}'])">📸</button>
+                                    <button class="btn btn-neutral" style="padding:3px 6px; font-size:0.7rem; border:1px solid #ddd; background:#fff;" title="Edit" onclick="editExceptionSession('${session.sessionId}')">✏️</button>
+                                    <button class="btn btn-neutral" style="padding:3px 6px; font-size:0.7rem; border:1px solid #ffcdd2; color:#d32f2f; background:#fff;" title="Delete" onclick="deleteExceptionSession('${session.sessionId}')">🗑️</button>
+                                </div>
                             </div>
-                            <div style="display:flex; align-items:center; gap:8px;">
+
+                            <div style="background:#fff; border-radius:6px; padding:8px 60px 8px 10px; margin-bottom:8px; border:1px solid #eee; position:relative; min-height:30px;">
+                                <button style="position:absolute; top:8px; right:8px; background:none; border:none; color:#0288d1; font-size:0.7rem; cursor:pointer;" onclick="copySessionTracks('${session.sessionId}')">📋 คัดลอก</button>
+                                <div style="display:flex; flex-wrap:wrap; gap:4px; font-family:monospace; font-size:0.9rem;">
+                                    ${compressed.map(g => `<span style="background:#f5faff; border:1px solid #d1e3f8; padding:1px 6px; border-radius:4px; color:#0277bd;">${g.display}</span>`).join('')}
+                                </div>
+                                ${cdWarning}
+                            </div>
+
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-size:0.9rem; color:#d32f2f; font-weight:500;">
+                                    <span style="color:#aaa; font-size:0.75rem; font-weight:normal;">สาเหตุ:</span> ${session.reason || '-'}
+                                </div>
                                 ${hasImages ? `
                                     <div style="display:flex; gap:4px;" id="imgs-preview-${session.sessionId}">
-                                        ${images.slice(0, 3).map(img => `<img src="${img.dataUrl}" style="width:32px; height:32px; object-fit:cover; border-radius:4px; border:1px solid #ddd; cursor:pointer;" onclick="toggleCardImages('${session.sessionId}')">`).join('')}
-                                        ${images.length > 3 ? `<span style="font-size:0.7rem; color:#666;">+${images.length - 3}</span>` : ''}
+                                        ${images.slice(0, 3).map(img => `<img src="${img.dataUrl}" style="width:28px; height:28px; object-fit:cover; border-radius:4px; border:1px solid #ddd; cursor:pointer;" onclick="toggleCardImages('${session.sessionId}')">`).join('')}
+                                        ${images.length > 3 ? `<span style="font-size:0.65rem; color:#999;">+${images.length - 3}</span>` : ''}
                                     </div>
                                 ` : ''}
                             </div>
-                        </div>
 
-                        <div id="imgs-full-${session.sessionId}" style="display:none; margin-top:10px; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:8px; border-top:1px dashed #eee; padding-top:10px;">
-                            ${images.map(img => `
-                                <div style="position:relative;">
-                                    <img src="${img.dataUrl}" style="width:100%; border-radius:6px; border:1px solid #eee;">
-                                    <div style="font-size:0.6rem; color:#999; text-align:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${img.name}</div>
-                                </div>
-                            `).join('')}
+                            <div id="imgs-full-${session.sessionId}" style="display:none; margin-top:10px; grid-template-columns:repeat(auto-fill, minmax(70px, 1fr)); gap:8px; border-top:1px dashed #eee; padding-top:10px;">
+                                ${images.map(img => `<img src="${img.dataUrl}" style="width:100%; border-radius:6px; border:1px solid #eee;">`).join('')}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        });
+
+        html += `</div></div>`;
     });
 
     html += '</div>';
     container.innerHTML = html;
-    updateSelectAllState(); // Sync state initially
+    updateSelectAllState();
 }
 
 /**
- * Updates the 'Select All' checkbox state based on individual selections
+ * Updates the 'Select All' and Company-level checkbox states based on individual selections
  */
 function updateSelectAllState() {
-    const allCbs = document.querySelectorAll('.sess-select');
-    const checkedCbs = document.querySelectorAll('.sess-select:checked');
+    // 1. Update Company-level checkboxes
+    const compCbs = document.querySelectorAll('.comp-select');
+    compCbs.forEach(compCb => {
+        const compId = compCb.getAttribute('data-comp');
+        const sessCbs = document.querySelectorAll(`.sess-select[data-comp="${compId}"]`);
+        const checkedSess = document.querySelectorAll(`.sess-select[data-comp="${compId}"]:checked`);
+        
+        compCb.checked = (sessCbs.length > 0 && sessCbs.length === checkedSess.length);
+        compCb.indeterminate = (checkedSess.length > 0 && checkedSess.length < sessCbs.length);
+    });
+
+    // 2. Update Master Select All
+    const allSessCbs = document.querySelectorAll('.sess-select');
+    const checkedSessTotal = document.querySelectorAll('.sess-select:checked');
     const selectAllCb = document.getElementById('sess-select-all');
+    
     if (selectAllCb) {
-        selectAllCb.checked = (allCbs.length > 0 && allCbs.length === checkedCbs.length);
-        selectAllCb.indeterminate = (checkedCbs.length > 0 && checkedCbs.length < allCbs.length);
+        selectAllCb.checked = (allSessCbs.length > 0 && allSessCbs.length === checkedSessTotal.length);
+        selectAllCb.indeterminate = (checkedSessTotal.length > 0 && checkedSessTotal.length < allSessCbs.length);
     }
 }
 
@@ -3747,6 +3782,19 @@ function updateSelectAllState() {
 function toggleAllSessions(checked) {
     const allCbs = document.querySelectorAll('.sess-select');
     allCbs.forEach(cb => cb.checked = checked);
+    
+    const compCbs = document.querySelectorAll('.comp-select');
+    compCbs.forEach(cb => cb.checked = checked);
+
+    updateSelectAllState();
+}
+
+/**
+ * Toggles all session checkboxes within a specific company group
+ */
+function toggleSessionsInCompany(companyId, checked) {
+    const cbs = document.querySelectorAll(`.sess-select[data-comp="${companyId}"]`);
+    cbs.forEach(cb => cb.checked = checked);
     updateSelectAllState();
 }
 
@@ -3972,10 +4020,9 @@ async function clearAllExceptions() {
     }
 }
 
-async function exportExceptionImage() {
-    await renderExceptionTable();
+async function exportExceptionImage(specificSids = null) {
 
-    const selectedSids = Array.from(document.querySelectorAll('.sess-select:checked')).map(cb => cb.value);
+    const selectedSids = specificSids || Array.from(document.querySelectorAll('.sess-select:checked')).map(cb => cb.value);
     if (selectedSids.length === 0) {
         alert('กรุณาเลือกอย่างน้อย 1 รายการเพื่อออกรายงานครับ');
         return;
@@ -4030,10 +4077,18 @@ async function exportExceptionImage() {
     const totalPages = Math.ceil(exportBlocks.length / ITEMS_PER_PAGE);
 
     // Provide visual feedback
-    const originalBtnText = event?.target?.innerText || "สร้างรูปภาพแจ้งหัวหน้า";
-    if (event?.target) {
-        event.target.disabled = true;
-        event.target.innerText = "⏳ กำลังเตรียมไฟล์รูปภาพ...";
+    let targetBtn = null;
+    try {
+        if (typeof event !== 'undefined' && event?.target && (event.target.tagName === 'BUTTON' || event.target.closest('button'))) {
+            targetBtn = event.target.tagName === 'BUTTON' ? event.target : event.target.closest('button');
+        }
+    } catch(e) {}
+    
+    const originalBtnText = targetBtn ? targetBtn.innerText : "สร้างรูปภาพแจ้งหัวหน้า";
+    if (targetBtn) {
+        targetBtn.disabled = true;
+        const oldHtml = targetBtn.innerHTML;
+        targetBtn.innerText = "⏳ กำลังเตรียมไฟล์...";
     }
 
     const reportDateDisp = meta.date ? new Date(meta.date).toLocaleDateString('th-TH') : new Date().toLocaleDateString('th-TH');
