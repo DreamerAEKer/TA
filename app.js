@@ -3640,7 +3640,7 @@ async function renderExceptionTable() {
         <div class="rpt-header-navy" style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; align-items:center; gap:10px;">
                 <input type="checkbox" id="sess-select-all" checked onclick="toggleAllSessions(this.checked)">
-                <span>รายการดราฟต์ (${sessions.length} ชุด)</span>
+                <span id="sess-master-label" style="font-weight:bold;">รายการดราฟต์ ทั้งหมด</span>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
                 <button class="btn btn-neutral" style="padding:2px 8px; font-size:0.7rem; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#666;" onclick="toggleAllSessions(false)">ยกเลิกทั้งหมด</button>
@@ -3660,12 +3660,12 @@ async function renderExceptionTable() {
         const sidsJson = JSON.stringify(companySessionSids).replace(/"/g, '&quot;');
 
         html += `
-            <div class="company-report-group" style="border:1px solid #ddd; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 3px 6px rgba(0,0,0,0.04);">
+            <div class="company-report-group" id="group-${companyId}" style="border:1px solid #ddd; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 3px 6px rgba(0,0,0,0.04);">
                 <div style="background:#eef6ff; padding:10px 15px; border-bottom:1px solid #d0e1f9; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:200px;">
                         <input type="checkbox" class="comp-select" data-comp="${companyId}" checked onclick="toggleSessionsInCompany('${companyId}', this.checked)" style="width:20px; height:20px; cursor:pointer;">
                         <strong style="color:#004ba0; font-size:1.05rem;">🏢 ${companyName}</strong>
-                        <span style="font-size:0.8rem; color:#888; font-weight:normal;">(${companySessions.length} รายการ)</span>
+                        <span id="label-${companyId}" style="font-size:0.82rem; color:#0288d1; font-weight:bold; margin-left:5px;"></span>
                     </div>
                     <button class="btn btn-primary" style="padding:5px 15px; font-size:0.8rem; border-radius:30px; background:linear-gradient(135deg,#0288d1,#01579b); border:none; box-shadow:0 2px 4px rgba(2,136,209,0.2);" onclick="exportExceptionImage(${sidsJson})">
                         📸 สร้างรายงาน บ.นี้
@@ -3751,48 +3751,75 @@ async function renderExceptionTable() {
 }
 
 /**
- * Updates the 'Select All' and Company-level checkbox states based on individual selections
+ * Updates the 'Select All' and Company-level checkbox states based on a strict hierarchy
  */
 function updateSelectAllState() {
-    // 1. Update Company-level checkboxes
-    const compCbs = document.querySelectorAll('.comp-select');
-    compCbs.forEach(compCb => {
-        const compId = compCb.getAttribute('data-comp');
-        const sessCbs = document.querySelectorAll(`.sess-select[data-comp="${compId}"]`);
-        const checkedSess = document.querySelectorAll(`.sess-select[data-comp="${compId}"]:checked`);
+    // 1. Process each company group div for isolation
+    const groupDivs = document.querySelectorAll('.company-report-group');
+    let totalItems = 0;
+    let totalChecked = 0;
+
+    groupDivs.forEach(div => {
+        const compCb = div.querySelector('.comp-select');
+        const sessCbs = div.querySelectorAll('.sess-select');
+        const checkedSess = div.querySelectorAll('.sess-select:checked');
+        const compId = compCb ? compCb.getAttribute('data-comp') : null;
         
-        compCb.checked = (sessCbs.length > 0 && sessCbs.length === checkedSess.length);
-        compCb.indeterminate = (checkedSess.length > 0 && checkedSess.length < sessCbs.length);
+        const count = sessCbs.length;
+        const checkedCount = checkedSess.length;
+        totalItems += count;
+        totalChecked += checkedCount;
+
+        if (compCb) {
+            compCb.checked = (count > 0 && count === checkedCount);
+            compCb.indeterminate = (checkedCount > 0 && checkedCount < count);
+        }
+
+        // Update company-level label (e.g., "(2/3 Selected)")
+        if (compId) {
+            const labelEl = document.getElementById(`label-${compId}`);
+            if (labelEl) {
+                if (checkedCount === count) labelEl.textContent = `(${count})`;
+                else labelEl.textContent = `(${checkedCount}/${count})`;
+                labelEl.style.color = (checkedCount === count) ? '#0288d1' : (checkedCount > 0 ? '#ef6c00' : '#888');
+            }
+        }
     });
 
     // 2. Update Master Select All
-    const allSessCbs = document.querySelectorAll('.sess-select');
-    const checkedSessTotal = document.querySelectorAll('.sess-select:checked');
     const selectAllCb = document.getElementById('sess-select-all');
-    
     if (selectAllCb) {
-        selectAllCb.checked = (allSessCbs.length > 0 && allSessCbs.length === checkedSessTotal.length);
-        selectAllCb.indeterminate = (checkedSessTotal.length > 0 && checkedSessTotal.length < allSessCbs.length);
+        selectAllCb.checked = (totalItems > 0 && totalItems === totalChecked);
+        selectAllCb.indeterminate = (totalChecked > 0 && totalChecked < totalItems);
+        
+        const masterLabel = document.getElementById('sess-master-label');
+        if (masterLabel) {
+            masterLabel.textContent = `รายการดราฟต์ (${totalChecked}/${totalItems})`;
+            masterLabel.style.color = (totalChecked === totalItems) ? '#fff' : (totalChecked > 0 ? '#ffeb3b' : 'rgba(255,255,255,0.7)');
+        }
     }
 }
 
 /**
- * Toggles all session checkboxes in the drafts list
+ * Toggles all session checkboxes by strictly cascading settings
  */
 function toggleAllSessions(checked) {
-    const allCbs = document.querySelectorAll('.sess-select');
-    allCbs.forEach(cb => cb.checked = checked);
-    
-    const compCbs = document.querySelectorAll('.comp-select');
-    compCbs.forEach(cb => cb.checked = checked);
+    // Update leaf nodes first
+    document.querySelectorAll('.sess-select').forEach(cb => cb.checked = checked);
+    // Update company nodes
+    document.querySelectorAll('.comp-select').forEach(cb => cb.checked = checked);
+    // Update master (if manually called from somewhere else)
+    const masterCb = document.getElementById('sess-select-all');
+    if (masterCb) masterCb.checked = checked;
 
     updateSelectAllState();
 }
 
 /**
- * Toggles all session checkboxes within a specific company group
+ * Toggles all session checkboxes within a specific company group container
  */
 function toggleSessionsInCompany(companyId, checked) {
+    // Find sessions ONLY within the corresponding group container
     const cbs = document.querySelectorAll(`.sess-select[data-comp="${companyId}"]`);
     cbs.forEach(cb => cb.checked = checked);
     updateSelectAllState();
