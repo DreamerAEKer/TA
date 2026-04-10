@@ -47,6 +47,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Old tools consolidated into Smart Workspace ---
     checkAdminUI();
+    
+    // Initialize Fuel Surcharge Toggle (v2.0-stable)
+    const surchargeToggle = document.getElementById('import-surcharge-toggle');
+    if (surchargeToggle) {
+        const saved = localStorage.getItem('thp_import_surcharge');
+        surchargeToggle.checked = (saved === 'true');
+    }
 
     // 4. Smart Workspace Inputs -> Enter Key
     document.getElementById('smart-main-input')?.addEventListener('keypress', (e) => {
@@ -1121,7 +1128,11 @@ function handleExcelImport(file) {
                 if (row[2] && typeof row[2] === 'string') {
                     const match = row[2].match(regex);
                     if (match) {
-                        const price = parseFloat(row[3]) || 0;
+                        const surchargeChecked = document.getElementById('import-surcharge-toggle')?.checked || false;
+                        let price = parseFloat(row[3]) || 0;
+                        if (surchargeChecked && price > 0) {
+                            price += 3; // +3 Baht Fuel Surcharge
+                        }
                         let weight = row[4] || '-';
                         let originalWeight = weight;
                         let hasDiscrepancy = false;
@@ -1405,11 +1416,17 @@ function analyzeImportedRanges(trackingList) {
         contexts: currentList.map(x => x.context).filter(c => c !== null)
     });
 
-    // Virtual Optimization
-    const optimizedRanges = TrackingUtils.virtualOptimizeRanges(rawRanges);
+    // Virtual Optimization (Admin Only)
+    const isUserMode = document.body.classList.contains('user-mode');
+    if (isUserMode) {
+        console.info("[v2.0-stable] Subordinate mode: Skipping virtual optimization to preserve raw sequences.");
+        currentImportedBatches = rawRanges;
+    } else {
+        const optimizedRanges = TrackingUtils.virtualOptimizeRanges(rawRanges);
+        currentImportedBatches = optimizedRanges;
+    }
 
-    currentImportedBatches = optimizedRanges;
-    renderImportResult(optimizedRanges, missingItems, discrepanciesList);
+    renderImportResult(currentImportedBatches, missingItems, discrepanciesList);
 }
 
 function renderImportResult(ranges, missingItems = [], discrepancies = []) {
@@ -1511,21 +1528,29 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         ${discrepancyHtml}
     `;
 
-    // Generate Receipt-style Table
+    const isUserMode = document.body.classList.contains('user-mode');
+    
+    // Generate Receipt-style Table (Admin) or Card-style (Subordinate)
+    const tableStyle = isUserMode 
+        ? "background:white; padding:15px; border:1px solid #eee; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.05); font-family:'Sarabun', sans-serif;" 
+        : "background:white; padding:20px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.05); font-family:'Courier New', monospace;";
+
     let html = `
-        <div style="background:white; padding:20px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.05); font-family:'Courier New', monospace;">
-            <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">ใบสรุปรายการ (Optimized Report)</h4>
-             <div style="font-size:0.8rem; color:red; text-align:center; margin-bottom:5px;">
-                *รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)
+        <div style="${tableStyle}">
+            <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">
+                ${isUserMode ? '📄 สรุปรายการนำเข้าพัสดุ' : 'ใบสรุปรายการ (Optimized Report)'}
+            </h4>
+             <div style="font-size:0.8rem; color:${isUserMode ? '#666' : 'red'}; text-align:center; margin-bottom:10px;">
+                ${isUserMode ? '*เรียงตามลำดับข้อมูลจริงจากไฟล์ลูกค้า' : '*รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)'}
             </div>
             
             <table style="width:100%; border-collapse: collapse;">
                 <thead>
                     <tr style="border-bottom:2px solid #000;">
                         <th style="text-align:left; padding:5px;">รายการ (Description)</th>
-                        <th class="col-qty" style="text-align:right; padding:5px; white-space:nowrap;">จำนวน (Qty)</th>
-                        <th class="col-price" style="text-align:right; padding:5px; white-space:nowrap;">ราคา/ชิ้น</th>
-                        <th class="col-total" style="text-align:right; padding:5px; white-space:nowrap;">รวม (Total)</th>
+                        <th class="col-qty" style="text-align:right; padding:5px; white-space:nowrap;">จำนวน</th>
+                        <th class="col-price" style="text-align:right; padding:5px; white-space:nowrap;">@ราคา</th>
+                        <th class="col-total" style="text-align:right; padding:5px; white-space:nowrap;">รวม (บาท)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1535,29 +1560,38 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     ranges.forEach((r, idx) => {
         const rowTotal = r.total || (r.count * r.price);
         const rowTotalStr = rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 });
-
-        // Logic: Show total only if count > 1
         const displayTotal = (r.count > 1) ? ` | ${rowTotalStr}` : '';
+        
+        // v2.0-stable: Action Buttons for Subordinates
+        const actionButtons = isUserMode 
+            ? `<div style="margin-top:5px; display:flex; gap:8px;">
+                <button class="badge badge-error" onclick="toggleExceptionReport('${r.start}', '${r.end}', 'Missing')">🚩 แจ้งตกหล่น</button>
+                <button class="badge badge-primary" onclick="window.open('https://track_trace.thailandpost.co.th/status/results', '_blank')">🔍 ติดตาม</button>
+               </div>`
+            : '';
 
         html += `
             <tr style="border-bottom:1px dashed #eee;">
-                <td style="padding:10px 0; vertical-align:top; width:100%;">
+                <td style="padding:12px 0; vertical-align:top; width:100%;">
                     <!-- Line 1: Title + Qty + Total (Mobile) -->
                     <div class="line-flex">
-                        <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong>
+                        <strong style="color:${isUserMode ? '#333' : 'inherit'};">${idx + 1}. EMS ราคา ${r.price} บาท</strong>
                         <span class="mobile-stats" style="color:#d63384; font-weight:bold;">${r.count} ชิ้น${displayTotal}</span>
                     </div>
                     
                     <!-- Line 2: Range Only (Mobile) -->
                     <div class="line-flex">
-                        <span style="color:#0056b3; font-weight:bold; overflow-wrap:break-word; max-width:100%;">
+                        <span style="color:#0056b3; font-weight:bold; overflow-wrap:break-word; max-width:100%; font-size:${isUserMode ? '1.1rem' : 'inherit'};">
                             ${r.start === r.end
                 ? TrackingUtils.formatTrackingNumber(r.start)
                 : `${TrackingUtils.formatTrackingNumber(r.start)} - ${TrackingUtils.formatTrackingNumber(r.end)}`}
                         </span>
                     </div>
 
-                    <small style="color:#666;">น้ำหนัก (Weight): ${r.weight}</small>
+                    <div style="font-size:0.9rem; color:#666;">
+                        น้ำหนัก (Weight): <strong style="color:#333;">${r.weight}</strong>
+                    </div>
+                    ${actionButtons}
                 </td>
                 <td class="col-qty" style="text-align:right; vertical-align:top; padding-top:10px;">${r.count}</td>
                 <td class="col-price" style="text-align:right; vertical-align:top; padding-top:10px;">@${r.price}</td>
@@ -1659,20 +1693,29 @@ function saveImportedBatch(isAuto = false) {
                 window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${addedCount} รายการ`);
             }
 
-            // Reset inputs
-            const uploadBtn = document.getElementById('excel-upload');
-            if (uploadBtn) uploadBtn.value = '';
-            const previewSec = document.getElementById('import-preview');
-            if (previewSec) previewSec.classList.add('hidden');
-            currentImportedBatches = [];
+            // v2.0-stable: Handle Navigation based on role
+            const isUserMode = document.body.classList.contains('user-mode');
 
-            // DIRECTLY VIEW THE REPORT
-            if (newBatchId && typeof loadBatchToView === 'function') {
-                loadBatchToView(newBatchId);
+            if (isUserMode) {
+                // For Subordinates: STAY HERE, don't hide, don't switch.
+                console.info("[v2.0-stable] Subordinate mode: Saved batch, keeping results visible.");
+                // We do NOT clear previewSec or currentImportedBatches immediately
+                // However, we might want to update the UI to show "Saved" status
+                window.showToast(`บันทึกเรียบร้อย! ข้อมูลถูกเก็บไว้ในประวัติแล้ว`);
             } else {
-                // Fallback
-                switchTab('customer');
-                if (typeof updateDbViews === 'function') await updateDbViews();
+                // Admin Flow: Reset and Switch
+                const uploadBtn = document.getElementById('excel-upload');
+                if (uploadBtn) uploadBtn.value = '';
+                const previewSec = document.getElementById('import-preview');
+                if (previewSec) previewSec.classList.add('hidden');
+                currentImportedBatches = [];
+
+                if (newBatchId && typeof loadBatchToView === 'function') {
+                    loadBatchToView(newBatchId);
+                } else {
+                    switchTab('customer');
+                    if (typeof updateDbViews === 'function') await updateDbViews();
+                }
             }
 
             // v2.0-stable: Auto-Cleanup Search Results after Batch Save
