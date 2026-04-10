@@ -582,10 +582,23 @@ async function compressImage(dataUrl, maxWidth = 1000, quality = 0.7) {
     });
 }
 
+window.TrackingUtils = {
+    calculateS10CheckDigit,
+    validateTrackingNumber,
+    formatTrackingNumber,
+    generateTrackingRange,
+    groupRangesByPrice,
+    virtualOptimizeRanges,
+    cleanTrackingText,
+    extractTrackingNumbers,
+    extractTrackingWithContext,
+    extractPrices,
+    summarizePrices,
+    getWeightFromPriceA3,
     extractHandwrittenTable,
     compressImage,
     parseThaiDateBE,
-    getStandardPrice // Added
+    getStandardPrice
 };
 
 /**
