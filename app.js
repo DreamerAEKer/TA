@@ -1507,9 +1507,15 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     }
 
     // --- DISCREPANCY ALERT SECTION ---
+    const isUserMode = document.body.classList.contains('user-mode');
     let discrepancyHtml = '';
     if (discrepancies && discrepancies.length > 0) {
         discrepancyHtml = `
+            <div class="result-error" style="margin-top:15px; padding:10px; border:2px solid #ff9800; background:#fff3e0; color:#e65100; border-radius:8px;">
+                <h4 style="margin:0 0 5px 0;">⚠️ พบข้อสังเกตจากไฟล์ (Weight Shift)</h4>
+                <p style="margin:0; font-size:0.95rem;">
+                    พบน้ำหนักในไฟล์ไม่ตรงกับราคาค่าบริการ จำนวน <strong>${discrepancies.length} รายการ</strong> (ปรับให้อัตโนมัติแล้ว)
+                </p>
             </div>
         `;
     }
@@ -1569,8 +1575,6 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         ${summaryTableHtml}
     `;
 
-    const isUserMode = document.body.classList.contains('user-mode');
-    
     // Generate Receipt-style Table (Admin) or Card-style (Subordinate)
     const tableStyle = isUserMode 
         ? "background:white; padding:15px; border:1px solid #eee; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.05); font-family:'Sarabun', sans-serif;" 
