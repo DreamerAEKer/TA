@@ -2507,22 +2507,13 @@ function adminCrossReference() {
 }
 
 function copyCrossRefAll() {
-    const inputArea = document.getElementById('admin-crossref-input');
-    if (!inputArea || !inputArea.value.trim()) {
-        alert('ไม่มีข้อมูลให้คัดลอกครับ');
-        return;
+    const ids = Array.from(document.querySelectorAll('.crossref-id')).map(el => el.innerText.replace(/\s/g, '')).join('\n');
+    if(ids) {
+        navigator.clipboard.writeText(ids).then(() => alert('คัดลอกรายการทั้งหมดลง Clipboard แล้ว'));
+    } else {
+        alert('ไม่มีข้อมูลให้คัดลอก');
     }
-    
-    // Extract only valid tracking numbers so no junk text gets copied
-    const extracted = TrackingUtils.extractTrackingNumbers(inputArea.value);
-    
-    if (extracted && extracted.length > 0) {
-        const textToCopy = extracted.join('\n');
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            const btn = document.querySelector('button[onclick="copyCrossRefAll()"]');
-            if (btn) {
-                const originalText = btn.innerHTML;
-                btn.innerHTML = `✅ คัดลอก ${extracted.length} รายการแล้ว`;
+}
                 btn.classList.add('btn-success');
                 setTimeout(() => {
                     btn.innerHTML = originalText;
@@ -2935,7 +2926,7 @@ async function adminCrossRefImage(files) {
     document.getElementById('admin-crossref-file').value = '';
 }
 
-function renderCrossReference(trackArray) {
+async function renderCrossReference(trackArray) {
     const uniqueTracks = [...new Set(trackArray.map(t => t.toUpperCase()))];
     const statusEl = document.getElementById('admin-crossref-status');
     const resultBox = document.getElementById('admin-crossref-result');
@@ -2955,13 +2946,14 @@ function renderCrossReference(trackArray) {
     
     let foundCount = 0;
     
-    uniqueTracks.forEach((track, index) => {
+    for (let index = 0; index < uniqueTracks.length; index++) {
+        const track = uniqueTracks[index];
         let ownerName = '- ไม่พบในระบบ -';
         let ownerType = '-';
         let rowColor = '';
         
         if (typeof CustomerDB !== 'undefined') {
-             const owner = CustomerDB.get(track);
+             const owner = await CustomerDB.get(track);
              if (owner) {
                  ownerName = `👤 ${owner.name}`;
                  ownerType = owner.type;
@@ -2978,7 +2970,7 @@ function renderCrossReference(trackArray) {
                 <td style="padding:8px;">${ownerType}</td>
             </tr>
         `;
-    });
+    }
     
     html += `</tbody></table>`;
     
