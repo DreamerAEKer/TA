@@ -1542,75 +1542,46 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
             allTrackings.push(r.end);
         });
         allTrackings.sort();
-        const globalStart = allTrackings[0];
-        const globalEnd = allTrackings[allTrackings.length - 1];
-
-        // v2.3: Prepare grouped ranges for display
-        const groupedRanges = {};
-        ranges.forEach(r => {
-            const key = `${r.price}-${r.weight}`;
-            if (!groupedRanges[key]) groupedRanges[key] = [];
-            groupedRanges[key].push(r);
-        });
+        const globalStart = allTrackings[0] || 'N/A';
+        const globalEnd = allTrackings[allTrackings.length - 1] || 'N/A';
 
         const globalRangeHtml = `
-            <div style="margin-bottom:15px; padding:12px; background:#e3f2fd; border-left:5px solid #2196f3; color:#0d47a1; border-radius:8px; text-align:left;">
-                <div style="font-weight:bold; font-size:0.9rem; margin-bottom:4px;">📦 ช่วงเลขพัสดุรวมทั้งชุด:</div>
-                <div style="font-size:1.1rem; font-weight:900; letter-spacing:0.5px;">
+            <div style="margin-bottom:15px; padding:12px; border:1px solid #cce5ff; background:#e7f3ff; color:#004085; border-radius:8px; text-align:left;">
+                <div style="font-weight:bold; font-size:0.9rem; margin-bottom:4px;">📦 ช่วงเลขพัสดุรวมทั้งชุด (Global Range):</div>
+                <div style="font-size:1.15rem; font-weight:900; letter-spacing:0.5px;">
                     ${globalStart} ถึง ${globalEnd}
                 </div>
             </div>
         `;
 
-        const statsCount = Object.keys(statsMap).length;
         summaryTableHtml = `
-            </div>
-            <div id="price-summary-collapse" style="margin-top:15px; background:#fff; border:1px solid #ddd; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.05);">
-                <div style="background:#f8f9fa; padding:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-                    <h4 style="margin:0; color:#333;">📊 ตารางสรุปรายราคา (Price Summary)</h4>
+            ${globalRangeHtml}
+            <div id="price-summary-box" style="margin-top:15px; background:#fff; border:1px solid #ddd; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.05);">
+                <div style="background:#f8f9fa; padding:12px; border-bottom:1px solid #eee;">
+                    <h4 style="margin:0; color:#333;">💰 สรุปยอดเงินและจำนวน (Totals)</h4>
                 </div>
                 <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
                     <thead>
                         <tr style="background:#fefefe; border-bottom:1px solid #eee; color:#666;">
-                            <th style="padding:10px; text-align:left;">ราคา (Price)</th>
+                            <th style="padding:10px; text-align:left;">ราคา</th>
                             <th style="padding:10px; text-align:right;">น้ำหนัก</th>
                             <th style="padding:10px; text-align:right;">จำนวน</th>
                             <th style="padding:10px; text-align:right;">รวม (บาท)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${sortedStats.map(s => {
-                            const key = `${s.price}-${s.weight}`;
-                            const groupRanges = groupedRanges[key] || [];
-                            const rangesHtml = groupRanges.map(r => 
-                                r.start === r.end ? r.start : `${r.start} ถึง ${r.end.slice(-5)}`
-                            ).join(', ');
-
-                            return `
-                                <tr style="border-bottom:1px solid #f9f9f9;">
-                                    <td style="padding:10px; vertical-align:top;">
-                                        <div style="font-weight:bold; color:var(--primary-color);">${s.price} บาท</div>
-                                        <div style="font-size:0.75rem; color:#0056b3; line-height:1.2; margin-top:4px;">
-                                            ${rangesHtml}
-                                        </div>
-                                    </td>
-                                    <td style="padding:10px; text-align:right; color:#666; vertical-align:top;">${s.weight}</td>
-                                    <td style="padding:10px; text-align:right; font-weight:bold; vertical-align:top;">${s.count.toLocaleString()}</td>
-                                    <td style="padding:10px; text-align:right; color:#d63384; font-weight:bold; vertical-align:top;">${s.total.toLocaleString()}</td>
-                                </tr>
-                            `;
-                        }).join('')}
+                        ${sortedStats.map(s => `
+                            <tr style="border-bottom:1px solid #f9f9f9;">
+                                <td style="padding:10px; vertical-align:top; font-weight:bold; color:var(--primary-color);">${s.price} บาท</td>
+                                <td style="padding:10px; text-align:right; color:#666;">${s.weight}</td>
+                                <td style="padding:10px; text-align:right; font-weight:bold;">${s.count.toLocaleString()}</td>
+                                <td style="padding:10px; text-align:right; color:#d63384; font-weight:bold;">${s.total.toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
                     </tbody>
                 </table>
             </div>
         `;
-        
-        // Add Global Range at top of summary section
-        summaryTableHtml = globalRangeHtml + summaryTableHtml;
-
-        // Store grouped data for next step
-        this._lastSortedStats = sortedStats;
-        this._lastGroupedRanges = groupedRanges;
     }
 
     summary.innerHTML = `
@@ -1623,57 +1594,67 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         ${summaryTableHtml}
     `;
 
-    // Generate Receipt-style Table (Admin) or Card-style (Subordinate)
+    // Generate Layout
     const tableStyle = isUserMode 
         ? "background:white; padding:15px; border:1px solid #eee; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.05); font-family:'Sarabun', sans-serif;" 
         : "background:white; padding:20px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.05); font-family:'Courier New', monospace;";
 
     let html = `
         <div style="${tableStyle}">
-            <h4 style="text-align:center; border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">
-                ${isUserMode ? '📄 สรุปรายการนำเข้าพัสดุ' : 'ใบสรุปรายการ (Optimized Report)'}
-            </h4>
-             <div style="font-size:0.8rem; color:${isUserMode ? '#666' : 'red'}; text-align:center; margin-bottom:10px;">
-                ${isUserMode ? '*เลขพัสดุจะถูกจัดกลุ่มแยกตามค่าบริการข้างต้น' : '*รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)'}
+            <div style="font-size:0.85rem; color:#333; text-align:center; margin-bottom:15px; font-weight:bold; background:#fff3cd; padding:8px; border-radius:5px; border:1px solid #ffeeba;">
+                📋 ลำดับเลขพัสดุต่อเนื่องและจุดที่หายไป (Timeline Flow)
             </div>
             
-            <div id="import-detailed-list" style="display:none;">
+            <div id="import-detailed-list">
                 <table style="width:100%; border-collapse: collapse;">
                 <tbody>
-                    ${gapTableRows}
     `;
 
-    if (isUserMode && this._lastSortedStats) {
-        this._lastSortedStats.forEach(s => {
-            const key = `${s.price}-${s.weight}`;
-            const groupRanges = this._lastGroupedRanges[key] || [];
-            
-            // Render Group Header (v2.4 Ultra-Compact)
-            html += `
-                <tr style="background:#f8f9fa; color:#333;">
-                    <td colspan="3" style="padding:4px 10px; font-weight:bold; border-top:1px solid #ddd; border-bottom:1px solid #eee; font-size:0.85rem;">
-                        💰 EMS ${s.price} บาท (${s.count} ชิ้น)
-                    </td>
-                </tr>
-            `;
+    if (isUserMode) {
+        // v2.7: Combined Timeline (Success + Gaps)
+        const timeline = [];
+        ranges.forEach(r => timeline.push({ ...r, type: 'success' }));
+        if (missing) {
+            missing.forEach(m => {
+                const mStart = TrackingUtils.formatTrackingNumber(formatID(m.prefix, m.startBody, m.suffix));
+                const mEnd = TrackingUtils.formatTrackingNumber(formatID(m.prefix, m.endBody, m.suffix));
+                timeline.push({ start: mStart, end: mEnd, count: m.count, type: 'gap' });
+            });
+        }
+        timeline.sort((a, b) => a.start.localeCompare(b.start));
 
-            groupRanges.forEach((r, idx) => {
-                const rowTotal = r.total || (r.count * r.price);
-                const rowTotalStr = rowTotal.toLocaleString('en-US', { minimumFractionDigits: 0 }); // Compact totals
-
+        timeline.forEach(item => {
+            if (item.type === 'gap') {
                 html += `
-                    <tr style="border-bottom:1px solid #f9f9f9;">
-                        <td style="padding:6px 10px; vertical-align:middle; width:75%;">
-                            <div style="color:#0056b3; font-weight:bold; font-size:1rem; line-height:1.2;">
-                                ${r.start === r.end ? r.start : `${r.start} - ${r.end.slice(-5)}`}
+                    <tr style="background:#fff5f5; color:#c62828;">
+                        <td colspan="3" style="padding:12px 10px; font-weight:bold; border-left:5px solid #c62828; border-bottom:1px solid #ffcdd2;">
+                            <div style="font-size:0.8rem; opacity:0.8;">⚠️ ไม่มีเลขที่นี้ (Missing Range)</div>
+                            <div style="font-size:1.05rem; letter-spacing:0.5px;">
+                                ${item.start === item.end ? item.start : `${item.start} ถึง ${item.end.slice(-5)}`}
                             </div>
+                            <div style="font-size:0.75rem; margin-top:2px;">(หายไป ${item.count} รายการ)</div>
                         </td>
-                        <td class="col-qty" style="padding:6px 0; text-align:right; font-size:0.9rem; color:#666; width:10%; vertical-align:middle;">${r.count}</td>
-                        <td class="col-total" style="padding:6px 10px; text-align:right; font-weight:bold; font-size:1rem; color:#333; width:15%; vertical-align:middle;">${rowTotalStr}</td>
                     </tr>
                 `;
-            });
+            } else {
+                const rowTotalStr = (item.count * item.price).toLocaleString();
+                html += `
+                    <tr style="border-bottom:1px solid #f0f0f0;">
+                         <td style="padding:10px; vertical-align:middle; width:70%;">
+                            <div style="font-size:0.7rem; color:#666; text-transform:uppercase;">📦 EMS ${item.price}฿ | ${item.weight}</div>
+                            <div style="color:#0056b3; font-weight:bold; font-size:1rem; line-height:1.2;">
+                                ${item.start === item.end ? item.start : `${item.start} - ${item.end.slice(-5)}`}
+                            </div>
+                        </td>
+                        <td style="padding:10px 0; text-align:right; font-size:0.9rem; color:#666; width:10%; vertical-align:middle;">${item.count}</td>
+                        <td style="padding:10px; text-align:right; font-weight:bold; font-size:1rem; color:#333; width:20%; vertical-align:middle;">${rowTotalStr}</td>
+                    </tr>
+                `;
+            }
         });
+    } else {
+        // ... (Admin mode cleanup if needed)
+    }
     } else {
         // Fallback for Admin or empty state
         ranges.forEach((r, idx) => {
