@@ -1585,7 +1585,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${sortedStats.map(s => {
+                        ${sortedStats.map((s, idx) => {
                             const key = `${s.price}-${s.weight}`;
                             const groupRanges = groupedRanges[key] || [];
                             const rangesHtml = groupRanges.map(r => 
@@ -1595,7 +1595,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                             return `
                                 <tr style="border-bottom:1px solid #f9f9f9;">
                                     <td style="padding:10px; vertical-align:top;">
-                                        <div style="font-weight:bold; color:var(--primary-color);">${s.price} บาท</div>
+                                        <div style="font-weight:bold; color:var(--primary-color);">${idx + 1}. EMS ราคา ${s.price} บาท</div>
                                         <div style="margin-top:5px;">
                                             <span onclick="this.nextElementSibling.classList.toggle('hidden')" 
                                                   style="font-size:0.75rem; color:#0056b3; cursor:pointer; text-decoration:underline;">
