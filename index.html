@@ -73,6 +73,7 @@
             <!-- Unified Smart Workspace contains Check, Range, and Gap tools -->
             <button class="tab-btn" id="btn-tab-customer" onclick="switchTab('customer')">ฐานข้อมูลลูกค้า (Customer DB)</button>
             <button class="tab-btn" id="btn-tab-import" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
+            <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin')">🔐 โหมดพิเศษ (Admin Tools)</button>
             <button class="tab-btn" id="btn-tab-stats" onclick="showVolumeStats()">📊 สถิติปริมาณงาน</button>
         </div>
 
@@ -680,7 +681,64 @@
             </div>
         </section>
 
-        <!-- SECTION 6: Admin Tools (Collapsed/Removed as requested) -->
+        <!-- SECTION 6: Admin Tools -->
+        <section id="tab-admin" class="tab-content">
+            <div class="card">
+                <h2>โหมดผู้ดูแลระบบ (Admin Tools)</h2>
+                <p class="text-muted">เครื่องมือพิเศษสำหรับตรวจสอบและประมวลผลข้อมูลขั้นสูง</p>
+
+                <!-- Tool 1: Check Digit -->
+                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+                    <h3 style="color:var(--primary-color);">1. ระบบเช็คเลข & สถานะ (Track & Check Digit)</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; max-width: 600px;">
+                        <input type="text" id="admin-track-input" placeholder="กรอกเลขพัสดุ... เช่น EQ123456785TH" style="flex:1; text-transform:uppercase;" oninput="if(typeof adminHandleTrackInput === 'function') adminHandleTrackInput(this);">
+                        <button class="btn btn-primary" onclick="const num = document.getElementById('admin-track-input').value.trim(); if(num) window.open('https://track.thailandpost.co.th/?trackNumber=' + num + '&lang=th', '_blank');">🔍 เช็คสถานะ</button>
+                    </div>
+                </div>
+
+                <!-- Tool 2: Image OCR Receipt -->
+                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+                    <h3 style="color:var(--primary-color);">2. ดึงข้อมูลจากใบเสร็จ (Receipt OCR & Missing Check)</h3>
+                    <p style="font-size:0.9rem; color:#666;">ประมวลผลรูปใบเสร็จที่มีเลขพัสดุและราคา ระบบจะไล่อ่านข้อมูล ถอดรหัสราคา และหาช่วงเลขที่ขาดหายให้อัตโนมัติ</p>
+                    
+                    <div style="margin-bottom:10px;">
+                        <label style="font-size:0.85rem; display:flex; gap:5px; align-items:center; cursor:pointer;">
+                            <input type="checkbox" id="admin-ocr-eng-only" checked>
+                            📝 โหมดอ่านตาราง/ตัวเลข <small>(แนะนำสำหรับใบสรุปที่มีตัวเลขเป็นหลัก)</small>
+                        </label>
+                    </div>
+
+                    <div class="upload-area" onclick="document.getElementById('admin-ocr-upload').click()">
+                        <span class="upload-icon">📄</span>
+                        <p>คลิกเพื่อเลือกภาพใบเสร็จ (Receipt Image)</p>
+                        <input type="file" id="admin-ocr-upload" accept="image/*" multiple style="display:none" onchange="if(typeof adminHandleImageOcr === 'function') adminHandleImageOcr(this.files);">
+                    </div>
+                    <div id="admin-ocr-status" style="margin-top:10px; font-weight:bold; color:#0056b3;"></div>
+                    <div id="admin-ocr-result" class="hidden" style="margin-top:10px; padding:15px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px; font-family:monospace; max-height:400px; overflow-y:auto; white-space:pre-wrap;"></div>
+                </div>
+
+                <!-- Tool 3: Cross Reference DB -->
+                <div style="margin-bottom: 10px;">
+                    <h3 style="color:var(--primary-color);">3. ระบบตรวจสอบสังกัดบริษัท (Cross-Reference DB)</h3>
+                    <p style="font-size:0.9rem; color:#666;">วางข้อมูลชุดเลขพัสดุ (หรือรูปภาพ) แล้วกดตรวจสอบ เพื่อค้นหาว่าเลขแต่ละตัวเป็นของบริษัทไหนในระบบออฟไลน์</p>
+                    
+                    <textarea id="admin-crossref-input" rows="6" placeholder="วางเลขพัสดุที่นี่... (หนึ่งรายการต่อบรรทัด หรือวางรวมๆ กันมาก็ได้เดี๋ยว AI แยกให้)" style="margin-bottom:10px;"></textarea>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button class="btn btn-primary" onclick="if(typeof adminCrossReference === 'function') adminCrossReference();">ค้นหาสังกัดบริษัท</button>
+                        <input type="file" id="admin-crossref-file" accept="image/*" style="display:none" onchange="if(typeof adminCrossRefImage === 'function') adminCrossRefImage(this.files);">
+                        <button class="btn btn-neutral" onclick="document.getElementById('admin-crossref-file').click()">📸 อัปโหลดรูปเพื่อสแกนเลข</button>
+                        <button class="btn btn-success" onclick="if(typeof copyCrossRefAll === 'function') copyCrossRefAll();" style="background-color: #28a745; border-color: #28a745; color: white;">📋 คัดลอกเลขทั้งหมด</button>
+                    </div>
+
+                    <div id="admin-crossref-status" style="font-weight:bold; color:#0056b3;"></div>
+                    <div id="admin-crossref-result" class="hidden" style="margin-top:10px; overflow-x:auto;">
+                        <!-- Results Table -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
     </main>
 
     <footer style="text-align:center; padding:20px; color:#ccc; font-size:0.75rem; font-family:monospace;">
