@@ -1596,8 +1596,14 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                                 <tr style="border-bottom:1px solid #f9f9f9;">
                                     <td style="padding:10px; vertical-align:top;">
                                         <div style="font-weight:bold; color:var(--primary-color);">${s.price} บาท</div>
-                                        <div style="font-size:0.7rem; color:#0056b3; line-height:1.4; margin-top:5px; font-family:monospace;">
-                                            ${rangesHtml}
+                                        <div style="margin-top:5px;">
+                                            <span onclick="this.nextElementSibling.classList.toggle('hidden')" 
+                                                  style="font-size:0.75rem; color:#0056b3; cursor:pointer; text-decoration:underline;">
+                                                👁️ ดูลำดับเลข
+                                            </span>
+                                            <div class="hidden" style="font-size:0.75rem; color:#666; line-height:1.4; margin-top:5px; font-family:monospace; background:#f8f9fa; padding:5px; border-radius:4px;">
+                                                ${rangesHtml}
+                                            </div>
                                         </div>
                                     </td>
                                     <td style="padding:10px; text-align:right; color:#666; vertical-align:top;">${s.weight}</td>
