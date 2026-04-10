@@ -1653,9 +1653,6 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
             }
         });
     } else {
-        // ... (Admin mode cleanup if needed)
-    }
-    } else {
         // Fallback for Admin or empty state
         ranges.forEach((r, idx) => {
             const rowTotal = r.total || (r.count * r.price);
