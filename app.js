@@ -1559,14 +1559,27 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${sortedStats.map(s => `
-                            <tr style="border-bottom:1px solid #f9f9f9;">
-                                <td style="padding:10px; font-weight:bold; color:var(--primary-color);">${s.price} บาท</td>
-                                <td style="padding:10px; text-align:right; color:#666;">${s.weight}</td>
-                                <td style="padding:10px; text-align:right; font-weight:bold;">${s.count.toLocaleString()}</td>
-                                <td style="padding:10px; text-align:right; color:#d63384; font-weight:bold;">${s.total.toLocaleString()}</td>
-                            </tr>
-                        `).join('')}
+                        ${sortedStats.map(s => {
+                            const key = `${s.price}-${s.weight}`;
+                            const groupRanges = groupedRanges[key] || [];
+                            const rangesHtml = groupRanges.map(r => 
+                                r.start === r.end ? r.start : `${r.start} ถึง ${r.end.slice(-5)}`
+                            ).join(', ');
+
+                            return `
+                                <tr style="border-bottom:1px solid #f9f9f9;">
+                                    <td style="padding:10px; vertical-align:top;">
+                                        <div style="font-weight:bold; color:var(--primary-color);">${s.price} บาท</div>
+                                        <div style="font-size:0.75rem; color:#0056b3; line-height:1.2; margin-top:4px;">
+                                            ${rangesHtml}
+                                        </div>
+                                    </td>
+                                    <td style="padding:10px; text-align:right; color:#666; vertical-align:top;">${s.weight}</td>
+                                    <td style="padding:10px; text-align:right; font-weight:bold; vertical-align:top;">${s.count.toLocaleString()}</td>
+                                    <td style="padding:10px; text-align:right; color:#d63384; font-weight:bold; vertical-align:top;">${s.total.toLocaleString()}</td>
+                                </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1601,7 +1614,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 ${isUserMode ? '*เลขพัสดุจะถูกจัดกลุ่มแยกตามค่าบริการข้างต้น' : '*รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)'}
             </div>
             
-            <div id="import-detailed-list">
+            <div id="import-detailed-list" style="display:none;">
                 <table style="width:100%; border-collapse: collapse;">
                 <tbody>
                     ${gapTableRows}
