@@ -9,6 +9,7 @@ const BATCH_KEY = 'thp_tracking_batches_v1';
 const TRASH_KEY = 'thp_tracking_trash_v1';
 const EXCEPTION_KEY = 'thp_tracking_exceptions_v1';
 const SNAPSHOTS_KEY = 'thp_snapshots_v1';
+const STATS_KEY = 'thp_customer_stats_v1';
 
 /** 
  * v1.64: StorageV2 (IndexedDB Wrapper)
@@ -87,7 +88,7 @@ const CustomerDB = {
         const migratedKey = 'thp_v1_to_v2_migrated';
         if (!localStorage.getItem(migratedKey)) {
             console.log("v1.64: Starting migration to IndexedDB...");
-            const keysToMigrate = [LOOKUP_KEY, BATCH_KEY, TRASH_KEY, EXCEPTION_KEY, SNAPSHOTS_KEY];
+            const keysToMigrate = [LOOKUP_KEY, BATCH_KEY, TRASH_KEY, EXCEPTION_KEY, SNAPSHOTS_KEY, STATS_KEY];
             for (const key of keysToMigrate) {
                 const val = localStorage.getItem(key);
                 if (val) {
@@ -113,6 +114,9 @@ const CustomerDB = {
 
     getTrash: async () => (await StorageV2.get(TRASH_KEY)) || {},
     saveTrash: async (data) => await StorageV2.set(TRASH_KEY, data),
+
+    getStats: async () => (await StorageV2.get(STATS_KEY)) || [],
+    saveStats: async (data) => await StorageV2.set(STATS_KEY, data),
 
     // --- CORE LOGIC (ASYNC) ---
     get: async (id) => {

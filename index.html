@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracking Analyst v2.1-stable (Subordinate Optimized)</title>
+    <title>Tracking Analyst v2.2-stable (Volume Stats Enabled)</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=2.1">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -73,6 +73,7 @@
             <!-- Unified Smart Workspace contains Check, Range, and Gap tools -->
             <button class="tab-btn" id="btn-tab-customer" onclick="switchTab('customer')">ฐานข้อมูลลูกค้า (Customer DB)</button>
             <button class="tab-btn" id="btn-tab-import" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
+            <button class="tab-btn" id="btn-tab-stats" onclick="showVolumeStats()">📊 สถิติปริมาณงาน</button>
         </div>
 
         <!-- SECTION 0: Unified Smart Workspace (New) -->
@@ -591,7 +592,12 @@
                 <div style="display:flex; justify-content:flex-start; gap:10px; margin-bottom:10px; overflow-x:auto;">
                     <!-- History Button (Main) -->
                     <button class="btn btn-neutral" onclick="toggleImportHistory()" style="flex-shrink:0;">
-                        📜 ประวัติการนำเข้า (History)
+                        📜 ประวัติ (History)
+                    </button>
+
+                    <!-- Stats Button (v2.2) -->
+                    <button class="btn btn-neutral" onclick="showVolumeStats()" style="flex-shrink:0; background:#e3f2fd; color:#0d47a1; border:1px solid #bbdefb;">
+                        📈 สถิติปริมาณงาน
                     </button>
 
                     <!-- Export Button (Smaller, Subtle) -->

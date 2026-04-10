@@ -1510,22 +1510,63 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     let discrepancyHtml = '';
     if (discrepancies && discrepancies.length > 0) {
         discrepancyHtml = `
-            <div class="result-error" style="margin-top:15px; padding:10px; border:2px solid #ff9800; background:#fff3e0; color:#e65100;">
-                <h4 style="margin:0 0 5px 0;">⚠️ พบข้อสังเกตจากไฟล์นำเข้า (Inconsistencies)</h4>
-                <p style="margin:0; font-size:0.95rem;">
-                    พบข้อมูลน้ำหนักที่ระบุในไฟล์ <strong>ไม่สัมพันธ์กับราคาตามตารางค่าบริการ</strong> จำนวน <strong>${discrepancies.length} รายการ</strong><br>
-                    <small>เช่น ในไฟล์ระบุ ${discrepancies[0].originalWeight} แต่ราคา ${discrepancies[0].price} บาท (ระบบได้ปรับแก้เป็น ${discrepancies[0].weight} อัตโนมัติแล้ว)</small>
-                </p>
+            </div>
+        `;
+    }
+
+    // v2.2: Compute Price/Weight Summary for Subordinates
+    let summaryTableHtml = '';
+    if (isUserMode) {
+        const statsMap = {};
+        ranges.forEach(r => {
+            const key = `${r.price}-${r.weight}`;
+            if (!statsMap[key]) {
+                statsMap[key] = { price: r.price, weight: r.weight, count: 0, total: 0 };
+            }
+            statsMap[key].count += r.count;
+            statsMap[key].total += (r.count * r.price);
+        });
+
+        const sortedStats = Object.values(statsMap).sort((a, b) => a.price - b.price);
+        
+        summaryTableHtml = `
+            <div style="margin-bottom:20px; background:#fff; border:1px solid #ddd; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.05);">
+                <div style="background:#f8f9fa; padding:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin:0; color:#333;">📊 ตารางสรุปรายราคา (Price Summary)</h4>
+                    <span style="font-size:0.8rem; background:var(--primary-color); color:white; padding:2px 8px; border-radius:10px;">${Object.keys(statsMap).length} กลุ่มราคา</span>
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+                    <thead>
+                        <tr style="background:#fefefe; border-bottom:1px solid #eee; color:#666;">
+                            <th style="padding:10px; text-align:left;">ราคา (Price)</th>
+                            <th style="padding:10px; text-align:right;">น้ำหนัก</th>
+                            <th style="padding:10px; text-align:right;">จำนวน</th>
+                            <th style="padding:10px; text-align:right;">รวม (บาท)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sortedStats.map(s => `
+                            <tr style="border-bottom:1px solid #f9f9f9;">
+                                <td style="padding:10px; font-weight:bold; color:var(--primary-color);">${s.price} บาท</td>
+                                <td style="padding:10px; text-align:right; color:#666;">${s.weight}</td>
+                                <td style="padding:10px; text-align:right; font-weight:bold;">${s.count.toLocaleString()}</td>
+                                <td style="padding:10px; text-align:right; color:#d63384; font-weight:bold;">${s.total.toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
         `;
     }
 
     summary.innerHTML = `
-        <strong>📊 สรุปผลการวิเคราะห์ (Virtual Optimization)</strong><br>
-        จำนวนทั้งหมด: ${totalItems.toLocaleString()} ชิ้น<br>
-        ยอดเงินรวม: <span style="font-size:1.2rem; color:#d63384; font-weight:bold;">${grandTotal.toLocaleString()} บาท</span>
+        <div style="margin-bottom:15px; text-align:center;">
+            <div style="font-size:1.1rem; color:#333;">จำนวนทั้งหมด: <strong>${totalItems.toLocaleString()}</strong> ชิ้น</div>
+            <div style="font-size:1.5rem; color:#d63384; font-weight:900;">ยอดเงินรวม: ${grandTotal.toLocaleString()} บาท</div>
+        </div>
         ${gapHtml}
         ${discrepancyHtml}
+        ${summaryTableHtml}
     `;
 
     const isUserMode = document.body.classList.contains('user-mode');
@@ -1544,58 +1585,53 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 ${isUserMode ? '*เรียงตามลำดับข้อมูลจริงจากไฟล์ลูกค้า' : '*รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)'}
             </div>
             
-            <table style="width:100%; border-collapse: collapse;">
+            ${isUserMode ? `
+                <div style="text-align:center; margin-bottom:15px;">
+                    <button onclick="document.getElementById('import-detailed-list').classList.toggle('hidden')" 
+                            style="background:#f0f0f0; border:1px solid #ccc; padding:6px 15px; border-radius:20px; font-size:0.85rem; cursor:pointer; color:#666;">
+                        📂 แสดง/ซ่อน รายละเอียดช่วงเลข (Toggle Details)
+                    </button>
+                </div>
+            ` : ''}
+            
+            <div id="import-detailed-list" class="${isUserMode ? 'hidden' : ''}">
+                <table style="width:100%; border-collapse: collapse;">
                 <thead>
                     <tr style="border-bottom:2px solid #000;">
-                        <th style="text-align:left; padding:5px;">รายการ (Description)</th>
-                        <th class="col-qty" style="text-align:right; padding:5px; white-space:nowrap;">จำนวน</th>
-                        <th class="col-price" style="text-align:right; padding:5px; white-space:nowrap;">@ราคา</th>
-                        <th class="col-total" style="text-align:right; padding:5px; white-space:nowrap;">รวม (บาท)</th>
+                        <th style="padding:5px; text-align:left;">รายการช่วงเลขพัสดุ (Ranges)</th>
+                        <th class="col-qty" style="padding:5px; text-align:right;">#</th>
+                        <th class="col-price" style="padding:5px; text-align:right;">@ราคา</th>
+                        <th class="col-total" style="padding:5px; text-align:right;">รวม</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${gapTableRows} <!-- Insert Missing Items at Top -->
+                    ${gapTableRows}
     `;
 
     ranges.forEach((r, idx) => {
         const rowTotal = r.total || (r.count * r.price);
         const rowTotalStr = rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 });
-        const displayTotal = (r.count > 1) ? ` | ${rowTotalStr}` : '';
         
-        // v2.0-stable: Action Buttons for Subordinates
+        // v2.2: Ultra-Compact Card for Subordinates
         const actionButtons = isUserMode 
-            ? `<div style="margin-top:5px; display:flex; gap:8px;">
-                <button class="badge badge-error" onclick="toggleExceptionReport('${r.start}', '${r.end}', 'Missing')">🚩 แจ้งตกหล่น</button>
-                <button class="badge badge-primary" onclick="window.open('https://track_trace.thailandpost.co.th/status/results', '_blank')">🔍 ติดตาม</button>
+            ? `<div style="margin-top:4px; display:flex; gap:5px;">
+                <button onclick="toggleExceptionReport('${r.start}', '${r.end}', 'Missing')" style="padding:2px 6px; font-size:0.75rem; border-radius:4px; border:1px solid #fee2e2; background:#fef2f2; color:#b91c1c; cursor:pointer;">🚩 แจ้งตกหล่น</button>
+                <button onclick="window.open('https://track_trace.thailandpost.co.th/status/results', '_blank')" style="padding:2px 6px; font-size:0.75rem; border-radius:4px; border:1px solid #e0f2fe; background:#f0f9ff; color:#0369a1; cursor:pointer;">🔍 ติดตาม</button>
                </div>`
             : '';
 
         html += `
-            <tr style="border-bottom:1px dashed #eee;">
-                <td style="padding:12px 0; vertical-align:top; width:100%;">
-                    <!-- Line 1: Title + Qty + Total (Mobile) -->
-                    <div class="line-flex">
-                        <strong style="color:${isUserMode ? '#333' : 'inherit'};">${idx + 1}. EMS ราคา ${r.price} บาท</strong>
-                        <span class="mobile-stats" style="color:#d63384; font-weight:bold;">${r.count} ชิ้น${displayTotal}</span>
-                    </div>
-                    
-                    <!-- Line 2: Range Only (Mobile) -->
-                    <div class="line-flex">
-                        <span style="color:#0056b3; font-weight:bold; overflow-wrap:break-word; max-width:100%; font-size:${isUserMode ? '1.1rem' : 'inherit'};">
-                            ${r.start === r.end
-                ? TrackingUtils.formatTrackingNumber(r.start)
-                : `${TrackingUtils.formatTrackingNumber(r.start)} - ${TrackingUtils.formatTrackingNumber(r.end)}`}
-                        </span>
-                    </div>
-
-                    <div style="font-size:0.9rem; color:#666;">
-                        น้ำหนัก (Weight): <strong style="color:#333;">${r.weight}</strong>
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:8px 0; vertical-align:top; width:70%;">
+                    <div style="font-size:0.85rem; color:#666;">#${idx+1} | EMS ${r.price}฿ | ${r.weight}</div>
+                    <div style="color:#0056b3; font-weight:bold; font-size:1rem; letter-spacing:0px;">
+                        ${r.start === r.end ? r.start : `${r.start} - ${r.end.slice(-5)}`}
                     </div>
                     ${actionButtons}
                 </td>
-                <td class="col-qty" style="text-align:right; vertical-align:top; padding-top:10px;">${r.count}</td>
-                <td class="col-price" style="text-align:right; vertical-align:top; padding-top:10px;">@${r.price}</td>
-                <td class="col-total" style="text-align:right; vertical-align:top; padding-top:10px; font-weight:bold;">${rowTotalStr}</td>
+                <td class="col-qty" style="text-align:right; font-size:0.9rem; padding-top:8px;">${r.count}</td>
+                <td class="col-price" style="text-align:right; font-size:0.8rem; color:#999; padding-top:8px;">${r.price}</td>
+                <td class="col-total" style="text-align:right; font-weight:bold; font-size:0.9rem; padding-top:8px;">${rowTotalStr}</td>
             </tr>
         `;
     });
@@ -1613,6 +1649,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                         </tr>
                     </tfoot>
                 </table>
+            </div>
             <div style="font-size:0.8rem; color:#999; text-align:center; margin-top:5px; font-style:italic;">
                 (บนมือถือ: จำนวนและยอดเงินจะแสดงที่มุมขวาของรายการ)
             </div>
@@ -1691,6 +1728,33 @@ function saveImportedBatch(isAuto = false) {
                 window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'info');
             } else {
                 window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${addedCount} รายการ`);
+                
+                // v2.2: Also save Volume Statistics (Deposit Data)
+                (async () => {
+                    try {
+                        const stats = await CustomerDB.getStats();
+                        const sessionSummary = {};
+                        currentImportedBatches.forEach(r => {
+                            const key = `${r.price}-${r.weight}`;
+                            if (!sessionSummary[key]) sessionSummary[key] = 0;
+                            sessionSummary[key] += r.count;
+                        });
+                        
+                        stats.push({
+                            batchId: newBatchId || name,
+                            name: name,
+                            date: new Date().toISOString().split('T')[0],
+                            timestamp: new Date().getTime(),
+                            totalCount: allItemsToSave.length,
+                            summary: sessionSummary
+                        });
+                        
+                        // Keep only last 100 entries for stats
+                        if (stats.length > 100) stats.shift();
+                        await CustomerDB.saveStats(stats);
+                        console.info("[v2.2-Stats] Recorded customer volume statistics.");
+                    } catch(e) { console.error("Stats save failed:", e); }
+                })();
             }
 
             // v2.0-stable: Handle Navigation based on role
@@ -4947,4 +5011,49 @@ function viewReportSession(sessionId) {
             }, 100);
         }
     }, 100);
+}
+
+// v2.2: Show Volume Statistics Modal
+async function showVolumeStats() {
+    const stats = await CustomerDB.getStats();
+    if (!stats || stats.length === 0) {
+        window.showToast('ยังไม่มีข้อมูลสถิติบันทึกไว้', 'info');
+        return;
+    }
+
+    let html = '<div style="padding:15px; font-family:Sarabun, sans-serif;">';
+    html += '<h3 style="margin-top:0;">📈 สถิติปริมาณงานแยกตามลูกค้า</h3>';
+    html += '<p style="color:#666; font-size:0.8rem;">*แสดงข้อมูลการนำเข้าล่าสุด 100 รายการ</p>';
+    
+    html += '<div style="max-height:400px; overflow-y:auto; border:1px solid #eee; border-radius:8px;">';
+    html += '<table style="width:100%; border-collapse:collapse; font-size:0.85rem;">';
+    html += '<thead style="position:sticky; top:0; background:#f8f9fa; border-bottom:2px solid #ddd;">';
+    html += '<tr><th style="padding:8px; text-align:left;">วันที่ / ลูกค้า</th><th style="padding:8px; text-align:right;">รวม (ชิ้น)</th></tr></thead>';
+    html += '<tbody>';
+    
+    stats.slice().reverse().forEach(s => {
+        const dateStr = s.date || new Date(s.timestamp).toLocaleDateString();
+        html += `<tr style="border-bottom:1px solid #eee;">
+            <td style="padding:8px;">
+                <div style="font-weight:bold; color:#333;">${s.name}</div>
+                <div style="font-size:0.75rem; color:#999;">${dateStr}</div>
+            </td>
+            <td style="padding:8px; text-align:right; font-weight:bold; font-size:1rem; color:#d63384;">${s.totalCount.toLocaleString()}</td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table></div></div>';
+    
+    const modal = document.createElement('div');
+    modal.id = 'stats-modal';
+    modal.style = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; z-index:10001; width:90%; max-width:400px; border-radius:15px; box-shadow:0 15px 50px rgba(0,0,0,0.3); border:1px solid #eee;';
+    modal.innerHTML = html + '<div style="padding:10px; text-align:center;"><button onclick="document.getElementById(\'stats-modal\').remove(); document.getElementById(\'stats-backdrop\').remove();" style="width:100%; padding:10px; background:var(--primary-color); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">ปิดหน้าต่าง (Close)</button></div>';
+    
+    const backdrop = document.createElement('div');
+    backdrop.id = 'stats-backdrop';
+    backdrop.style = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; backdrop-filter:blur(3px);';
+    backdrop.onclick = () => { modal.remove(); backdrop.remove(); };
+    
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
 }
