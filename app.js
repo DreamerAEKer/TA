@@ -1535,6 +1535,14 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
         const sortedStats = Object.values(statsMap).sort((a, b) => a.price - b.price);
         
+        // v2.3: Prepare grouped ranges for display
+        const groupedRanges = {};
+        ranges.forEach(r => {
+            const key = `${r.price}-${r.weight}`;
+            if (!groupedRanges[key]) groupedRanges[key] = [];
+            groupedRanges[key].push(r);
+        });
+
         summaryTableHtml = `
             <div style="margin-bottom:20px; background:#fff; border:1px solid #ddd; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.05);">
                 <div style="background:#f8f9fa; padding:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
@@ -1563,6 +1571,10 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 </table>
             </div>
         `;
+
+        // Store grouped data for next step
+        this._lastSortedStats = sortedStats;
+        this._lastGroupedRanges = groupedRanges;
     }
 
     summary.innerHTML = `
@@ -1586,59 +1598,71 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 ${isUserMode ? '📄 สรุปรายการนำเข้าพัสดุ' : 'ใบสรุปรายการ (Optimized Report)'}
             </h4>
              <div style="font-size:0.8rem; color:${isUserMode ? '#666' : 'red'}; text-align:center; margin-bottom:10px;">
-                ${isUserMode ? '*เรียงตามลำดับข้อมูลจริงจากไฟล์ลูกค้า' : '*รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)'}
+                ${isUserMode ? '*เลขพัสดุจะถูกจัดกลุ่มแยกตามค่าบริการข้างต้น' : '*รายการถูกจัดเรียงใหม่ตามราคาน้อย-มาก (Virtual Mapping)'}
             </div>
             
-            ${isUserMode ? `
-                <div style="text-align:center; margin-bottom:15px;">
-                    <button onclick="document.getElementById('import-detailed-list').classList.toggle('hidden')" 
-                            style="background:#f0f0f0; border:1px solid #ccc; padding:6px 15px; border-radius:20px; font-size:0.85rem; cursor:pointer; color:#666;">
-                        📂 แสดง/ซ่อน รายละเอียดช่วงเลข (Toggle Details)
-                    </button>
-                </div>
-            ` : ''}
-            
-            <div id="import-detailed-list" class="${isUserMode ? 'hidden' : ''}">
+            <div id="import-detailed-list">
                 <table style="width:100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="border-bottom:2px solid #000;">
-                        <th style="padding:5px; text-align:left;">รายการช่วงเลขพัสดุ (Ranges)</th>
-                        <th class="col-qty" style="padding:5px; text-align:right;">#</th>
-                        <th class="col-price" style="padding:5px; text-align:right;">@ราคา</th>
-                        <th class="col-total" style="padding:5px; text-align:right;">รวม</th>
-                    </tr>
-                </thead>
                 <tbody>
                     ${gapTableRows}
     `;
 
-    ranges.forEach((r, idx) => {
-        const rowTotal = r.total || (r.count * r.price);
-        const rowTotalStr = rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 });
-        
-        // v2.2: Ultra-Compact Card for Subordinates
-        const actionButtons = isUserMode 
-            ? `<div style="margin-top:4px; display:flex; gap:5px;">
-                <button onclick="toggleExceptionReport('${r.start}', '${r.end}', 'Missing')" style="padding:2px 6px; font-size:0.75rem; border-radius:4px; border:1px solid #fee2e2; background:#fef2f2; color:#b91c1c; cursor:pointer;">🚩 แจ้งตกหล่น</button>
-                <button onclick="window.open('https://track_trace.thailandpost.co.th/status/results', '_blank')" style="padding:2px 6px; font-size:0.75rem; border-radius:4px; border:1px solid #e0f2fe; background:#f0f9ff; color:#0369a1; cursor:pointer;">🔍 ติดตาม</button>
-               </div>`
-            : '';
+    if (isUserMode && this._lastSortedStats) {
+        this._lastSortedStats.forEach(s => {
+            const key = `${s.price}-${s.weight}`;
+            const groupRanges = this._lastGroupedRanges[key] || [];
+            
+            // Render Group Header
+            html += `
+                <tr style="background:#f0f7ff; color:#0056b3;">
+                    <td colspan="4" style="padding:10px; font-weight:bold; border-top:2px solid #0056b3; border-bottom:1px solid #0056b3;">
+                        📦 กลุ่มราคา ${s.price} บาท | น้ำหนัก ${s.weight} | (${s.count} ชิ้น)
+                    </td>
+                </tr>
+            `;
 
-        html += `
-            <tr style="border-bottom:1px solid #eee;">
-                <td style="padding:8px 0; vertical-align:top; width:70%;">
-                    <div style="font-size:0.85rem; color:#666;">#${idx+1} | EMS ${r.price}฿ | ${r.weight}</div>
-                    <div style="color:#0056b3; font-weight:bold; font-size:1rem; letter-spacing:0px;">
-                        ${r.start === r.end ? r.start : `${r.start} - ${r.end.slice(-5)}`}
-                    </div>
-                    ${actionButtons}
-                </td>
-                <td class="col-qty" style="text-align:right; font-size:0.9rem; padding-top:8px;">${r.count}</td>
-                <td class="col-price" style="text-align:right; font-size:0.8rem; color:#999; padding-top:8px;">${r.price}</td>
-                <td class="col-total" style="text-align:right; font-weight:bold; font-size:0.9rem; padding-top:8px;">${rowTotalStr}</td>
-            </tr>
-        `;
-    });
+            groupRanges.forEach((r, idx) => {
+                const rowTotal = r.total || (r.count * r.price);
+                const rowTotalStr = rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                
+                const actionButtons = `<div style="margin-top:4px; display:flex; gap:5px;">
+                    <button onclick="toggleExceptionReport('${r.start}', '${r.end}', 'Missing')" style="padding:2px 6px; font-size:0.75rem; border-radius:4px; border:1px solid #fee2e2; background:#fef2f2; color:#b91c1c; cursor:pointer;">🚩 แจ้งตกหล่น</button>
+                    <button onclick="window.open('https://track_trace.thailandpost.co.th/status/results', '_blank')" style="padding:2px 6px; font-size:0.75rem; border-radius:4px; border:1px solid #e0f2fe; background:#f0f9ff; color:#0369a1; cursor:pointer;">🔍 ติดตาม</button>
+                   </div>`;
+
+                html += `
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:8px 10px; vertical-align:top; width:70%;">
+                            <div style="color:#0056b3; font-weight:bold; font-size:1.05rem; letter-spacing:0px;">
+                                ${r.start === r.end ? r.start : `${r.start} - ${r.end.slice(-5)}`}
+                            </div>
+                            ${actionButtons}
+                        </td>
+                        <td class="col-qty" style="padding:8px 0; text-align:right; font-size:1rem; padding-top:8px;">${r.count}</td>
+                        <td class="col-price" style="display:none;">${r.price}</td>
+                        <td class="col-total" style="padding:8px 5px; text-align:right; font-weight:bold; font-size:1rem; padding-top:8px;">${rowTotalStr}</td>
+                    </tr>
+                `;
+            });
+        });
+    } else {
+        // Fallback for Admin or empty state
+        ranges.forEach((r, idx) => {
+            const rowTotal = r.total || (r.count * r.price);
+            const rowTotalStr = rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 });
+            html += `
+                <tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:12px 0;">
+                        <strong>${idx + 1}. EMS ราคา ${r.price} บาท</strong><br>
+                        ${r.start === r.end ? r.start : `${r.start} - ${r.end}`}
+                    </td>
+                    <td style="text-align:right;">${r.count}</td>
+                    <td style="text-align:right;">${r.price}</td>
+                    <td style="text-align:right;">${rowTotalStr}</td>
+                </tr>
+            `;
+        });
+    }
 
     html += `
                     </tbody>
