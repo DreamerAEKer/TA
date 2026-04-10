@@ -1542,6 +1542,14 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
         const sortedStats = Object.values(statsMap).sort((a, b) => a.price - b.price);
         
+        // v3.3.1: Re-populate groupedRanges for per-price range display
+        const groupedRanges = {};
+        ranges.forEach(r => {
+            const key = `${r.price}-${r.weight}`;
+            if (!groupedRanges[key]) groupedRanges[key] = [];
+            groupedRanges[key].push(r);
+        });
+        
         // v2.6: Global Range Calculation
         const allTrackings = [];
         ranges.forEach(r => {
