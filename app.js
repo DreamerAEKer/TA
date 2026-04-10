@@ -1577,14 +1577,27 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${sortedStats.map(s => `
-                            <tr style="border-bottom:1px solid #f9f9f9;">
-                                <td style="padding:10px; vertical-align:top; font-weight:bold; color:var(--primary-color);">${s.price} บาท</td>
-                                <td style="padding:10px; text-align:right; color:#666;">${s.weight}</td>
-                                <td style="padding:10px; text-align:right; font-weight:bold;">${s.count.toLocaleString()}</td>
-                                <td style="padding:10px; text-align:right; color:#d63384; font-weight:bold;">${s.total.toLocaleString()}</td>
-                            </tr>
-                        `).join('')}
+                        ${sortedStats.map(s => {
+                            const key = `${s.price}-${s.weight}`;
+                            const groupRanges = groupedRanges[key] || [];
+                            const rangesHtml = groupRanges.map(r => 
+                                r.start === r.end ? formatSpaced(r.start) : `${formatSpaced(r.start)} ถึง<br>${formatSpaced(r.end)}`
+                            ).join(',<br>');
+
+                            return `
+                                <tr style="border-bottom:1px solid #f9f9f9;">
+                                    <td style="padding:10px; vertical-align:top;">
+                                        <div style="font-weight:bold; color:var(--primary-color);">${s.price} บาท</div>
+                                        <div style="font-size:0.7rem; color:#0056b3; line-height:1.4; margin-top:5px; font-family:monospace;">
+                                            ${rangesHtml}
+                                        </div>
+                                    </td>
+                                    <td style="padding:10px; text-align:right; color:#666; vertical-align:top;">${s.weight}</td>
+                                    <td style="padding:10px; text-align:right; font-weight:bold; vertical-align:top;">${s.count.toLocaleString()}</td>
+                                    <td style="padding:10px; text-align:right; color:#d63384; font-weight:bold; vertical-align:top;">${s.total.toLocaleString()}</td>
+                                </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
