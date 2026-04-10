@@ -1634,8 +1634,8 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         // v2.7: Combined Timeline (Success + Gaps)
         const timeline = [];
         ranges.forEach(r => timeline.push({ ...r, type: 'success' }));
-        if (missing) {
-            missing.forEach(m => {
+        if (missingItems && missingItems.length > 0) {
+            missingItems.forEach(m => {
                 const mStart = TrackingUtils.formatTrackingNumber(formatID(m.prefix, m.startBody, m.suffix));
                 const mEnd = TrackingUtils.formatTrackingNumber(formatID(m.prefix, m.endBody, m.suffix));
                 timeline.push({ start: mStart, end: mEnd, count: m.count, type: 'gap' });
