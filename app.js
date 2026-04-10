@@ -1520,6 +1520,13 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         `;
     }
 
+    // v3.1: Spaced Formatting Utility
+    const formatSpaced = (val) => {
+        if (!val || val.length < 13) return val;
+        // Pattern: XX NNNN NNNN N XX (2-4-4-1-2)
+        return `${val.slice(0, 2)} ${val.slice(2, 6)} ${val.slice(6, 10)} ${val.slice(10, 11)} ${val.slice(11, 13)}`;
+    };
+
     // v2.2: Compute Price/Weight Summary for Subordinates
     let summaryTableHtml = '';
     if (isUserMode) {
@@ -1548,8 +1555,8 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         const globalRangeHtml = `
             <div style="margin-bottom:15px; padding:12px; border:1px solid #cce5ff; background:#e7f3ff; color:#004085; border-radius:8px; text-align:left;">
                 <div style="font-weight:bold; font-size:0.9rem; margin-bottom:4px;">📦 ช่วงเลขพัสดุรวมทั้งชุด (Global Range):</div>
-                <div style="font-size:1.15rem; font-weight:900; letter-spacing:0.5px;">
-                    ${globalStart} ถึง ${globalEnd}
+                <div style="font-size:1.15rem; font-weight:900; letter-spacing:0.5px; font-family:monospace;">
+                    ${formatSpaced(globalStart)} ถึง<br>${formatSpaced(globalEnd)}
                 </div>
             </div>
         `;
@@ -1629,8 +1636,8 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                     <tr style="background:#fff5f5; color:#c62828;">
                         <td colspan="3" style="padding:12px 10px; font-weight:bold; border-left:5px solid #c62828; border-bottom:1px solid #ffcdd2;">
                             <div style="font-size:0.8rem; opacity:0.8;">⚠️ ไม่มีเลขที่นี้ (Missing Range)</div>
-                            <div style="font-size:1.05rem; letter-spacing:0.5px;">
-                                ${item.start === item.end ? item.start : `${item.start} ถึง ${item.end.slice(-5)}`}
+                            <div style="font-size:1.05rem; letter-spacing:0.5px; font-family:monospace;">
+                                ${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} ถึง<br>${formatSpaced(item.end)}`}
                             </div>
                             <div style="font-size:0.75rem; margin-top:2px;">(หายไป ${item.count} รายการ)</div>
                         </td>
@@ -1642,8 +1649,8 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                     <tr style="border-bottom:1px solid #f0f0f0;">
                          <td style="padding:10px; vertical-align:middle; width:70%;">
                             <div style="font-size:0.7rem; color:#666; text-transform:uppercase;">📦 EMS ${item.price}฿ | ${item.weight}</div>
-                            <div style="color:#0056b3; font-weight:bold; font-size:1rem; line-height:1.2;">
-                                ${item.start === item.end ? item.start : `${item.start} - ${item.end.slice(-5)}`}
+                            <div style="color:#0056b3; font-weight:bold; font-size:1.05rem; line-height:1.2; font-family:monospace;">
+                                ${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} - ${formatSpaced(item.end)}`}
                             </div>
                         </td>
                         <td style="padding:10px 0; text-align:right; font-size:0.9rem; color:#666; width:10%; vertical-align:middle;">${item.count}</td>
