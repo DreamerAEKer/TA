@@ -1722,6 +1722,9 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                     </tfoot>
                 </table>
             </div>
+            <div style="text-align:center; margin-top:15px;" class="no-print">
+                 <button class="btn btn-primary" onclick="showCurrentActiveThermalReceipt()">🧾 ดูใบเสร็จแบบความร้อน (Thermal Receipt)</button>
+            </div>
             <div style="font-size:0.8rem; color:#999; text-align:center; margin-top:5px; font-style:italic;">
                 (บนมือถือ: จำนวนและยอดเงินจะแสดงที่มุมขวาของรายการ)
             </div>
@@ -2111,8 +2114,9 @@ function loadBatchToView(batchId) {
                 </div>
             </div>
             
-            <div style="text-align:center; margin-top:20px;">
-                <button class="btn" onclick="window.print()">🖨️ Print / PDF</button>
+            <div style="text-align:center; margin-top:20px;" class="no-print">
+                <button class="btn btn-primary" onclick="showThermalReceipt('${batchId}')">🧾 ดูใบเสร็จแบบความร้อน (Thermal Mode)</button>
+                <button class="btn" onclick="window.print()" style="margin-left:10px;">🖨️ Print / PDF</button>
                 <button class="btn btn-neutral" onclick="switchTab('customer')" style="margin-left:10px;">⬅ กลับหน้าหลัก (Back to DB)</button>
             </div>
         `;
@@ -2134,6 +2138,109 @@ function loadBatchToView(batchId) {
         <ul>${items.map(x => `<li>${x}</li>`).slice(0, 50).join('')}</ul>
     `;
     box.innerHTML = fallbackHtml;
+}
+
+// --- Thermal Receipt Mode (v2.3) ---
+
+function showThermalReceipt(batchId) {
+    const batches = CustomerDB.getBatches();
+    const batch = batches[batchId];
+    if (!batch) return;
+    renderThermalReceiptUI(batch);
+}
+
+function showCurrentActiveThermalReceipt() {
+    // Collect from current imported batches
+    if (!currentImportedBatches || currentImportedBatches.length === 0) return;
+    
+    const name = document.getElementById('import-batch-name').value.trim() || "New Import";
+    const batch = {
+        name: name,
+        ranges: currentImportedBatches,
+        timestamp: new Date().getTime()
+    };
+    renderThermalReceiptUI(batch);
+}
+
+function renderThermalReceiptUI(batch) {
+    const box = document.getElementById('smart-unified-results');
+    if (!box) return;
+
+    const ranges = batch.ranges || [];
+    const grandTotalA3 = ranges.reduce((acc, r) => acc + (r.total || (r.count * r.price)), 0);
+    
+    const dateStr = new Date(batch.timestamp).toLocaleDateString('th-TH');
+    const timeStr = new Date(batch.timestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+    let itemsHtml = '';
+    ranges.forEach((r, idx) => {
+        const stdPrice = TrackingUtils.getStandardPrice(r.price);
+        const stdTotal = r.count * stdPrice;
+        const discountTotal = stdTotal - (r.total || (r.count * r.price));
+        const startNum = TrackingUtils.formatTrackingNumber(r.start);
+        const endNum = TrackingUtils.formatTrackingNumber(r.end);
+
+        itemsHtml += `
+            <div class="thermal-item">
+                <span class="thermal-item-title">${idx + 1}. EMS ในฯ</span>
+                <span class="thermal-item-range">${startNum} - ${endNum}</span>
+                <div class="thermal-item-row">
+                    <div class="thermal-item-calc">${r.count}@${stdPrice.toFixed(2)}</div>
+                    <div class="thermal-item-total">฿${stdTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                </div>
+                ${discountTotal > 0 ? `
+                <div class="thermal-discount-row">
+                    <span>ส่วนลดส่งเสริมการขาย</span>
+                    <span>฿-${discountTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    });
+
+    const html = `
+        <div class="thermal-receipt-container">
+            <div class="thermal-receipt">
+                <div class="thermal-header">
+                    <h3>บริษัท ไปรษณีย์ไทย จำกัด</h3>
+                    <div style="font-size:0.8rem;">ปณ. หลัก 10501</div>
+                </div>
+                <div class="thermal-meta">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>วันที่: ${dateStr}</span>
+                        <span>เวลา: ${timeStr}</span>
+                    </div>
+                    <div>บิลเลขที่: ${batch.name}</div>
+                    <div>ผู้รับฝาก: USER</div>
+                </div>
+                
+                <div class="thermal-separator"></div>
+                
+                <div class="thermal-body">
+                    ${itemsHtml}
+                </div>
+                
+                <div class="thermal-separator"></div>
+                
+                <div class="thermal-footer">
+                    <div class="thermal-grand-total">
+                        <span>ยอดรวมทั้งสิ้น</span>
+                        <span>฿${grandTotalA3.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div style="text-align:center; font-size:0.8rem; margin-top:10px;">ขอบคุณที่ใช้บริการ</div>
+                </div>
+            </div>
+            
+            <div class="receipt-actions no-print">
+                <button class="btn btn-primary" onclick="window.print()">🖨️ พิมพ์ใบเสร็จ (Print Receipt)</button>
+                <button class="btn btn-neutral" onclick="loadBatchToView('${batch.id || ''}')">🔙 ย้อนกลับ (Back)</button>
+            </div>
+        </div>
+    `;
+
+    // Overwrite the view
+    box.innerHTML = html;
+    window.scrollTo(0, 0);
 }
 
 // --- ADMIN TOOLS ---

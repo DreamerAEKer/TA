@@ -582,23 +582,33 @@ async function compressImage(dataUrl, maxWidth = 1000, quality = 0.7) {
     });
 }
 
-window.TrackingUtils = {
-    calculateS10CheckDigit,
-    validateTrackingNumber,
-    formatTrackingNumber,
-    generateTrackingRange,
-    groupRangesByPrice,
-    virtualOptimizeRanges,
-    cleanTrackingText,
-    extractTrackingNumbers,
-    extractTrackingWithContext,
-    extractPrices,
-    summarizePrices,
-    getWeightFromPriceA3,
     extractHandwrittenTable,
-    compressImage, // Added
-    parseThaiDateBE // Added
+    compressImage,
+    parseThaiDateBE,
+    getStandardPrice // Added
 };
+
+/**
+ * Maps A3 Prices to THP Standard Prices for Receipt simulation.
+ * Derived from user's physical receipt image.
+ */
+function getStandardPrice(a3Price) {
+    const map = {
+        19: 67,
+        29: 97,
+        39: 105,
+        49: 120,
+        59: 120, 
+        69: 140, 
+        79: 160,
+        89: 175,
+        99: 190,
+        109: 205
+    };
+    
+    // Return mapped value or fallback to a3Price if not found
+    return map[a3Price] || a3Price;
+}
 
 /**
  * Parses a Thai Buddhist Era date string (DD/MM/YYYY) into a CE Date object.
