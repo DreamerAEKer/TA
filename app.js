@@ -1544,6 +1544,15 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         allTrackings.sort();
         const globalStart = allTrackings[0];
         const globalEnd = allTrackings[allTrackings.length - 1];
+
+        // v2.3: Prepare grouped ranges for display
+        const groupedRanges = {};
+        ranges.forEach(r => {
+            const key = `${r.price}-${r.weight}`;
+            if (!groupedRanges[key]) groupedRanges[key] = [];
+            groupedRanges[key].push(r);
+        });
+
         const globalRangeHtml = `
             <div style="margin-bottom:15px; padding:12px; background:#e3f2fd; border-left:5px solid #2196f3; color:#0d47a1; border-radius:8px; text-align:left;">
                 <div style="font-weight:bold; font-size:0.9rem; margin-bottom:4px;">📦 ช่วงเลขพัสดุรวมทั้งชุด:</div>
