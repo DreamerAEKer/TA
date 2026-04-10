@@ -1535,19 +1535,35 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
         const sortedStats = Object.values(statsMap).sort((a, b) => a.price - b.price);
         
-        // v2.3: Prepare grouped ranges for display
-        const groupedRanges = {};
+        // v2.6: Global Range Calculation
+        const allTrackings = [];
         ranges.forEach(r => {
-            const key = `${r.price}-${r.weight}`;
-            if (!groupedRanges[key]) groupedRanges[key] = [];
-            groupedRanges[key].push(r);
+            allTrackings.push(r.start);
+            allTrackings.push(r.end);
         });
+        allTrackings.sort();
+        const globalStart = allTrackings[0];
+        const globalEnd = allTrackings[allTrackings.length - 1];
+        const globalRangeHtml = `
+            <div style="margin-bottom:15px; padding:12px; background:#e3f2fd; border-left:5px solid #2196f3; color:#0d47a1; border-radius:8px; text-align:left;">
+                <div style="font-weight:bold; font-size:0.9rem; margin-bottom:4px;">📦 ช่วงเลขพัสดุรวมทั้งชุด:</div>
+                <div style="font-size:1.1rem; font-weight:900; letter-spacing:0.5px;">
+                    ${globalStart} ถึง ${globalEnd}
+                </div>
+            </div>
+        `;
 
+        const statsCount = Object.keys(statsMap).length;
         summaryTableHtml = `
-            <div style="margin-bottom:20px; background:#fff; border:1px solid #ddd; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.05);">
+            <div style="margin-top:10px; text-align:center;">
+                <button onclick="document.getElementById('price-summary-collapse').classList.toggle('hidden')" 
+                        style="background:#f8f9fa; border:1px solid #ddd; padding:8px 20px; border-radius:25px; font-size:0.9rem; color:#555; cursor:pointer; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                    📊 สถิติแยกตามรายราคา (${statsCount} กลุ่ม)
+                </button>
+            </div>
+            <div id="price-summary-collapse" class="hidden" style="margin-top:15px; background:#fff; border:1px solid #ddd; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.05);">
                 <div style="background:#f8f9fa; padding:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
                     <h4 style="margin:0; color:#333;">📊 ตารางสรุปรายราคา (Price Summary)</h4>
-                    <span style="font-size:0.8rem; background:var(--primary-color); color:white; padding:2px 8px; border-radius:10px;">${Object.keys(statsMap).length} กลุ่มราคา</span>
                 </div>
                 <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
                     <thead>
@@ -1584,6 +1600,9 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 </table>
             </div>
         `;
+        
+        // Add Global Range at top of summary section
+        summaryTableHtml = globalRangeHtml + summaryTableHtml;
 
         // Store grouped data for next step
         this._lastSortedStats = sortedStats;
