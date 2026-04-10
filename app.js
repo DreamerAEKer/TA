@@ -1564,13 +1564,8 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
         const statsCount = Object.keys(statsMap).length;
         summaryTableHtml = `
-            <div style="margin-top:10px; text-align:center;">
-                <button onclick="document.getElementById('price-summary-collapse').classList.toggle('hidden')" 
-                        style="background:#f8f9fa; border:1px solid #ddd; padding:8px 20px; border-radius:25px; font-size:0.9rem; color:#555; cursor:pointer; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-                    📊 สถิติแยกตามรายราคา (${statsCount} กลุ่ม)
-                </button>
             </div>
-            <div id="price-summary-collapse" class="hidden" style="margin-top:15px; background:#fff; border:1px solid #ddd; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.05);">
+            <div id="price-summary-collapse" style="margin-top:15px; background:#fff; border:1px solid #ddd; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.05);">
                 <div style="background:#f8f9fa; padding:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
                     <h4 style="margin:0; color:#333;">📊 ตารางสรุปรายราคา (Price Summary)</h4>
                 </div>
