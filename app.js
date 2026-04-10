@@ -1612,35 +1612,28 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
             const key = `${s.price}-${s.weight}`;
             const groupRanges = this._lastGroupedRanges[key] || [];
             
-            // Render Group Header
+            // Render Group Header (v2.4 Ultra-Compact)
             html += `
-                <tr style="background:#f0f7ff; color:#0056b3;">
-                    <td colspan="4" style="padding:10px; font-weight:bold; border-top:2px solid #0056b3; border-bottom:1px solid #0056b3;">
-                        📦 กลุ่มราคา ${s.price} บาท | น้ำหนัก ${s.weight} | (${s.count} ชิ้น)
+                <tr style="background:#f8f9fa; color:#333;">
+                    <td colspan="3" style="padding:4px 10px; font-weight:bold; border-top:1px solid #ddd; border-bottom:1px solid #eee; font-size:0.85rem;">
+                        💰 EMS ${s.price} บาท (${s.count} ชิ้น)
                     </td>
                 </tr>
             `;
 
             groupRanges.forEach((r, idx) => {
                 const rowTotal = r.total || (r.count * r.price);
-                const rowTotalStr = rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                
-                const actionButtons = `<div style="margin-top:4px; display:flex; gap:5px;">
-                    <button onclick="toggleExceptionReport('${r.start}', '${r.end}', 'Missing')" style="padding:2px 6px; font-size:0.75rem; border-radius:4px; border:1px solid #fee2e2; background:#fef2f2; color:#b91c1c; cursor:pointer;">🚩 แจ้งตกหล่น</button>
-                    <button onclick="window.open('https://track_trace.thailandpost.co.th/status/results', '_blank')" style="padding:2px 6px; font-size:0.75rem; border-radius:4px; border:1px solid #e0f2fe; background:#f0f9ff; color:#0369a1; cursor:pointer;">🔍 ติดตาม</button>
-                   </div>`;
+                const rowTotalStr = rowTotal.toLocaleString('en-US', { minimumFractionDigits: 0 }); // Compact totals
 
                 html += `
-                    <tr style="border-bottom:1px solid #eee;">
-                        <td style="padding:8px 10px; vertical-align:top; width:70%;">
-                            <div style="color:#0056b3; font-weight:bold; font-size:1.05rem; letter-spacing:0px;">
+                    <tr style="border-bottom:1px solid #f9f9f9;">
+                        <td style="padding:6px 10px; vertical-align:middle; width:75%;">
+                            <div style="color:#0056b3; font-weight:bold; font-size:1rem; line-height:1.2;">
                                 ${r.start === r.end ? r.start : `${r.start} - ${r.end.slice(-5)}`}
                             </div>
-                            ${actionButtons}
                         </td>
-                        <td class="col-qty" style="padding:8px 0; text-align:right; font-size:1rem; padding-top:8px;">${r.count}</td>
-                        <td class="col-price" style="display:none;">${r.price}</td>
-                        <td class="col-total" style="padding:8px 5px; text-align:right; font-weight:bold; font-size:1rem; padding-top:8px;">${rowTotalStr}</td>
+                        <td class="col-qty" style="padding:6px 0; text-align:right; font-size:0.9rem; color:#666; width:10%; vertical-align:middle;">${r.count}</td>
+                        <td class="col-total" style="padding:6px 10px; text-align:right; font-weight:bold; font-size:1rem; color:#333; width:15%; vertical-align:middle;">${rowTotalStr}</td>
                     </tr>
                 `;
             });
