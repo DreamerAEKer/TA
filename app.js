@@ -1635,11 +1635,14 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
     let html = `
         <div style="${tableStyle}">
-            <div style="font-size:0.85rem; color:#333; text-align:center; margin-bottom:15px; font-weight:bold; background:#fff3cd; padding:8px; border-radius:5px; border:1px solid #ffeeba;">
-                📋 ลำดับเลขพัสดุต่อเนื่องและจุดที่หายไป (Timeline Flow)
+            <div style="text-align:center; margin-bottom:15px;">
+                <button onclick="document.getElementById('import-detailed-list').classList.toggle('hidden')" 
+                        style="background:#fff3cd; border:1px solid #ffeeba; padding:10px 20px; border-radius:25px; font-size:0.9rem; color:#856404; cursor:pointer; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                    📋 ดูลำดับพัสดุต่อเนื่อง (Timeline Flow)
+                </button>
             </div>
             
-            <div id="import-detailed-list">
+            <div id="import-detailed-list" class="hidden">
                 <table style="width:100%; border-collapse: collapse;">
                 <tbody>
     `;
