@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Old tools consolidated into Smart Workspace ---
-    checkAdminUI();
+    // checkAdminUI was removed and consolidated into checkAuth
     
     // Initialize Fuel Surcharge Toggle (v2.0-stable)
     const surchargeToggle = document.getElementById('import-surcharge-toggle');
@@ -138,58 +138,7 @@ async function checkDbWarningForReport(el) {
     }
 }
 
-function checkAdminUI() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdmin = urlParams.has('admin');
-
-    const mainTabs = document.getElementById('main-tabs');
-    const userHeader = document.getElementById('user-mode-header');
-    const navbar = document.querySelector('.navbar');
-
-    if (isAdmin) {
-        // Admin View
-        document.body.classList.remove('user-mode');
-        if (mainTabs) mainTabs.classList.remove('hidden');
-        if (userHeader) userHeader.classList.add('hidden');
-        if (navbar) navbar.style.display = 'block';
-        
-        switchTab('smart'); // Default to Unified Workspace for Admin
-    } else {
-        // Subordinate View (Locked to Import)
-        document.body.classList.add('user-mode');
-        if (mainTabs) mainTabs.classList.add('hidden');
-        if (userHeader) userHeader.classList.remove('hidden');
-        if (navbar) navbar.style.display = 'none';
-        
-        // Hide all tabs except Import section
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.getElementById('tab-import').classList.add('active');
-        
-        // Ensure container is slim for mobile-first feel
-        document.querySelector('main.container').classList.add('user-container');
-    }
-
-    const uploadIcon = document.getElementById('upload-icon-display');
-    const uploadTitle = document.getElementById('upload-title-display');
-    const uploadDesc = document.getElementById('upload-desc-display');
-    const importInput = document.getElementById('import-upload');
-
-    if (uploadIcon && uploadTitle && uploadDesc && importInput) {
-        if (isAdmin) {
-            // Admin: Excel + Images
-            uploadIcon.textContent = "📂 / 📸";
-            uploadTitle.textContent = "แตะเพื่อเลือกไฟล์ Excel หรือ รูปภาพ";
-            uploadDesc.textContent = "รองรับ .xlsx, .xls และ รูปภาพ (เลือกได้หลายรูป)";
-            importInput.setAttribute('accept', '.xlsx, .xls, .jpg, .jpeg, .png, .heic');
-        } else {
-            // User: Excel Only
-            uploadIcon.textContent = "📂";
-            uploadTitle.textContent = "แตะเพื่อเลือกไฟล์ Excel";
-            uploadDesc.textContent = "รองรับ .xlsx, .xls (สำหรับพนักงาน)";
-            importInput.setAttribute('accept', '.xlsx, .xls'); // Restrict native file picker
-        }
-    }
-}
+// checkAdminUI function was removed and consolidated into checkAuth
 
 // Consolidated into unifiedQuickCheck() and unifiedGenerateRange()
 
@@ -2709,86 +2658,88 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 
 function checkAuth() {
     try {
-        console.log('Running checkAuth...');
+        console.log('Running checkAuth (Strict Mode)...');
         const urlParams = new URLSearchParams(window.location.search);
         const isAdmin = urlParams.has('admin');
 
-        const header = document.querySelector('header');
-        const tabNav = document.querySelector('.tabs');
-        const loginModal = document.getElementById('login-modal');
-
-        if (loginModal) loginModal.style.display = 'none';
+        const header = document.getElementById('main-header');
+        const tabNav = document.getElementById('main-tabs');
+        const userHeader = document.getElementById('user-mode-header');
 
         if (isAdmin) {
-            // ADMIN MODE
+            // ==========================================
+            // ADMIN MODE (FULL ACCESS)
+            // ==========================================
             document.body.classList.add('admin-mode');
             document.body.classList.remove('user-mode');
             
-            if (header) header.style.display = 'block';
-            if (tabNav) tabNav.style.display = 'flex';
+            if (header) header.classList.remove('hidden');
+            if (tabNav) tabNav.classList.remove('hidden');
+            if (userHeader) userHeader.classList.add('hidden');
 
+            // Default Admin tab
             if (!document.querySelector('.tab-btn.active')) switchTab('smart');
 
-            const snapSec = document.getElementById('snapshot-section');
-            if (snapSec) snapSec.classList.remove('hidden');
-
+            // Admin Upload UI: Full features
             const uploadIcon = document.getElementById('upload-icon-display');
             const uploadTitle = document.getElementById('upload-title-display');
             const uploadDesc = document.getElementById('upload-desc-display');
             const uploadInput = document.getElementById('import-upload');
 
-            if (uploadIcon) uploadIcon.innerText = "📂 / 📷";
+            if (uploadIcon) uploadIcon.innerText = "📂 / 📸";
             if (uploadTitle) uploadTitle.innerText = "แตะเพื่อเลือกไฟล์ Excel หรือ รูปภาพ";
             if (uploadDesc) uploadDesc.innerText = "รองรับ .xlsx, .xls และ รูปภาพ (OCR)";
-            if (uploadInput) uploadInput.accept = ".xlsx, .xls, image/*";
+            if (uploadInput) uploadInput.accept = ".xlsx, .xls, image/*, .heic";
 
         } else {
-            // USER MODE
+            // ==========================================
+            // STAFF MODE (Excel Import ONLY)
+            // ==========================================
             document.body.classList.add('user-mode');
             document.body.classList.remove('admin-mode');
             
-            // Note: CSS will handle hiding .navbar and .tabs via body.user-mode
-            if (header) header.style.display = 'none';
-            if (tabNav) tabNav.style.display = 'none';
+            if (header) header.classList.add('hidden');
+            if (tabNav) tabNav.classList.add('hidden');
+            if (userHeader) userHeader.classList.remove('hidden');
 
-            // Show ONLY Import Tab
+            // FORCE hide all tabs and stay on Import
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             
             const tabImport = document.getElementById('tab-import');
             if (tabImport) tabImport.classList.add('active');
 
-            // Find and activate the Import tab button (even if hidden, for internal state)
-            const btns = document.getElementsByClassName('tab-btn');
-            for (let btn of btns) {
-                if (btn.getAttribute('onclick')?.includes('import')) {
-                    btn.classList.add('active');
-                }
-            }
+            // Staff Upload UI: Stripped down
+            const uploadIcon = document.getElementById('upload-icon-display');
+            const uploadTitle = document.getElementById('upload-title-display');
+            const uploadDesc = document.getElementById('upload-desc-display');
+            const uploadInput = document.getElementById('import-upload');
 
-            let userHeader = document.getElementById('user-mode-header');
+            if (uploadIcon) uploadIcon.innerText = "📂";
+            if (uploadTitle) uploadTitle.innerText = "แตะเพื่อเลือกไฟล์ Excel";
+            if (uploadDesc) uploadDesc.innerText = "รองรับเฉพาะไฟล์ .xlsx, .xls (สำหรับส่งข้อมูลสาขา)";
+            if (uploadInput) uploadInput.accept = ".xlsx, .xls";
+
+            // Rename Save Button for staff clarity
+            const saveBtn = document.querySelector('button[onclick="saveImportedBatch()"]');
+            if (saveBtn) {
+                saveBtn.innerHTML = `📤 สรุปและบันทึกข้อมูล (Submit to System)`;
+                saveBtn.style.backgroundColor = '#28a745';
+                saveBtn.style.color = 'white';
+            }
+            
+            // Re-check and build user header if missing
             if (!userHeader) {
-                userHeader = document.createElement('div');
-                userHeader.id = 'user-mode-header';
-                userHeader.innerHTML = `
+                const newUserHeader = document.createElement('div');
+                newUserHeader.id = 'user-mode-header';
+                newUserHeader.innerHTML = `
                     <div style="display:flex; justify-content:center; align-items:center;">
                         <span style="font-size:1rem;">📥 ระบบนำเข้าข้อมูลพัสดุ<br><small style="font-weight:normal; font-size:0.8rem;">(Import Data Entry)</small></span>
                     </div>
                 `;
                 const main = document.querySelector('main');
-                if (main && document.body) document.body.insertBefore(userHeader, main);
+                if (main && document.body) document.body.insertBefore(newUserHeader, main);
             }
-
-            const saveBtn = document.querySelector('button[onclick="saveImportedBatch()"]');
-            if (saveBtn) {
-                saveBtn.innerHTML = `📤 สรุปและส่งข้อมูล (Submit Report)`;
-                saveBtn.classList.remove('btn-primary');
-                saveBtn.style.backgroundColor = '#28a745';
-                saveBtn.style.color = 'white';
-            }
-
-            const rangeGenUI = document.getElementById('range-generator-ui');
-            if (rangeGenUI) rangeGenUI.style.display = 'none';
         }
     } catch (e) {
         console.error('Error in checkAuth:', e);

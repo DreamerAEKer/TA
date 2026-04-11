@@ -592,17 +592,17 @@
 
                 <div style="display:flex; justify-content:flex-start; gap:10px; margin-bottom:10px; overflow-x:auto;">
                     <!-- History Button (Main) -->
-                    <button class="btn btn-neutral" onclick="toggleImportHistory()" style="flex-shrink:0;">
+                    <button class="btn btn-neutral staff-hidden" onclick="toggleImportHistory()" style="flex-shrink:0;">
                         📜 ประวัติ (History)
                     </button>
 
                     <!-- Stats Button (v2.2) -->
-                    <button class="btn btn-neutral" onclick="showVolumeStats()" style="flex-shrink:0; background:#e3f2fd; color:#0d47a1; border:1px solid #bbdefb;">
+                    <button class="btn btn-neutral staff-hidden" onclick="showVolumeStats()" style="flex-shrink:0; background:#e3f2fd; color:#0d47a1; border:1px solid #bbdefb;">
                         📈 สถิติปริมาณงาน
                     </button>
 
                     <!-- Export Button (Smaller, Subtle) -->
-                    <button class="btn btn-neutral" onclick="confirmAndBackup()"
+                    <button class="btn btn-neutral staff-hidden" onclick="confirmAndBackup()"
                         style="flex-shrink:0; font-size:0.9rem; padding:8px 12px; border:1px solid #ccc; color:#666;">
                         ⬇ Export
                     </button>
@@ -634,7 +634,7 @@
                 </div>
                 
                 <!-- Fuel Surcharge Toggle (v2.0-stable) -->
-                <div style="margin-top: 15px; padding: 12px; background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                <div class="staff-hidden" style="margin-top: 15px; padding: 12px; background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
                     <input type="checkbox" id="import-surcharge-toggle" style="width:22px; height:22px; cursor:pointer;" onchange="localStorage.setItem('thp_import_surcharge', this.checked)">
                     <label for="import-surcharge-toggle" style="font-weight: bold; color: #856404; cursor:pointer; font-size: 0.95rem; line-height: 1.2;">
                         ➕ เพิ่มค่าบริการเชื้อเพลิง (3 บาท/ชิ้น) 
