@@ -2463,20 +2463,6 @@ function copyCrossRefAll() {
         alert('ไม่มีข้อมูลให้คัดลอก');
     }
 }
-                btn.classList.add('btn-success');
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.classList.remove('btn-success');
-                }, 1500);
-            }
-            alert(`คัดลอกเลขพัสดุสำเร็จ ${extracted.length} รายการ`);
-        }).catch(err => {
-            alert('ไม่สามารถคัดลอกได้: ' + err);
-        });
-    } else {
-        alert('ค้นหาไม่พบรูปแบบเลขพัสดุที่ถูกต้องเพื่อคัดลอกครับ');
-    }
-}
 
 async function adminCrossRefImage(files) {
     if (!files || files.length === 0) return;
