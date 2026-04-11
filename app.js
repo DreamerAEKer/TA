@@ -1537,7 +1537,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
             <div id="receipt-summary-box" style="margin-top:15px;">
                 <div style="padding:5px 0 10px 0; border-bottom:2px solid #333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                     <h4 style="margin:0; text-transform:uppercase; letter-spacing:1px;">🧾 ใบเสร็จรับฝาก (Summary Receipt)</h4>
-                    <span style="font-size:0.75rem; color:#666;">v3.8.0-stable</span>
+                    <span style="font-size:0.75rem; color:#666;">v3.8.1-stable</span>
                 </div>
                 
                 <div class="receipt-table">
@@ -1557,6 +1557,11 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                             </div>
                         </div>
                     `).join('')}
+                </div>
+
+                <!-- Repeated Global Range at bottom (v3.8.1) -->
+                <div style="margin-top:20px; border-top:2px solid #eee; padding-top:15px;">
+                    ${globalRangeHtml}
                 </div>
             </div>
         `;
