@@ -1548,7 +1548,9 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                                 <div class="receipt-content">
                                     <span class="receipt-badge badge-success">EMS ในฯ</span>
                                     <div class="receipt-title">EMS ราคา ${s.price} บาท | น้ำหนัก ${s.weight}</div>
-                                    <div class="receipt-range">${s.minId === s.maxId ? formatSpaced(s.minId) : `${formatSpaced(s.minId)} - ${formatSpaced(s.maxId)}`}</div>
+                                    <div class="receipt-range" style="font-family:monospace; font-weight:900; font-size:1rem; margin-top:5px; color:#333; line-height:1.2;">
+                                        ${s.minId === s.maxId ? formatSpaced(s.minId) : `${formatSpaced(s.minId)} ถึง<br>${formatSpaced(s.maxId)}`}
+                                    </div>
                                     <div class="receipt-stats">${s.count} @ ${s.price.toFixed(2)}</div>
                                 </div>
                                 <div class="receipt-total">${s.total.toLocaleString()}</div>
