@@ -1479,7 +1479,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
     // v2.2: Compute Price/Weight Summary for Subordinates
     if (isUserMode) {
-        // v3.6.0: Sequential Receipt Mode for Staff
+        // --- Logic 1: Sequential Receipt Mode (Main) ---
         const timeline = [];
         ranges.forEach(r => timeline.push({ ...r, type: 'success' }));
         if (missingItems && missingItems.length > 0) {
@@ -1489,8 +1489,19 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 timeline.push({ start: mStart, end: mEnd, count: m.count, type: 'gap', price: 0, weight: '-' });
             });
         }
-        // Sort chronologically
         timeline.sort((a, b) => a.start.localeCompare(b.start));
+
+        // --- Logic 2: Price Grouping (Original Data - Hidden at end) ---
+        const statsMap = {};
+        ranges.forEach(r => {
+            const key = `${r.price}-${r.weight}`;
+            if (!statsMap[key]) {
+                statsMap[key] = { price: r.price, weight: r.weight, count: 0, total: 0 };
+            }
+            statsMap[key].count += r.count;
+            statsMap[key].total += (r.count * r.price);
+        });
+        const sortedStats = Object.values(statsMap).sort((a, b) => a.price - b.price);
 
         // v2.6: Global Range Calculation
         const allTrackings = [];
@@ -1511,8 +1522,8 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
             </div>
         `;
 
-        summaryTableHtml = `
-            ${globalRangeHtml}
+        // Main Receipt View
+        const receiptSequenceHtml = `
             <div id="receipt-summary-box" style="margin-top:15px;">
                 <div style="padding:5px 0 10px 0; border-bottom:2px solid #333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                     <h4 style="margin:0; text-transform:uppercase; letter-spacing:1px;">🧾 รายการส่งพัสดุ (Receipt Sequence)</h4>
@@ -1556,6 +1567,40 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                     }).join('')}
                 </div>
             </div>
+        `;
+
+        // Original Summary View (Collapsible)
+        const originalSummaryHtml = `
+            <div style="margin-top:30px; border-top:1px solid #eee; padding-top:20px;">
+                <button onclick="this.nextElementSibling.classList.toggle('hidden')" 
+                        style="width:100%; background:#f8f9fa; border:1px solid #ddd; padding:10px; border-radius:8px; font-size:0.85rem; color:#666; cursor:pointer;">
+                    📊 ดูสรุปยอดรวมตามราคา (Original Excel View)
+                </button>
+                <div class="hidden" style="margin-top:10px; background:#fff; border:1px solid #eee; border-radius:8px; overflow:hidden;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                        <tr style="background:#f9f9f9; color:#666;">
+                            <th style="padding:8px; text-align:left;">ราคา</th>
+                            <th style="padding:8px; text-align:right;">น้ำหนัก</th>
+                            <th style="padding:8px; text-align:right;">จำนวน</th>
+                            <th style="padding:8px; text-align:right;">รวม</th>
+                        </tr>
+                        ${sortedStats.map((s, idx) => `
+                            <tr style="border-bottom:1px solid #f2f2f2;">
+                                <td style="padding:8px; font-weight:bold;">${idx + 1}. EMS ${s.price}฿</td>
+                                <td style="padding:8px; text-align:right;">${s.weight}</td>
+                                <td style="padding:8px; text-align:right;">${s.count}</td>
+                                <td style="padding:8px; text-align:right; font-weight:bold;">${(s.count * s.price).toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                </div>
+            </div>
+        `;
+
+        summaryTableHtml = `
+            ${globalRangeHtml}
+            ${receiptSequenceHtml}
+            ${originalSummaryHtml}
         `;
     }
 
