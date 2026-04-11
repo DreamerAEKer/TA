@@ -1077,3 +1077,101 @@ body.user-mode .staff-hidden {
 .hidden {
     display: none !important;
 }
+
+
+/* --- Receipt-Style Staff Result (v3.6.0) --- */
+.receipt-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.receipt-row {
+    border-bottom: 1px dashed #eee;
+    transition: background 0.2s;
+}
+
+.receipt-row:last-child {
+    border-bottom: none;
+}
+
+.receipt-row:hover {
+    background: #fdfdfd;
+}
+
+.receipt-seq {
+    padding: 15px 10px;
+    font-weight: bold;
+    color: #666;
+    width: 40px;
+    vertical-align: top;
+    font-family: monospace;
+}
+
+.receipt-content {
+    padding: 15px 10px;
+    vertical-align: top;
+}
+
+.receipt-badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    display: inline-block;
+}
+
+.badge-success {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.badge-gap {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.receipt-title {
+    font-weight: bold;
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+.receipt-range {
+    font-family: monospace;
+    color: #0056b3;
+    font-weight: bold;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+}
+
+.receipt-stats {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 4px;
+}
+
+.receipt-total {
+    padding: 15px 10px;
+    text-align: right;
+    vertical-align: top;
+    font-weight: 900;
+    font-size: 1.15rem;
+    color: #d63384;
+    width: 120px;
+}
+
+.receipt-gap-row {
+    background: #fff5f5;
+    border-left: 5px solid #ff5252;
+}
+
+.receipt-gap-row .receipt-title {
+    color: #c62828;
+}

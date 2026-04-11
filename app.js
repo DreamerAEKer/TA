@@ -1383,6 +1383,13 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     const summary = document.getElementById('import-summary');
     const details = document.getElementById('import-details');
 
+    // Helper to format with Check Digit (v3.6.0)
+    const formatID = (prefix, body, suffix) => {
+        const bodyStr = body.toString().padStart(8, '0');
+        const cd = TrackingUtils.calculateS10CheckDigit(bodyStr);
+        return `${prefix}${bodyStr}${cd}${suffix}`;
+    };
+
     preview.classList.remove('hidden');
 
     const totalItems = ranges.reduce((acc, r) => acc + r.count, 0);
@@ -1395,12 +1402,6 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     if (missingItems.length > 0) {
         const totalMissing = missingItems.reduce((acc, m) => acc + m.count, 0);
 
-        // Helper to format with Check Digit
-        const formatID = (prefix, body, suffix) => {
-            const bodyStr = body.toString().padStart(8, '0');
-            const cd = TrackingUtils.calculateS10CheckDigit(bodyStr);
-            return `${prefix}${bodyStr}${cd}${suffix}`;
-        };
 
         // Generate Alert List
         let listHtml = missingItems.map(m => {
@@ -1477,28 +1478,20 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     };
 
     // v2.2: Compute Price/Weight Summary for Subordinates
-    let summaryTableHtml = '';
     if (isUserMode) {
-        const statsMap = {};
-        ranges.forEach(r => {
-            const key = `${r.price}-${r.weight}`;
-            if (!statsMap[key]) {
-                statsMap[key] = { price: r.price, weight: r.weight, count: 0, total: 0 };
-            }
-            statsMap[key].count += r.count;
-            statsMap[key].total += (r.count * r.price);
-        });
+        // v3.6.0: Sequential Receipt Mode for Staff
+        const timeline = [];
+        ranges.forEach(r => timeline.push({ ...r, type: 'success' }));
+        if (missingItems && missingItems.length > 0) {
+            missingItems.forEach(m => {
+                const mStart = formatID(m.prefix, m.startBody, m.suffix);
+                const mEnd = formatID(m.prefix, m.endBody, m.suffix);
+                timeline.push({ start: mStart, end: mEnd, count: m.count, type: 'gap', price: 0, weight: '-' });
+            });
+        }
+        // Sort chronologically
+        timeline.sort((a, b) => a.start.localeCompare(b.start));
 
-        const sortedStats = Object.values(statsMap).sort((a, b) => a.price - b.price);
-        
-        // v3.3.1: Re-populate groupedRanges for per-price range display
-        const groupedRanges = {};
-        ranges.forEach(r => {
-            const key = `${r.price}-${r.weight}`;
-            if (!groupedRanges[key]) groupedRanges[key] = [];
-            groupedRanges[key].push(r);
-        });
-        
         // v2.6: Global Range Calculation
         const allTrackings = [];
         ranges.forEach(r => {
@@ -1520,49 +1513,48 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
         summaryTableHtml = `
             ${globalRangeHtml}
-            <div id="price-summary-box" style="margin-top:15px; background:#fff; border:1px solid #ddd; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.05);">
-                <div style="background:#f8f9fa; padding:12px; border-bottom:1px solid #eee;">
-                    <h4 style="margin:0; color:#333;">💰 สรุปยอดเงินและจำนวน (Totals)</h4>
+            <div id="receipt-summary-box" style="margin-top:15px;">
+                <div style="padding:5px 0 10px 0; border-bottom:2px solid #333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin:0; text-transform:uppercase; letter-spacing:1px;">🧾 รายการส่งพัสดุ (Receipt Sequence)</h4>
+                    <span style="font-size:0.75rem; color:#666;">v3.6.0-stable</span>
                 </div>
-                <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
-                    <thead>
-                        <tr style="background:#fefefe; border-bottom:1px solid #eee; color:#666;">
-                            <th style="padding:10px; text-align:left;">ราคา</th>
-                            <th style="padding:10px; text-align:right;">น้ำหนัก</th>
-                            <th style="padding:10px; text-align:right;">จำนวน</th>
-                            <th style="padding:10px; text-align:right;">รวม (บาท)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${sortedStats.map((s, idx) => {
-                            const key = `${s.price}-${s.weight}`;
-                            const groupRanges = groupedRanges[key] || [];
-                            const rangesHtml = groupRanges.map(r => 
-                                r.start === r.end ? formatSpaced(r.start) : `${formatSpaced(r.start)} ถึง<br>${formatSpaced(r.end)}`
-                            ).join(',<br>');
-
+                
+                <div class="receipt-table">
+                    ${timeline.map((item, idx) => {
+                        if (item.type === 'gap') {
                             return `
-                                <tr style="border-bottom:1px solid #f9f9f9;">
-                                    <td style="padding:10px; vertical-align:top;">
-                                        <div style="font-weight:bold; color:var(--primary-color);">${idx + 1}. EMS ราคา ${s.price} บาท</div>
-                                        <div style="margin-top:5px;">
-                                            <span onclick="this.nextElementSibling.classList.toggle('hidden')" 
-                                                  style="font-size:0.75rem; color:#0056b3; cursor:pointer; text-decoration:underline;">
-                                                👁️ ดูลำดับเลข
-                                            </span>
-                                            <div class="hidden" style="font-size:0.75rem; color:#666; line-height:1.4; margin-top:5px; font-family:monospace; background:#f8f9fa; padding:5px; border-radius:4px;">
-                                                ${rangesHtml}
-                                            </div>
+                                <div class="receipt-row receipt-gap-row">
+                                    <div style="display:flex;">
+                                        <div class="receipt-seq">${idx + 1}.</div>
+                                        <div class="receipt-content">
+                                            <span class="receipt-badge badge-gap">❌ ข้ามรายการ (Missing)</span>
+                                            <div class="receipt-title">ไม่พบเลขที่พัสดุในช่วงนี้</div>
+                                            <div class="receipt-range">${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} - ${formatSpaced(item.end)}`}</div>
+                                            <div class="receipt-stats">หายไปทั้งหมด ${item.count} รายการ</div>
                                         </div>
-                                    </td>
-                                    <td style="padding:10px; text-align:right; color:#666; vertical-align:top;">${s.weight}</td>
-                                    <td style="padding:10px; text-align:right; font-weight:bold; vertical-align:top;">${s.count.toLocaleString()}</td>
-                                    <td style="padding:10px; text-align:right; color:#d63384; font-weight:bold; vertical-align:top;">${s.total.toLocaleString()}</td>
-                                </tr>
+                                        <div class="receipt-total">-</div>
+                                    </div>
+                                </div>
                             `;
-                        }).join('')}
-                    </tbody>
-                </table>
+                        } else {
+                            const subtotal = (item.count * item.price);
+                            return `
+                                <div class="receipt-row">
+                                    <div style="display:flex;">
+                                        <div class="receipt-seq">${idx + 1}.</div>
+                                        <div class="receipt-content">
+                                            <span class="receipt-badge badge-success">✅ นำเข้าสำเร็จ</span>
+                                            <div class="receipt-title">EMS ราคา ${item.price} บาท | น้ำหนัก ${item.weight}</div>
+                                            <div class="receipt-range">${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} - ${formatSpaced(item.end)}`}</div>
+                                            <div class="receipt-stats">จำนวน ${item.count} ชิ้น @ ${item.price.toFixed(2)}</div>
+                                        </div>
+                                        <div class="receipt-total">${subtotal.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }).join('')}
+                </div>
             </div>
         `;
     }
@@ -1584,14 +1576,16 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
     let html = `
         <div style="${tableStyle}">
+            ${!isUserMode ? `
             <div style="text-align:center; margin-bottom:15px;">
                 <button onclick="document.getElementById('import-detailed-list').classList.toggle('hidden')" 
                         style="background:#fff3cd; border:1px solid #ffeeba; padding:10px 20px; border-radius:25px; font-size:0.9rem; color:#856404; cursor:pointer; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
                     📋 ดูลำดับพัสดุต่อเนื่อง (Timeline Flow)
                 </button>
             </div>
+            ` : ''}
             
-            <div id="import-detailed-list" class="hidden">
+            <div id="import-detailed-list" class="${isUserMode ? 'hidden' : 'hidden'}">
                 <table style="width:100%; border-collapse: collapse;">
                 <tbody>
     `;
