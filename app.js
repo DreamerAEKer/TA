@@ -1537,7 +1537,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
             <div id="receipt-summary-box" style="margin-top:15px;">
                 <div style="padding:5px 0 10px 0; border-bottom:2px solid #333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                     <h4 style="margin:0; text-transform:uppercase; letter-spacing:1px;">🧾 ใบเสร็จรับฝาก (Summary Receipt)</h4>
-                    <span style="font-size:0.75rem; color:#666;">v3.8.2-stable</span>
+                    <span style="font-size:0.75rem; color:#666;">v3.8.3-stable</span>
                 </div>
                 
                 <div class="receipt-table">
@@ -1725,12 +1725,6 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                         </tr>
                     </tfoot>
                 </table>
-            </div>
-            <div style="text-align:center; margin-top:15px;" class="no-print">
-                 <button class="btn btn-primary" onclick="showCurrentActiveThermalReceipt()">🧾 ดูใบเสร็จแบบความร้อน (Thermal Receipt)</button>
-            </div>
-            <div style="font-size:0.8rem; color:#999; text-align:center; margin-top:5px; font-style:italic;">
-                (บนมือถือ: จำนวนและยอดเงินจะแสดงที่มุมขวาของรายการ)
             </div>
         </div>
     `;
