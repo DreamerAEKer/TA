@@ -1509,8 +1509,13 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     // v3.1: Spaced Formatting Utility
     const formatSpaced = (val) => {
         if (!val || val.length < 13) return val;
-        // Pattern: XX NNNN NNNN N XX (2-4-4-1-2)
-        return `${val.slice(0, 2)} ${val.slice(2, 6)} ${val.slice(6, 10)} ${val.slice(10, 11)} ${val.slice(11, 13)}`;
+        const prefix = val.slice(0, 2);
+        const body1 = val.slice(2, 6);
+        const body2 = val.slice(6, 10);
+        const check = val.slice(10, 11);
+        const suffix = val.slice(11, 13);
+        // Use non-breaking space before suffix to keep it with the digits
+        return `${prefix} ${body1} ${body2} ${check}&nbsp;${suffix}`;
     };
 
     // v2.2: Compute Price/Weight Summary for Subordinates
@@ -1564,7 +1569,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         const globalRangeHtml = `
             <div style="margin-bottom:15px; padding:12px; border:1px solid #cce5ff; background:#e7f3ff; color:#004085; border-radius:8px; text-align:left;">
                 <div style="font-weight:bold; font-size:0.9rem; margin-bottom:4px;">📦 ช่วงเลขพัสดุรวมทั้งชุด (Global Range):</div>
-                <div style="font-size:1.15rem; font-weight:900; letter-spacing:0.5px; font-family:monospace;">
+                <div style="font-size:1.15rem; font-weight:900; letter-spacing:0.5px; font-family:monospace; line-height:1.4;">
                     ${formatSpaced(globalStart)} ถึง<br>${formatSpaced(globalEnd)}
                 </div>
             </div>
@@ -1575,7 +1580,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
             <div id="receipt-summary-box" style="margin-top:15px;">
                 <div style="padding:5px 0 10px 0; border-bottom:2px solid #333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                     <h4 style="margin:0; text-transform:uppercase; letter-spacing:1px;">🧾 ใบเสร็จรับฝาก (Summary Receipt)</h4>
-                    <span style="font-size:0.75rem; color:#666;">v4.0.0-PRO (Surcharge Ready)</span>
+                    <span style="font-size:0.75rem; color:#666;">v4.2.0-PRO (Surcharge Ready)</span>
                 </div>
                 
                 <div class="receipt-table">
@@ -1590,7 +1595,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                                         ${s.weight !== '-' ? `| น้ำหนัก <span style="font-weight:bold; color:#333;">${s.weight}</span>` : ''}
                                         ${s.hasDiscrepancy ? '<span style="color:#ffffff; font-weight:bold; font-size:0.75rem; margin-left:8px; background:#d32f2f; padding:2px 8px; border-radius:12px; border:1px solid #b71c1c; box-shadow:0 2px 4px rgba(211,47,47,0.3);">⚠️ นน. ไม่ตรง</span>' : ''}
                                     </div>
-                                    <div class="receipt-range" style="font-family:monospace; font-weight:900; font-size:1rem; margin-top:5px; color:#333; line-height:1.2;">
+                                    <div class="receipt-range" style="font-family:monospace; font-weight:900; font-size:1rem; margin-top:5px; color:#333; line-height:1.3;">
                                         ${s.minId === s.maxId ? formatSpaced(s.minId) : `${formatSpaced(s.minId)} ถึง<br>${formatSpaced(s.maxId)}`}
                                     </div>
                                     <div class="receipt-stats">${s.count} @ ${s.price.toFixed(2)}</div>
@@ -1639,7 +1644,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                                             <div class="receipt-seq">-</div>
                                             <div class="receipt-content">
                                                 <span class="receipt-badge badge-gap">❌ ข้ามรายการ (Missing)</span>
-                                                <div class="receipt-range">${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} - ${formatSpaced(item.end)}`}</div>
+                                                <div class="receipt-range" style="line-height:1.3;">${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} ถึง<br>${formatSpaced(item.end)}`}</div>
                                                 <div class="receipt-stats">หายไปทั้งหมด ${item.count} รายการ</div>
                                             </div>
                                             <div class="receipt-total">-</div>
@@ -1654,7 +1659,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                                             <div class="receipt-seq">${idx + 1}.</div>
                                             <div class="receipt-content">
                                                 <div class="receipt-title" style="font-size:0.85rem;">EMS ${item.price}฿</div>
-                                                <div class="receipt-range" style="font-size:0.9rem;">${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} - ${formatSpaced(item.end)}`}</div>
+                                                <div class="receipt-range" style="font-size:0.9rem; line-height:1.3;">${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} ถึง<br>${formatSpaced(item.end)}`}</div>
                                                 <div class="receipt-stats">จำนวน ${item.count} ชิ้น</div>
                                             </div>
                                             <div class="receipt-total" style="font-size:0.95rem;">${subtotal.toLocaleString()}</div>
