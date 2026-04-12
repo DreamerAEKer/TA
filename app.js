@@ -1655,14 +1655,23 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                                 const subtotal = (item.count * item.price);
                                 return `
                                     <div class="receipt-row">
-                                        <div style="display:flex;">
-                                            <div class="receipt-seq">${idx + 1}.</div>
+                                        <div style="display:flex; padding: 12px 15px;">
+                                            <div class="receipt-seq" style="width:30px; font-size:0.8rem; color:#ccc;">${idx + 1}</div>
                                             <div class="receipt-content">
-                                                <div class="receipt-title" style="font-size:0.85rem;">EMS ${item.price}฿</div>
-                                                <div class="receipt-range" style="font-size:0.9rem; line-height:1.3;">${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} ถึง<br>${formatSpaced(item.end)}`}</div>
-                                                <div class="receipt-stats">จำนวน ${item.count} ชิ้น</div>
+                                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+                                                    <span style="background:#f1f5f9; color:#475569; font-size:0.65rem; padding:1px 6px; border-radius:4px; font-weight:bold; text-transform:uppercase;">EMS รายชิ้น</span>
+                                                    <span style="color:#d63384; font-weight:900; font-size:1.1rem; line-height:1;">${subtotal.toLocaleString()}</span>
+                                                </div>
+                                                <div style="font-size:0.95rem; font-weight:700; color:#334155; margin-bottom:4px;">
+                                                    ราคา <span style="color:#3b82f6;">${item.price}</span> บาท
+                                                </div>
+                                                <div class="receipt-range" style="font-size:0.9rem; line-height:1.3; color:#1e293b; font-family:monospace; margin-bottom:6px;">
+                                                    ${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} ถึง<br>${formatSpaced(item.end)}`}
+                                                </div>
+                                                <div style="font-size:0.8rem; color:#64748b; font-weight:500;">
+                                                    📦 จำนวน <strong style="color:#333;">${item.count}</strong> ชิ้น
+                                                </div>
                                             </div>
-                                            <div class="receipt-total" style="font-size:0.95rem;">${subtotal.toLocaleString()}</div>
                                         </div>
                                     </div>
                                 `;
