@@ -1415,6 +1415,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     // v4.0.0 Global State checks
     const isUserMode = document.body.classList.contains('user-mode');
     let summaryTableHtml = '';
+    let discrepancyHtml = '';
 
     // v4.0.0: Fuel Surcharge Active Calculation
     const surchargeChecked = document.getElementById('import-surcharge-toggle')?.checked || false;
@@ -1480,6 +1481,27 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         gapHtml = `
             <div class="result-success" style="margin-top:15px; padding:10px; border:1px solid #4caf50; background:#e8f5e9;">
                 <strong>✅ ครบถ้วน 100% (No Gaps)</strong> - เลขพัสดุเรียงต่อเนื่องกันสมบูรณ์
+            </div>
+        `;
+    }
+
+    // --- ABNORMALITY ALERT SECTION (Weight Discrepancy) ---
+    if (discrepancies.length > 0) {
+        discrepancyHtml = `
+            <div class="result-error" style="margin-top:10px; padding:15px; border:2px solid #ef6c00; background:#fff3e0; border-radius:12px;">
+                <h3 style="margin-top:0; color:#e65100; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:1.4rem;">⚠️</span> พบข้อมูลน้ำหนักผิดปกติ (${discrepancies.length} รายการ)
+                </h3>
+                <p style="margin-bottom:8px; font-size:0.95rem; color:#d84315;">ระบบพบว่าน้ำหนักใน Excel ไม่ตรงกับน้ำหนักที่คำนวณจากราคา (A3 Package):</p>
+                <div style="background:white; border-radius:8px; padding:10px; border:1px solid #ffe0b2; max-height: 120px; overflow-y: auto;">
+                    <ul style="margin:0; padding-left:20px; font-size:0.9rem; color:#5d4037;">
+                        ${discrepancies.slice(0, 5).map(d => `<li><strong>${d.number}</strong>: Excel=${d.originalWeight}kg <span style="color:#d32f2f;">vs</span> กฎราคา=${d.weight}kg</li>`).join('')}
+                        ${discrepancies.length > 5 ? `<li style="list-style:none; margin-top:5px; font-style:italic;">... และรายการอื่นอีก ${discrepancies.length - 5} รายการ</li>` : ''}
+                    </ul>
+                </div>
+                <div style="font-size:0.85rem; color:#e65100; margin-top:10px; font-weight:bold; display:flex; align-items:center; gap:5px;">
+                    ℹ️ กรุณาตรวจสอบไฟล์ต้นฉบับว่ามีการระบุน้ำหนักคลาดเคลื่อนหรือไม่
+                </div>
             </div>
         `;
     }
@@ -1563,7 +1585,11 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                                 <div class="receipt-seq">${idx + 1}.</div>
                                 <div class="receipt-content">
                                     <span class="receipt-badge badge-success">EMS ในฯ</span>
-                                    <div class="receipt-title">EMS ราคา ${s.price} บาท | น้ำหนัก ${s.weight} ${s.hasDiscrepancy ? '<span style="color:#d32f2f; font-weight:bold; font-size:0.75rem; margin-left:5px; background:#ffebeb; padding:2px 6px; border-radius:4px; border:1px solid #ffcdd2;">⚠️ นน. ไม่ตรง</span>' : ''}</div>
+                                    <div class="receipt-title">
+                                        EMS ราคา ${s.price} บาท 
+                                        ${s.weight !== '-' ? `| น้ำหนัก <span style="font-weight:bold; color:#333;">${s.weight}</span>` : ''}
+                                        ${s.hasDiscrepancy ? '<span style="color:#ffffff; font-weight:bold; font-size:0.75rem; margin-left:8px; background:#d32f2f; padding:2px 8px; border-radius:12px; border:1px solid #b71c1c; box-shadow:0 2px 4px rgba(211,47,47,0.3);">⚠️ นน. ไม่ตรง</span>' : ''}
+                                    </div>
                                     <div class="receipt-range" style="font-family:monospace; font-weight:900; font-size:1rem; margin-top:5px; color:#333; line-height:1.2;">
                                         ${s.minId === s.maxId ? formatSpaced(s.minId) : `${formatSpaced(s.minId)} ถึง<br>${formatSpaced(s.maxId)}`}
                                     </div>
@@ -1670,6 +1696,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
             <div style="font-size:1.6rem; color:#d63384; font-weight:900; margin-top:5px;">ยอดสุทธิ: ${grandTotal.toLocaleString()} บาท</div>
         </div>
         ${surchargeHtml}
+        ${discrepancyHtml}
         ${gapHtml}
         ${summaryTableHtml}
     `;

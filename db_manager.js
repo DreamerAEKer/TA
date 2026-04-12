@@ -262,6 +262,51 @@ const CustomerDB = {
             sums[b.name].totalCount += b.count; sums[b.name].batches.push(b);
         });
         return Object.values(sums).sort((a,b) => a.name.localeCompare(b.name));
+    },
+
+    // --- BACKUP & RESTORE (ASYNC) ---
+    exportBackup: async () => {
+        const data = {
+            lookup: await CustomerDB.getLookup(),
+            batches: await CustomerDB.getBatches(),
+            trash: await CustomerDB.getTrash(),
+            stats: await CustomerDB.getStats(),
+            exceptions: await (StorageV2.get(EXCEPTION_KEY) || []),
+            exportedAt: new Date().toISOString(),
+            version: '1.64-IDB'
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const date = new Date().toLocaleDateString('th-TH').replace(/\//g, '-');
+        a.download = `TrackingAnalyst_Backup_${date}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    importBackup: async (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.lookup) await CustomerDB.saveLookup(data.lookup);
+                    if (data.batches) await CustomerDB.saveBatches(data.batches);
+                    if (data.trash) await CustomerDB.saveTrash(data.trash);
+                    if (data.stats) await CustomerDB.saveStats(data.stats);
+                    if (data.exceptions) await StorageV2.set(EXCEPTION_KEY, data.exceptions);
+                    resolve();
+                } catch (err) {
+                    console.error("importBackup Error:", err);
+                    reject(new Error("รูปแบบไฟล์สำรองข้อมูลไม่ถูกต้อง"));
+                }
+            };
+            reader.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์ได้'));
+            reader.readAsText(file);
+        });
     }
 };
 
