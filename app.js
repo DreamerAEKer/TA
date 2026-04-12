@@ -3094,7 +3094,12 @@ function toggleQmsStaging() {
 }
 
 function processQmsImport() {
-    const text = document.getElementById('qms-import-text').value;
+    const inputEl = document.getElementById('qms-import-text');
+    if (!inputEl) {
+        console.warn("[v4.0.0] QMS Import Textarea not found in the current UI.");
+        return;
+    }
+    const text = inputEl.value;
     if (!text) return;
 
     // Extract tracking numbers and optional datetime using index distance to handle multiline grid pastes
