@@ -587,24 +587,24 @@
         <!-- SECTION 5: Import Excel -->
         <section id="tab-import" class="tab-content">
             <div class="card">
-                <h2>นำเข้าไฟล์ Excel (Import Tracking)</h2>
-                <p class="text-muted">อัปโหลดไฟล์ (.xlsx, .xls) เพื่อวิเคราะห์ช่วงเลขและบันทึกข้อมูล</p>
+                <h2>นำเข้าข้อมูล & สำรองพัสดุ (Import & Backup)</h2>
+                <p class="text-muted">อัปโหลดไฟล์ (.xlsx, .xls) เพื่อวิเคราะห์ช่วงเลขและบันทึกข้อมูลเข้าประวัติอัตโนมัติ</p>
 
                 <div style="display:flex; justify-content:flex-start; gap:10px; margin-bottom:10px; overflow-x:auto;">
                     <!-- History Button (Main) -->
-                    <button class="btn btn-neutral staff-hidden" onclick="toggleImportHistory()" style="flex-shrink:0;">
+                    <button class="btn btn-neutral" onclick="toggleImportHistory()" style="flex-shrink:0;">
                         📜 ประวัติ (History)
                     </button>
 
                     <!-- Stats Button (v2.2) -->
-                    <button class="btn btn-neutral staff-hidden" onclick="showVolumeStats()" style="flex-shrink:0; background:#e3f2fd; color:#0d47a1; border:1px solid #bbdefb;">
+                    <button class="btn btn-neutral" onclick="showVolumeStats()" style="flex-shrink:0; background:#e3f2fd; color:#0d47a1; border:1px solid #bbdefb;">
                         📈 สถิติปริมาณงาน
                     </button>
 
                     <!-- Export Button (Smaller, Subtle) -->
-                    <button class="btn btn-neutral staff-hidden" onclick="confirmAndBackup()"
+                    <button class="btn btn-neutral" onclick="confirmAndBackup()"
                         style="flex-shrink:0; font-size:0.9rem; padding:8px 12px; border:1px solid #ccc; color:#666;">
-                        ⬇ Export
+                        ⬇ สำรองไฟล์ DB
                     </button>
                 </div>
 
@@ -667,8 +667,7 @@
                             </select>
                         </div>
                         <div style="display:flex; gap:10px; margin-top:15px;">
-                            <button class="btn btn-primary" onclick="saveImportedBatch()">💾 บันทึกข้อมูล
-                                (Save)</button>
+                            <button id="import-save-btn" class="btn btn-primary" onclick="backupData()" style="background: linear-gradient(135deg, #0d47a1, #1565c0); border:none;">💾 สำรองข้อมูลระบบ (Back Up)</button>
                             <button class="btn btn-danger" onclick="clearImportData()" style="background:#ff4444;">🗑️
                                 ล้างรายการ (Clear)</button>
                         </div>

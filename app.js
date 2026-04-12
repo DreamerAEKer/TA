@@ -55,6 +55,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         surchargeToggle.checked = (saved === 'true');
     }
 
+    // Initialize Import Batch Type (Remember Last)
+    const batchTypeSelect = document.getElementById('import-batch-type');
+    if (batchTypeSelect) {
+        const lastType = localStorage.getItem('thp_last_batch_type');
+        if (lastType) batchTypeSelect.value = lastType;
+        
+        batchTypeSelect.addEventListener('change', (e) => {
+            localStorage.setItem('thp_last_batch_type', e.target.value);
+        });
+    }
+
     // 4. Smart Workspace Inputs -> Enter Key
     document.getElementById('smart-main-input')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') unifiedMainSearch();
@@ -1016,7 +1027,7 @@ let importedFileCount = 0; // Track number of files uploaded (for limit)
 
 function clearImportData() {
     if (rawTrackingData.length === 0) return;
-    if (!confirm('ต้องการล้างข้อมูลนำเข้าทั้งหมดหรือไม่?')) return;
+    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลนำเข้าทั้งหมด? (ข้อมูลที่แสดงอยู่จะไม่ถูกบันทึก)')) return;
 
     rawTrackingData = [];
     currentImportedBatches = [];
@@ -1746,6 +1757,9 @@ function saveImportedBatch(isAuto = false) {
     const name = document.getElementById('import-batch-name').value.trim();
     const type = document.getElementById('import-batch-type').value;
 
+    // Save choice for next time
+    localStorage.setItem('thp_last_batch_type', type);
+
     if (!name) {
         alert('กรุณาระบุชื่อกลุ่มข้อมูล (Batch Name)');
         return;
@@ -1939,7 +1953,16 @@ function renderImportHistory() {
 }
 
 function deleteHistoryItem(batchId, batchName) {
-    if (confirm(`ยืนยันการลบข้อมูล (จากประวัติ Import)?\n\nชุดข้อมูล: ${batchName}`)) {
+    const pwd = prompt(`ยืนยันการลบชุดข้อมูล: ${batchName}\n\nกรุณาใส่รหัสผ่านเพื่อดำเนินการลบ:`);
+    
+    if (pwd === null) return; // User cancelled
+    
+    if (pwd !== '0000') {
+        alert('❌ รหัสผ่านไม่ถูกต้อง ไม่สามารถลบข้อมูลได้');
+        return;
+    }
+
+    if (confirm(`คุณกำลังจะลบข้อมูล "${batchName}" ถาวร ยืนยันใช่หรือไม่?`)) {
         CustomerDB.deleteBatch(batchId);
         // Refresh this table
         renderImportHistory();
