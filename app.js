@@ -66,6 +66,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Initialize Active Toggle for Surcharge (v4.0.0)
+    if (surchargeToggle) {
+        surchargeToggle.addEventListener('change', (e) => {
+            localStorage.setItem('thp_import_surcharge', e.target.checked);
+            // Re-render immediately if we have data
+            if (typeof currentImportedBatches !== 'undefined' && currentImportedBatches.length > 0) {
+                renderImportResult(currentImportedBatches, lastMissingItems, lastDiscrepanciesList);
+            }
+        });
+    }
+
     // 4. Smart Workspace Inputs -> Enter Key
     document.getElementById('smart-main-input')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') unifiedMainSearch();
@@ -1022,6 +1033,8 @@ async function processTrackExcelFile(file) {
 // --- Universal Import Logic (Excel & Image/OCR) ---
 
 let currentImportedBatches = []; // To store analyzed data before saving
+let lastMissingItems = []; // v4.0.0 Global state for re-rendering
+let lastDiscrepanciesList = []; // v4.0.0 Global state for re-rendering
 let rawTrackingData = []; // Store ALL raw items (Cumulative)
 let importedFileCount = 0; // Track number of files uploaded (for limit)
 
@@ -1352,29 +1365,31 @@ function analyzeImportedRanges(trackingList) {
             currentList.push(uniqueList[i]);
             prev = curr;
         } else {
-            rawRanges.push({
-                start: start.full,
-                end: prev.full,
-                count: currentList.length,
-                price: start.price,
-                weight: start.weight,
-                items: currentList.map(x => x.number),
-                contexts: currentList.map(x => x.context).filter(c => c !== null)
-            });
-            start = curr;
-            prev = curr;
-            currentList = [uniqueList[i]];
-        }
+        rawRanges.push({
+            start: start.full,
+            end: prev.full,
+            count: currentList.length,
+            price: start.price,
+            weight: start.weight,
+            items: currentList.map(x => x.number),
+            contexts: currentList.map(x => x.context).filter(c => c !== null),
+            hasDiscrepancy: currentList.some(x => x.hasDiscrepancy) // v4.0.0 Inline flag
+        });
+        start = curr;
+        prev = curr;
+        currentList = [uniqueList[i]];
     }
-    rawRanges.push({
-        start: start.full,
-        end: prev.full,
-        count: currentList.length,
-        price: start.price,
-        weight: start.weight,
-        items: currentList.map(x => x.number),
-        contexts: currentList.map(x => x.context).filter(c => c !== null)
-    });
+}
+rawRanges.push({
+    start: start.full,
+    end: prev.full,
+    count: currentList.length,
+    price: start.price,
+    weight: start.weight,
+    items: currentList.map(x => x.number),
+    contexts: currentList.map(x => x.context).filter(c => c !== null),
+    hasDiscrepancy: currentList.some(x => x.hasDiscrepancy) // v4.0.0 Inline flag
+});
 
     // Virtual Optimization (Admin Only)
     const isUserMode = document.body.classList.contains('user-mode');
@@ -1386,25 +1401,23 @@ function analyzeImportedRanges(trackingList) {
         currentImportedBatches = optimizedRanges;
     }
 
-    renderImportResult(currentImportedBatches, missingItems, discrepanciesList);
+    lastMissingItems = missingItems;
+    lastDiscrepanciesList = discrepancies;
+
+    renderImportResult(currentImportedBatches, missingItems, discrepancies);
 }
 
 function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     const preview = document.getElementById('import-preview');
     const summary = document.getElementById('import-summary');
     const details = document.getElementById('import-details');
-
-    // Helper to format with Check Digit (v3.6.0)
-    const formatID = (prefix, body, suffix) => {
-        const bodyStr = body.toString().padStart(8, '0');
-        const cd = TrackingUtils.calculateS10CheckDigit(bodyStr);
-        return `${prefix}${bodyStr}${cd}${suffix}`;
-    };
-
-    preview.classList.remove('hidden');
-
+    
+    // v4.0.0: Fuel Surcharge Active Calculation
+    const surchargeChecked = document.getElementById('import-surcharge-toggle')?.checked || false;
     const totalItems = ranges.reduce((acc, r) => acc + r.count, 0);
-    const grandTotal = ranges.reduce((acc, r) => acc + (r.total || (r.count * r.price)), 0);
+    const surchargeAmount = surchargeChecked ? (totalItems * 3) : 0;
+    const itemsTotal = ranges.reduce((acc, r) => acc + (r.total || (r.count * r.price)), 0);
+    const grandTotal = itemsTotal + surchargeAmount;
 
     // --- GAP ALERT SECTION ---
     let gapHtml = '';
@@ -1467,20 +1480,6 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         `;
     }
 
-    // --- DISCREPANCY ALERT SECTION ---
-    const isUserMode = document.body.classList.contains('user-mode');
-    let discrepancyHtml = '';
-    if (discrepancies && discrepancies.length > 0) {
-        discrepancyHtml = `
-            <div class="result-error" style="margin-top:15px; padding:10px; border:2px solid #ff9800; background:#fff3e0; color:#e65100; border-radius:8px;">
-                <h4 style="margin:0 0 5px 0;">⚠️ พบข้อสังเกตจากไฟล์ (Weight Shift)</h4>
-                <p style="margin:0; font-size:0.95rem;">
-                    พบน้ำหนักในไฟล์ไม่ตรงกับราคาค่าบริการ จำนวน <strong>${discrepancies.length} รายการ</strong> (ปรับให้อัตโนมัติแล้ว)
-                </p>
-            </div>
-        `;
-    }
-
     // v3.1: Spaced Formatting Utility
     const formatSpaced = (val) => {
         if (!val || val.length < 13) return val;
@@ -1513,11 +1512,13 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                     count: 0, 
                     total: 0, 
                     minId: r.start, 
-                    maxId: r.end 
+                    maxId: r.end,
+                    hasDiscrepancy: r.hasDiscrepancy // v4.0.0
                 };
             } else {
                 if (r.start.localeCompare(statsMap[key].minId) < 0) statsMap[key].minId = r.start;
                 if (r.end.localeCompare(statsMap[key].maxId) > 0) statsMap[key].maxId = r.end;
+                if (r.hasDiscrepancy) statsMap[key].hasDiscrepancy = true; // v4.0.0
             }
             statsMap[key].count += r.count;
             statsMap[key].total += (r.count * r.price);
@@ -1548,17 +1549,16 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
             <div id="receipt-summary-box" style="margin-top:15px;">
                 <div style="padding:5px 0 10px 0; border-bottom:2px solid #333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                     <h4 style="margin:0; text-transform:uppercase; letter-spacing:1px;">🧾 ใบเสร็จรับฝาก (Summary Receipt)</h4>
-                    <span style="font-size:0.75rem; color:#666;">v3.8.3-stable</span>
+                    <span style="font-size:0.75rem; color:#666;">v4.0.0-PRO (Surcharge Ready)</span>
                 </div>
                 
                 <div class="receipt-table">
-                    ${sortedStats.map((s, idx) => `
                         <div class="receipt-row">
                             <div style="display:flex;">
                                 <div class="receipt-seq">${idx + 1}.</div>
                                 <div class="receipt-content">
                                     <span class="receipt-badge badge-success">EMS ในฯ</span>
-                                    <div class="receipt-title">EMS ราคา ${s.price} บาท | น้ำหนัก ${s.weight}</div>
+                                    <div class="receipt-title">EMS ราคา ${s.price} บาท | น้ำหนัก ${s.weight} ${s.hasDiscrepancy ? '<span style="color:#d32f2f; font-weight:bold; font-size:0.75rem; margin-left:5px; background:#ffebeb; padding:2px 6px; border-radius:4px; border:1px solid #ffcdd2;">⚠️ นน. ไม่ตรง</span>' : ''}</div>
                                     <div class="receipt-range" style="font-family:monospace; font-weight:900; font-size:1rem; margin-top:5px; color:#333; line-height:1.2;">
                                         ${s.minId === s.maxId ? formatSpaced(s.minId) : `${formatSpaced(s.minId)} ถึง<br>${formatSpaced(s.maxId)}`}
                                     </div>
@@ -1631,13 +1631,27 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         `;
     }
 
+    const isUserMode = document.body.classList.contains('user-mode');
+    
+    // v4.0.0: Surcharge Line Item
+    let surchargeHtml = '';
+    if (surchargeChecked) {
+        surchargeHtml = `
+            <div style="margin-bottom:10px; padding:10px; background:#fff8e1; border:1px solid #ffe082; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:#795548; font-weight:bold; font-size:0.85rem;">⚡ ค่า Fuel Surcharge (+3฿)</span>
+                <span style="color:#795548; font-weight:bold;">${totalItems} x 3 = ${surchargeAmount.toLocaleString()} บาท</span>
+            </div>
+        `;
+    }
+
     summary.innerHTML = `
         <div style="margin-bottom:15px; text-align:center;">
             <div style="font-size:1.1rem; color:#333;">จำนวนทั้งหมด: <strong>${totalItems.toLocaleString()}</strong> ชิ้น</div>
-            <div style="font-size:1.5rem; color:#d63384; font-weight:900;">ยอดเงินรวม: ${grandTotal.toLocaleString()} บาท</div>
+            <div style="font-size:1.3rem; color:#666;">ยอดเบื้องต้น: ${itemsTotal.toLocaleString()} บาท</div>
+            <div style="font-size:1.6rem; color:#d63384; font-weight:900; margin-top:5px;">ยอดสุทธิ: ${grandTotal.toLocaleString()} บาท</div>
         </div>
+        ${surchargeHtml}
         ${gapHtml}
-        ${discrepancyHtml}
         ${summaryTableHtml}
     `;
 
@@ -1693,7 +1707,10 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 html += `
                     <tr style="border-bottom:1px solid #f0f0f0;">
                          <td style="padding:10px; vertical-align:middle; width:70%;">
-                            <div style="font-size:0.7rem; color:#666; text-transform:uppercase;">📦 EMS ${item.price}฿ | ${item.weight}</div>
+                            <div style="font-size:0.7rem; color:#666; text-transform:uppercase;">
+                                📦 EMS ${item.price}฿ | ${item.weight} 
+                                ${item.hasDiscrepancy ? '<span style="color:#e65100; font-weight:bold; margin-left:5px;">⚠️ นน. ไม่ตรง</span>' : ''}
+                            </div>
                             <div style="color:#0056b3; font-weight:bold; font-size:1.05rem; line-height:1.2; font-family:monospace;">
                                 ${item.start === item.end ? formatSpaced(item.start) : `${formatSpaced(item.start)} - ${formatSpaced(item.end)}`}
                             </div>
