@@ -1402,9 +1402,9 @@ rawRanges.push({
     }
 
     lastMissingItems = missingItems;
-    lastDiscrepanciesList = discrepancies;
+    lastDiscrepanciesList = discrepanciesList;
 
-    renderImportResult(currentImportedBatches, missingItems, discrepancies);
+    renderImportResult(currentImportedBatches, missingItems, discrepanciesList);
 }
 
 function renderImportResult(ranges, missingItems = [], discrepancies = []) {
@@ -1412,6 +1412,10 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     const summary = document.getElementById('import-summary');
     const details = document.getElementById('import-details');
     
+    // v4.0.0 Global State checks
+    const isUserMode = document.body.classList.contains('user-mode');
+    let summaryTableHtml = '';
+
     // v4.0.0: Fuel Surcharge Active Calculation
     const surchargeChecked = document.getElementById('import-surcharge-toggle')?.checked || false;
     const totalItems = ranges.reduce((acc, r) => acc + r.count, 0);
@@ -1570,7 +1574,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                         </div>
                     `).join('')}
                     
-                    ${showSurcharge ? `
+                    ${surchargeChecked ? `
                         <div class="receipt-row surcharge-row" style="background:#fff9c4; border-top:1px dashed #333;">
                             <div style="display:flex;">
                                 <div class="receipt-seq">+</div>
@@ -1578,7 +1582,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                                     <div class="receipt-title" style="font-weight:bold;">ค่า Fuel Surcharge (Active) ⚡</div>
                                     <div class="receipt-stats">ค่าบริการเหมา ${totalItems} ชิ้น x 3.00 บาท</div>
                                 </div>
-                                <div class="receipt-total" style="font-weight:bold; color:#d63384;">+ ${surchargeValue.toLocaleString()}</div>
+                                <div class="receipt-total" style="font-weight:bold; color:#d63384;">+ ${surchargeAmount.toLocaleString()}</div>
                             </div>
                         </div>
                     ` : ''}
@@ -1644,8 +1648,9 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
             ${detailedTimelineHtml}
         `;
     }
-
-    const isUserMode = document.body.classList.contains('user-mode');
+    
+    // v4.0.0: Ensure preview is visible
+    if (preview) preview.classList.remove('hidden');
     
     // v4.0.0: Surcharge Line Item
     let surchargeHtml = '';
