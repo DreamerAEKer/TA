@@ -2811,6 +2811,7 @@ function checkAuth() {
             if (tabImport) tabImport.classList.add('active');
 
             // Staff Mode initialization (preserved premium UI)
+            const uploadInput = document.getElementById('import-upload');
             if (uploadInput) uploadInput.accept = ".xlsx, .xls";
 
             // Ensure the main button is labeled correctly for data portability (Backup)
