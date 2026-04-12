@@ -1900,32 +1900,8 @@ function saveImportedBatch(isAuto = false) {
             } else {
                 window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${addedCount} รายการ`);
                 
-                // v2.2: Also save Volume Statistics (Deposit Data)
-                (async () => {
-                    try {
-                        const stats = await CustomerDB.getStats();
-                        const sessionSummary = {};
-                        currentImportedBatches.forEach(r => {
-                            const key = `${r.price}-${r.weight}`;
-                            if (!sessionSummary[key]) sessionSummary[key] = 0;
-                            sessionSummary[key] += r.count;
-                        });
-                        
-                        stats.push({
-                            batchId: newBatchId || name,
-                            name: name,
-                            date: new Date().toISOString().split('T')[0],
-                            timestamp: new Date().getTime(),
-                            totalCount: allItemsToSave.length,
-                            summary: sessionSummary
-                        });
-                        
-                        // Keep only last 100 entries for stats
-                        if (stats.length > 100) stats.shift();
-                        await CustomerDB.saveStats(stats);
-                        console.info("[v2.2-Stats] Recorded customer volume statistics.");
-                    } catch(e) { console.error("Stats save failed:", e); }
-                })();
+                // v4.3.0: Legacy stats are no longer needed as Dashboard pulls from Batches directly.
+                console.info("[v4.3.0] Transaction recorded to core database.");
             }
 
             // v2.0-stable: Handle Navigation based on role
@@ -5275,47 +5251,187 @@ function viewReportSession(sessionId) {
     }, 100);
 }
 
-// v2.2: Show Volume Statistics Modal
-async function showVolumeStats() {
-    const stats = await CustomerDB.getStats();
-    if (!stats || stats.length === 0) {
-        window.showToast('ยังไม่มีข้อมูลสถิติบันทึกไว้', 'info');
+// v4.3.0: Premium Multi-Company Analytics Dashboard
+async function showPremiumDashboard(forceRefresh = false) {
+    const batches = await CustomerDB.getBatches();
+    const batchList = Object.values(batches);
+    
+    if (batchList.length === 0) {
+        window.showToast('ยังไม่มีข้อมูลประวัติในระบบ', 'info');
         return;
     }
 
-    let html = '<div style="padding:15px; font-family:Sarabun, sans-serif;">';
-    html += '<h3 style="margin-top:0;">📈 สถิติปริมาณงานแยกตามลูกค้า</h3>';
-    html += '<p style="color:#666; font-size:0.8rem;">*แสดงข้อมูลการนำเข้าล่าสุด 100 รายการ</p>';
+    // --- State & Filters ---
+    const now = new Date();
+    let selectedYear = now.getFullYear();
+    let selectedQuarter = Math.floor(now.getMonth() / 3) + 1; // 1-4
+    let selectedCompany = 'all';
+
+    // Unique Companies for Filter
+    const companies = [...new Set(batchList.map(b => b.name))].sort();
+
+    const renderDashboard = () => {
+        const data = aggregateDashboardData(batchList, selectedYear, selectedQuarter, selectedCompany);
+        const prevData = aggregateDashboardData(batchList, selectedYear - 1, selectedQuarter, selectedCompany);
+        
+        const main = document.getElementById('db-body');
+        if (!main) return;
+
+        // KPI Calculations
+        const volChange = prevData.totalVolume > 0 ? ((data.totalVolume - prevData.totalVolume) / prevData.totalVolume * 100) : null;
+        const valChange = prevData.totalValue > 0 ? ((data.totalValue - prevData.totalValue) / prevData.totalValue * 100) : null;
+
+        main.innerHTML = `
+            <div class="db-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">ปริมาณงานรวม (Packages)</div>
+                    <div class="kpi-value">${data.totalVolume.toLocaleString()}</div>
+                    ${volChange !== null ? `
+                        <div class="kpi-delta ${volChange >= 0 ? 'delta-up' : 'delta-down'}">
+                            ${volChange >= 0 ? '↑' : '↓'} ${Math.abs(volChange).toFixed(1)}% vs ปีที่แล้ว
+                        </div>
+                    ` : '<div class="kpi-delta" style="background:#f1f5f9; color:#64748b;">ไม่มีข้อมูลปีที่แล้ว</div>'}
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">ค่าบริการสุทธิ (Net Revenue)</div>
+                    <div class="kpi-value">${data.totalValue.toLocaleString()}</div>
+                    ${valChange !== null ? `
+                        <div class="kpi-delta ${valChange >= 0 ? 'delta-up' : 'delta-down'}">
+                            ${valChange >= 0 ? '↑' : '↓'} ${Math.abs(valChange).toFixed(1)}% vs ปีที่แล้ว
+                        </div>
+                    ` : '<div class="kpi-delta" style="background:#f1f5f9; color:#64748b;">ไม่มีข้อมูลปีที่แล้ว</div>'}
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">ราคาเฉลี่ยต่อชิ้น (Avg.)</div>
+                    <div class="kpi-value">${data.totalVolume > 0 ? (data.totalValue / data.totalVolume).toFixed(2) : '0.00'}</div>
+                    <div style="font-size:0.8rem; color:#94a3b8;">คำนวณจากราคาฝากส่ง</div>
+                </div>
+            </div>
+
+            <div class="db-section">
+                <h4 class="db-section-title">การกระจายตัวตามช่วงราคา (Price Distribution)</h4>
+                <div class="dist-list">
+                    ${Object.entries(data.priceGroups).sort((a,b) => parseFloat(b[0]) - parseFloat(a[0])).map(([price, count]) => {
+                        const percent = data.totalVolume > 0 ? (count / data.totalVolume * 100) : 0;
+                        return `
+                            <div class="dist-item">
+                                <div class="dist-label">${parseFloat(price).toFixed(2)} บาท</div>
+                                <div class="dist-bar-bg">
+                                    <div class="dist-bar-fill" style="width: ${percent}%"></div>
+                                </div>
+                                <div class="dist-value">${count.toLocaleString()}</div>
+                            </div>
+                        `;
+                    }).join('') || '<p style="text-align:center; color:#94a3b8; padding:20px;">ไม่มีข้อมูลในช่วงเวลานี้</p>'}
+                </div>
+            </div>
+
+            <div class="db-section">
+                <h4 class="db-section-title">ประวัติการนำเข้ารายละเอียด (Transaction Log)</h4>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                        <thead style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                            <tr>
+                                <th style="padding:12px; text-align:left;">วันที่</th>
+                                <th style="padding:12px; text-align:left;">ชื่อชุดข้อมูล/บริษัท</th>
+                                <th style="padding:12px; text-align:right;">จำนวน (ชิ้น)</th>
+                                <th style="padding:12px; text-align:right;">ยอดเงิน</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.transactions.map(t => `
+                                <tr style="border-bottom:1px solid #f1f5f9;">
+                                    <td style="padding:12px; color:#64748b;">${new Date(t.timestamp).toLocaleDateString('th-TH')}</td>
+                                    <td style="padding:12px; font-weight:600; color:#1e293b;">${t.name}</td>
+                                    <td style="padding:12px; text-align:right; font-weight:bold;">${t.count.toLocaleString()}</td>
+                                    <td style="padding:12px; text-align:right; color:#d63384; font-weight:bold;">${t.totalValue.toLocaleString()}</td>
+                                </tr>
+                            `).join('') || '<tr><td colspan="4" style="padding:20px; text-align:center; color:#94a3b8;">ไม่พบข้อมูล</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    };
+
+    // --- Helper for Aggregation ---
+    const aggregateDashboardData = (list, year, quarter, company) => {
+        const startMonth = (quarter - 1) * 3;
+        const endMonth = startMonth + 2;
+        
+        const filtered = list.filter(b => {
+            const d = new Date(b.timestamp);
+            const m = d.getMonth();
+            const y = d.getFullYear();
+            const matchTime = (y === year && m >= startMonth && m <= endMonth);
+            const matchCompany = (company === 'all' || b.name === company);
+            return matchTime && matchCompany;
+        });
+
+        const totals = { totalVolume: 0, totalValue: 0, priceGroups: {}, transactions: [] };
+        
+        filtered.forEach(b => {
+            let bTotal = 0;
+            if (b.ranges) {
+                b.ranges.forEach(r => {
+                    totals.totalVolume += r.count;
+                    const val = r.total || (r.count * r.price);
+                    totals.totalValue += val;
+                    bTotal += val;
+                    
+                    const pKey = r.price.toString();
+                    totals.priceGroups[pKey] = (totals.priceGroups[pKey] || 0) + r.count;
+                });
+            }
+            totals.transactions.push({ ...b, totalValue: bTotal });
+        });
+
+        totals.transactions.sort((a,b) => b.timestamp - a.timestamp);
+        return totals;
+    };
+
+    // --- Create Backdrop & Modal ---
+    const overlay = document.createElement('div');
+    overlay.className = 'dashboard-overlay';
+    overlay.id = 'db-overlay';
     
-    html += '<div style="max-height:400px; overflow-y:auto; border:1px solid #eee; border-radius:8px;">';
-    html += '<table style="width:100%; border-collapse:collapse; font-size:0.85rem;">';
-    html += '<thead style="position:sticky; top:0; background:#f8f9fa; border-bottom:2px solid #ddd;">';
-    html += '<tr><th style="padding:8px; text-align:left;">วันที่ / ลูกค้า</th><th style="padding:8px; text-align:right;">รวม (ชิ้น)</th></tr></thead>';
-    html += '<tbody>';
-    
-    stats.slice().reverse().forEach(s => {
-        const dateStr = s.date || new Date(s.timestamp).toLocaleDateString();
-        html += `<tr style="border-bottom:1px solid #eee;">
-            <td style="padding:8px;">
-                <div style="font-weight:bold; color:#333;">${s.name}</div>
-                <div style="font-size:0.75rem; color:#999;">${dateStr}</div>
-            </td>
-            <td style="padding:8px; text-align:right; font-weight:bold; font-size:1rem; color:#d63384;">${s.totalCount.toLocaleString()}</td>
-        </tr>`;
-    });
-    
-    html += '</tbody></table></div></div>';
-    
-    const modal = document.createElement('div');
-    modal.id = 'stats-modal';
-    modal.style = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; z-index:10001; width:90%; max-width:400px; border-radius:15px; box-shadow:0 15px 50px rgba(0,0,0,0.3); border:1px solid #eee;';
-    modal.innerHTML = html + '<div style="padding:10px; text-align:center;"><button onclick="document.getElementById(\'stats-modal\').remove(); document.getElementById(\'stats-backdrop\').remove();" style="width:100%; padding:10px; background:var(--primary-color); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">ปิดหน้าต่าง (Close)</button></div>';
-    
-    const backdrop = document.createElement('div');
-    backdrop.id = 'stats-backdrop';
-    backdrop.style = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; backdrop-filter:blur(3px);';
-    backdrop.onclick = () => { modal.remove(); backdrop.remove(); };
-    
-    document.body.appendChild(backdrop);
-    document.body.appendChild(modal);
+    overlay.innerHTML = `
+        <div class="dashboard-modal">
+            <div class="dashboard-header">
+                <h2 class="dashboard-title">ศูนย์วิเคราะห์ข้อมูล & แดชบอร์ด</h2>
+                <button class="db-close-btn" onclick="document.getElementById('db-overlay').remove()">✕</button>
+            </div>
+            <div class="dashboard-body">
+                <div class="dashboard-controls">
+                    <select id="db-company" class="db-select">
+                        <option value="all">🏢 ทุกบริษัท (All Companies)</option>
+                        ${companies.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    </select>
+                    <select id="db-year" class="db-select">
+                        <option value="${selectedYear}">${selectedYear}</option>
+                        <option value="${selectedYear - 1}">${selectedYear - 1}</option>
+                    </select>
+                    <select id="db-quarter" class="db-select">
+                        <option value="1" ${selectedQuarter === 1 ? 'selected' : ''}>ไตรมาส 1 (ม.ค. - มี.ค.)</option>
+                        <option value="2" ${selectedQuarter === 2 ? 'selected' : ''}>ไตรมาส 2 (เม.ย. - มิ.ย.)</option>
+                        <option value="3" ${selectedQuarter === 3 ? 'selected' : ''}>ไตรมาส 3 (ก.ค. - ก.ย.)</option>
+                        <option value="4" ${selectedQuarter === 4 ? 'selected' : ''}>ไตรมาส 4 (ต.ค. - ธ.ค.)</option>
+                    </select>
+                    <div style="flex:1"></div>
+                    <span style="font-size:0.75rem; color:#94a3b8;">อัปเดตเรียลไทม์จากฐานข้อมูล</span>
+                </div>
+                <div id="db-body"></div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Filter Listeners
+    document.getElementById('db-company').addEventListener('change', (e) => { selectedCompany = e.target.value; renderDashboard(); });
+    document.getElementById('db-year').addEventListener('change', (e) => { selectedYear = parseInt(e.target.value); renderDashboard(); });
+    document.getElementById('db-quarter').addEventListener('change', (e) => { selectedQuarter = parseInt(e.target.value); renderDashboard(); });
+
+    // Initial Render
+    renderDashboard();
 }
