@@ -1553,6 +1553,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 </div>
                 
                 <div class="receipt-table">
+                    ${ranges.map((s, idx) => `
                         <div class="receipt-row">
                             <div style="display:flex;">
                                 <div class="receipt-seq">${idx + 1}.</div>
@@ -1568,6 +1569,19 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                             </div>
                         </div>
                     `).join('')}
+                    
+                    ${showSurcharge ? `
+                        <div class="receipt-row surcharge-row" style="background:#fff9c4; border-top:1px dashed #333;">
+                            <div style="display:flex;">
+                                <div class="receipt-seq">+</div>
+                                <div class="receipt-content">
+                                    <div class="receipt-title" style="font-weight:bold;">ค่า Fuel Surcharge (Active) ⚡</div>
+                                    <div class="receipt-stats">ค่าบริการเหมา ${totalItems} ชิ้น x 3.00 บาท</div>
+                                </div>
+                                <div class="receipt-total" style="font-weight:bold; color:#d63384;">+ ${surchargeValue.toLocaleString()}</div>
+                            </div>
+                        </div>
+                    ` : ''}
                 </div>
 
                 <!-- Grand Total at bottom (v3.8.2) -->
