@@ -1797,8 +1797,15 @@ function saveImportedBatch(isAuto = false) {
     localStorage.setItem('thp_last_batch_type', type);
 
     if (!name) {
-        alert('กรุณาระบุชื่อกลุ่มข้อมูล (Batch Name)');
-        return;
+        if (isAuto) {
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            const dateStr = now.toLocaleDateString('th-TH');
+            document.getElementById('import-batch-name').value = `นำเข้าอัตโนมัติ ${dateStr} [${timeStr}]`;
+        } else {
+            alert('กรุณาระบุชื่อกลุ่มข้อมูล (Batch Name)');
+            return;
+        }
     }
 
     if (!isAuto) {
@@ -2803,15 +2810,7 @@ function checkAuth() {
             const tabImport = document.getElementById('tab-import');
             if (tabImport) tabImport.classList.add('active');
 
-            // Staff Upload UI: Stripped down
-            const uploadIcon = document.getElementById('upload-icon-display');
-            const uploadTitle = document.getElementById('upload-title-display');
-            const uploadDesc = document.getElementById('upload-desc-display');
-            const uploadInput = document.getElementById('import-upload');
-
-            if (uploadIcon) uploadIcon.innerText = "📂";
-            if (uploadTitle) uploadTitle.innerText = "แตะเพื่อเลือกไฟล์ Excel";
-            if (uploadDesc) uploadDesc.innerText = "รองรับเฉพาะไฟล์ .xlsx, .xls (สำหรับส่งข้อมูลสาขา)";
+            // Staff Mode initialization (preserved premium UI)
             if (uploadInput) uploadInput.accept = ".xlsx, .xls";
 
             // Ensure the main button is labeled correctly for data portability (Backup)
