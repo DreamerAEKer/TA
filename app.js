@@ -1557,7 +1557,7 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                 </div>
                 
                 <div class="receipt-table">
-                    ${ranges.map((s, idx) => `
+                    ${sortedStats.map((s, idx) => `
                         <div class="receipt-row">
                             <div style="display:flex;">
                                 <div class="receipt-seq">${idx + 1}.</div>
