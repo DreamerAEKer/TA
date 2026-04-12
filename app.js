@@ -2795,11 +2795,11 @@ function checkAuth() {
             if (uploadDesc) uploadDesc.innerText = "รองรับเฉพาะไฟล์ .xlsx, .xls (สำหรับส่งข้อมูลสาขา)";
             if (uploadInput) uploadInput.accept = ".xlsx, .xls";
 
-            // Rename Save Button for staff clarity
-            const saveBtn = document.querySelector('button[onclick="saveImportedBatch()"]');
+            // Ensure the main button is labeled correctly for data portability (Backup)
+            const saveBtn = document.getElementById('import-save-btn');
             if (saveBtn) {
-                saveBtn.innerHTML = `📤 สรุปและบันทึกข้อมูล (Submit to System)`;
-                saveBtn.style.backgroundColor = '#28a745';
+                saveBtn.innerHTML = `💾 สำรองข้อมูลระบบ (Back Up)`;
+                saveBtn.style.background = 'linear-gradient(135deg, #0d47a1, #1565c0)';
                 saveBtn.style.color = 'white';
             }
             
