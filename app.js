@@ -1956,82 +1956,6 @@ function saveImportedBatch(isAuto = false) {
     })();
 }
 
-function toggleImportHistory() {
-    const sec = document.getElementById('import-history-section');
-    if (sec.classList.contains('hidden')) {
-        sec.classList.remove('hidden');
-        renderImportHistory();
-    } else {
-        sec.classList.add('hidden');
-    }
-}
-
-function renderImportHistory() {
-    const tbody = document.querySelector('#import-history-table tbody');
-    if (!tbody) return;
-
-    // Check Admin Mode
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdmin = urlParams.has('admin');
-
-    tbody.innerHTML = '';
-    const batches = CustomerDB.getBatches();
-    const list = Object.values(batches).sort((a, b) => b.timestamp - a.timestamp);
-
-    if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">ไม่พบประวัติการนำเข้า</td></tr>';
-        return;
-    }
-
-    list.forEach(item => {
-        const dateStr = new Date(item.timestamp).toLocaleString('th-TH');
-        const tr = document.createElement('tr');
-
-        let deleteBtn = '';
-        if (isAdmin) {
-            deleteBtn = `
-                <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem; margin-left:5px;" 
-                    onclick="deleteHistoryItem('${item.id}', '${item.name}')">🗑️ ลบ</button>
-            `;
-        }
-
-        tr.innerHTML = `
-            <td>${dateStr}</td>
-            <td>
-                <strong>${item.name}</strong><br>
-                <small class="text-muted">${item.type || '-'}</small>
-            </td>
-            <td>${item.count.toLocaleString()}</td>
-            <td>
-                <button class="btn btn-primary" style="padding:4px 8px; font-size:0.8rem;" 
-                    onclick="loadBatchToView('${item.id}')">🔎 ดู</button>
-                ${deleteBtn}
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function deleteHistoryItem(batchId, batchName) {
-    const pwd = prompt(`ยืนยันการลบชุดข้อมูล: ${batchName}\n\nกรุณาใส่รหัสผ่านเพื่อดำเนินการลบ:`);
-    
-    if (pwd === null) return; // User cancelled
-    
-    if (pwd !== '0000') {
-        alert('❌ รหัสผ่านไม่ถูกต้อง ไม่สามารถลบข้อมูลได้');
-        return;
-    }
-
-    if (confirm(`คุณกำลังจะลบข้อมูล "${batchName}" ถาวร ยืนยันใช่หรือไม่?`)) {
-        CustomerDB.deleteBatch(batchId);
-        // Refresh this table
-        renderImportHistory();
-        // Also refresh main DB table if it exists (keep in sync)
-        if (typeof updateDbViews === 'function') updateDbViews();
-        else if (typeof renderDBTable === 'function') renderDBTable();
-    }
-}
-
 // --- Snapshot Logic ---
 function toggleSnapshotList() {
     const list = document.getElementById('snapshot-list');
@@ -2071,7 +1995,6 @@ function restoreFromSnapshot(ts) {
         if (CustomerDB.restoreSnapshot(ts)) {
             alert('✅ ย้อนเวลาสำเร็จ (Restored)');
             renderDBTable();
-            renderImportHistory(); // if visible
         } else {
             alert('❌ ไม่พบข้อมูล Snapshot นี้');
         }
