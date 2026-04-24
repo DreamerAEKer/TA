@@ -503,3 +503,15 @@ body.admin-mode #user-mode-header {
     .dashboard-modal { width: 96%; left: 2%; height: 96%; top: 2%; }
     .kpi-value { font-size: 1.5rem; }
 }
+
+/* Animations */
+@keyframes toastFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
