@@ -74,7 +74,7 @@
             <button class="tab-btn" id="btn-tab-customer" onclick="switchTab('customer')">📁 ฐานข้อมูลลูกค้า</button>
             <button class="tab-btn" id="btn-tab-import" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
             <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin')">⚙️ ตั้งค่าระบบ (Settings)</button>
-            <button class="tab-btn" id="btn-tab-stats" onclick="showVolumeStats()">📊 สถิติปริมาณงาน</button>
+            <button class="tab-btn" id="btn-tab-stats" onclick="showPremiumDashboard()">📊 สถิติปริมาณงาน</button>
         </div>
 
         <!-- SECTION 0: Unified Smart Workspace (New) -->
@@ -625,17 +625,19 @@
                 <p class="text-muted">อัปโหลดไฟล์ (.xlsx, .xls) เพื่อวิเคราะห์ช่วงเลขและบันทึกข้อมูลเข้าประวัติอัตโนมัติ</p>
 
                 <div class="btn-group-premium">
-                    <button class="btn-premium" onclick="showPremiumDashboard()" style="border-color: #bbdefb; background: #e3f2fd; color: #0d47a1;">
+                    <button class="btn-premium" onclick="showPremiumDashboard()" style="border-color: #bbdefb; background: #e3f2fd; color: #0d47a1; width: 100%;">
                         <span>📊</span> แดชบอร์ด & วิเคราะห์
                     </button>
-                    <button class="btn-premium staff-only" onclick="exportDataForBoss()" style="border-color: #c8e6c9; background: #e8f5e9; color: #2e7d32;">
-                        <span>📤</span> ส่งข้อมูลให้หัวหน้า (Export)
-                    </button>
-                    <button class="btn-premium admin-only" onclick="importDataFromStaff()" style="border-color: #ffe0b2; background: #fff3e0; color: #e65100;">
+                    <div style="display: flex; gap: 10px; width: 100%; margin-top: 10px;">
+                        <button class="btn-premium staff-only" onclick="exportDataForBoss()" style="border-color: #c8e6c9; background: #e8f5e9; color: #2e7d32; flex: 1; padding: 10px;">
+                            <span>📤</span> ส่งออกข้อมูล
+                        </button>
+                        <button class="btn-premium" onclick="confirmAndBackup()" style="color: #666; flex: 1; padding: 10px;">
+                            <span>💾</span> สำรองไฟล์ DB
+                        </button>
+                    </div>
+                    <button class="btn-premium admin-only" onclick="importDataFromStaff()" style="border-color: #ffe0b2; background: #fff3e0; color: #e65100; width: 100%; margin-top: 10px;">
                         <span>📥</span> รับข้อมูลจากลูกน้อง (Merge)
-                    </button>
-                    <button class="btn-premium" onclick="confirmAndBackup()" style="color: #666;">
-                        <span>💾</span> สำรองไฟล์ DB
                     </button>
                 </div>
 

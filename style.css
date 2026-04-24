@@ -276,40 +276,46 @@ body.admin-mode #user-mode-header {
 #user-mode-header {
     background: linear-gradient(135deg, #da291c, #b92015);
     color: white;
-    padding: 2rem 1rem;
+    padding: 1.2rem 1rem; /* Compact for Balance */
     text-align: center;
-    border-radius: 0 0 30px 30px;
-    margin-bottom: 2.5rem;
-    box-shadow: 0 10px 30px rgba(218, 41, 28, 0.25);
+    border-radius: 0 0 25px 25px;
+    margin-bottom: 1.5rem; /* Reduced for Balance */
+    box-shadow: 0 8px 25px rgba(218, 41, 28, 0.2);
     position: relative;
     overflow: hidden;
 }
 
-#user-mode-header::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    pointer-events: none;
-}
-
 #user-mode-header .logo-main {
-    font-size: 2.2rem;
+    font-size: 1.8rem; /* Compact */
     font-weight: 950;
-    letter-spacing: 4px;
+    letter-spacing: 3px;
     display: block;
     text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 #user-mode-header .title-sub {
-    font-size: 1.1rem;
+    font-size: 0.9rem; /* Compact */
     opacity: 0.9;
     font-weight: 300;
-    margin-top: 5px;
+    margin-top: 2px;
     display: block;
+}
+
+/* Mobile Balance Refinements */
+@media (max-width: 600px) {
+    .card {
+        padding: 15px !important;
+    }
+    #user-mode-header {
+        padding: 1rem 0.5rem;
+    }
+    .upload-area {
+        padding: 20px 10px !important;
+    }
+    .btn-premium {
+        font-size: 0.85rem !important;
+        padding: 10px !important;
+    }
 }
 
 /* Premium Buttons Enhancement */
