@@ -258,45 +258,95 @@ select {
     color: white;
 }
 
-/* --- Role-Based Isolation (Infrastructure) --- */
-body.user-mode .tabs,
-body.user-mode header.navbar,
-body.user-mode .staff-hidden,
-body.user-mode .admin-only {
+/* Role-based Visibility Control */
+body.user-mode .tabs, 
+body.user-mode #main-header,
+body.user-mode .navbar,
+body.user-mode .admin-only,
+body.user-mode .staff-hidden {
     display: none !important;
 }
 
-body.admin-mode .staff-only {
-    display: none !important;
-}
-
-/* Specific Admin/User mode refinements */
+body.admin-mode .staff-only,
 body.admin-mode #user-mode-header {
     display: none !important;
 }
 
-/* Staff Red Header */
+/* User Mode (Staff) Premium Header */
 #user-mode-header {
-    background: var(--primary-color);
+    background: linear-gradient(135deg, #da291c, #b92015);
     color: white;
-    padding: 1.5rem 1rem;
+    padding: 2rem 1rem;
     text-align: center;
-    border-radius: 0 0 24px 24px;
-    margin-bottom: 2rem;
-    box-shadow: 0 10px 30px rgba(218, 41, 28, 0.3);
+    border-radius: 0 0 30px 30px;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 10px 30px rgba(218, 41, 28, 0.25);
+    position: relative;
+    overflow: hidden;
+}
+
+#user-mode-header::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    pointer-events: none;
 }
 
 #user-mode-header .logo-main {
-    font-size: 2rem;
-    font-weight: 900;
-    letter-spacing: 3px;
+    font-size: 2.2rem;
+    font-weight: 950;
+    letter-spacing: 4px;
     display: block;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 #user-mode-header .title-sub {
-    font-size: 1rem;
-    opacity: 0.95;
+    font-size: 1.1rem;
+    opacity: 0.9;
     font-weight: 300;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Premium Buttons Enhancement */
+.btn-group-premium {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.btn-premium {
+    flex: 1;
+    min-width: 160px;
+    padding: 14px 22px;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #475569;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-premium:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15);
+    border-color: #cbd5e1;
+}
+
+.btn-premium span {
+    font-size: 1.4rem;
 }
 
 /* Tab Display Logic */

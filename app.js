@@ -1411,6 +1411,7 @@ rawRanges.push({
 
 function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     const preview = document.getElementById('import-preview');
+    if (preview) preview.classList.remove('hidden');
     const summary = document.getElementById('import-summary');
     const details = document.getElementById('import-details');
     
@@ -1819,6 +1820,12 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
         </div>
     `;
     details.innerHTML = html;
+    
+    // v4.4.0: Reveal preview section
+    if (preview) {
+        preview.classList.remove('hidden');
+        preview.style.display = 'block'; 
+    }
 
     // Auto-fill batch name suggestion
     const today = new Date().toLocaleDateString('th-TH');
@@ -1911,10 +1918,13 @@ function saveImportedBatch(isAuto = false) {
 
             if (isUserMode) {
                 // For Subordinates: STAY HERE, don't hide, don't switch.
-                console.info("[v2.0-stable] Subordinate mode: Saved batch, keeping results visible.");
-                // We do NOT clear previewSec or currentImportedBatches immediately
-                // However, we might want to update the UI to show "Saved" status
-                window.showToast(`บันทึกเรียบร้อย! ข้อมูลถูกเก็บไว้ในประวัติแล้ว`);
+                console.info("[v4.4.0] Staff mode: Keeping preview visible.");
+                const previewSec = document.getElementById('import-preview');
+                if (previewSec) {
+                    previewSec.classList.remove('hidden');
+                    previewSec.style.display = 'block';
+                }
+                window.showToast(`บันทึกเรียบร้อย! ข้อมูลถูกเก็บไว้ในประวัติแล้ว`, 'success');
             } else {
                 // Admin Flow: Reset and Switch
                 const uploadBtn = document.getElementById('excel-upload');
