@@ -417,20 +417,6 @@ async function saveCustomerData() {
         
         currentDbView = 'recent'; 
         if (typeof updateDbViews === 'function') await updateDbViews();
-        
-        // v1.94: Auto-show in search results (Instant Feedback)
-        if (typeof renderUnifiedNumbers === 'function' && numbers.length > 0) {
-            const searchItems = numbers.map(num => ({
-                number: num,
-                isCenter: true,
-                offset: 0
-            }));
-            const title = numbers.length > 1 
-                ? `ผลการบันทึก: ${name} (${numbers.length} รายการ)`
-                : `ผลการบันทึก: ${numbers[0]}`;
-                
-            await renderUnifiedNumbers(title, searchItems, false);
-        }
     } catch (err) {
         console.error("saveCustomerData Error:", err);
         alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + err.message);

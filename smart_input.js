@@ -322,20 +322,6 @@ async function addSmartEntryAndSave() {
         
         // Refresh tables (Now Async)
         if(typeof updateDbViews === 'function') await updateDbViews();
-        
-        // v1.94: Auto-show in search results (Instant Feedback)
-        if (typeof renderUnifiedNumbers === 'function' && itemsToAdd.length > 0) {
-            const searchItems = itemsToAdd.map(num => ({
-                number: num,
-                isCenter: true,
-                offset: 0
-            }));
-            const title = itemsToAdd.length > 1 
-                ? `ผลการบันทึก: ${name} (${itemsToAdd.length} รายการ)`
-                : `ผลการบันทึก: ${itemsToAdd[0]}`;
-            
-            await renderUnifiedNumbers(title, searchItems, false);
-        }
     } catch (err) {
         console.error("addSmartEntryAndSave Error:", err);
         alert("เกิดข้อผิดพลาดในการบันทึก: " + err.message);

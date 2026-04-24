@@ -71,9 +71,9 @@
         <div class="tabs" id="main-tabs">
             <button class="tab-btn active" id="btn-tab-smart" onclick="switchTab('smart')">🔥 การค้นหาหลัก (Main Search)</button>
             <!-- Unified Smart Workspace contains Check, Range, and Gap tools -->
-            <button class="tab-btn" id="btn-tab-customer" onclick="switchTab('customer')">ฐานข้อมูลลูกค้า (Customer DB)</button>
+            <button class="tab-btn" id="btn-tab-customer" onclick="switchTab('customer')">📁 ฐานข้อมูลลูกค้า</button>
             <button class="tab-btn" id="btn-tab-import" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
-            <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin')">🔐 โหมดพิเศษ (Admin Tools)</button>
+            <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin')">⚙️ ตั้งค่าระบบ (Settings)</button>
             <button class="tab-btn" id="btn-tab-stats" onclick="showVolumeStats()">📊 สถิติปริมาณงาน</button>
         </div>
 
@@ -280,6 +280,40 @@
                                 <button class="btn btn-primary" onclick="exportExceptionImage()" style="background:linear-gradient(135deg,#e65100,#ef6c00); border:none; color:white; font-size:1.1rem; padding:12px 30px; border-radius:30px; width:100%; max-width:400px; box-shadow:0 10px 20px rgba(230,81,0,0.2); cursor:pointer;">
                                     📸 สร้างรูปภาพแจ้งหัวหน้า (Create Image)
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tool 5: Advanced Analytics (Merged from Admin Tools) -->
+                    <div class="workspace-card admin-only">
+                        <div class="workspace-header" style="background: linear-gradient(135deg, #fff3e0, #ffe0b2);">
+                            <i class="icon">🚀</i>
+                            <h3 class="workspace-title" style="color: #e65100;">เครื่องมือวิเคราะห์ขั้นสูง (Advanced Tools)</h3>
+                        </div>
+                        
+                        <div style="padding: 15px;">
+                            <!-- Sub-Tool: Receipt OCR -->
+                            <div style="margin-bottom: 25px; border-bottom: 1px solid #ffe0b2; padding-bottom: 15px;">
+                                <h4 style="color:#e65100; margin-top:0;">1. ดึงข้อมูลจากใบเสร็จ (Receipt OCR & Gaps)</h4>
+                                <div class="upload-area" onclick="document.getElementById('admin-ocr-upload-smart').click()" style="background:#fffaf0; border-color:#ffe0b2;">
+                                    <span class="upload-icon">📄</span>
+                                    <p>คลิกเพื่อเลือกภาพใบเสร็จ (Receipt Image)</p>
+                                    <input type="file" id="admin-ocr-upload-smart" accept="image/*" multiple style="display:none" onchange="if(typeof adminHandleImageOcr === 'function') adminHandleImageOcr(this.files);">
+                                </div>
+                                <div id="admin-ocr-status" style="margin-top:10px; font-weight:bold; color:#e65100;"></div>
+                            </div>
+
+                            <!-- Sub-Tool: Cross Reference -->
+                            <div>
+                                <h4 style="color:#e65100; margin-top:0;">2. ตรวจสอบสังกัดบริษัท (Cross-Reference)</h4>
+                                <textarea id="admin-crossref-input" rows="4" placeholder="วางเลขพัสดุเพื่อเช็คบริษัท..." style="margin-bottom:10px;"></textarea>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button class="btn btn-primary" onclick="if(typeof adminCrossReference === 'function') adminCrossReference();" style="background:#e65100; border:none;">🔍 ค้นหาสังกัด</button>
+                                    <button class="btn btn-neutral" onclick="document.getElementById('admin-crossref-file-smart').click()">📸 สแกนรูป</button>
+                                    <input type="file" id="admin-crossref-file-smart" accept="image/*" style="display:none" onchange="if(typeof adminCrossRefImage === 'function') adminCrossRefImage(this.files);">
+                                    <button class="btn btn-success" onclick="if(typeof copyCrossRefAll === 'function') copyCrossRefAll();" style="background:#2e7d32;">📋 คัดลอกเลข</button>
+                                </div>
+                                <div id="admin-crossref-status" style="margin-top:10px; font-weight:bold; color:#0d47a1;"></div>
+                                <div id="admin-crossref-result" class="hidden" style="margin-top:10px; overflow-x:auto;"></div>
                             </div>
                         </div>
                     </div>
@@ -594,6 +628,12 @@
                     <button class="btn-premium" onclick="showPremiumDashboard()" style="border-color: #bbdefb; background: #e3f2fd; color: #0d47a1;">
                         <span>📊</span> แดชบอร์ด & วิเคราะห์
                     </button>
+                    <button class="btn-premium staff-only" onclick="exportDataForBoss()" style="border-color: #c8e6c9; background: #e8f5e9; color: #2e7d32;">
+                        <span>📤</span> ส่งข้อมูลให้หัวหน้า (Export)
+                    </button>
+                    <button class="btn-premium admin-only" onclick="importDataFromStaff()" style="border-color: #ffe0b2; background: #fff3e0; color: #e65100;">
+                        <span>📥</span> รับข้อมูลจากลูกน้อง (Merge)
+                    </button>
                     <button class="btn-premium" onclick="confirmAndBackup()" style="color: #666;">
                         <span>💾</span> สำรองไฟล์ DB
                     </button>
@@ -654,62 +694,35 @@
             </div>
         </section>
 
-        <!-- SECTION 6: Admin Tools -->
+        <!-- SECTION 6: System Settings (Renamed from Admin Tools) -->
         <section id="tab-admin" class="tab-content admin-only">
             <div class="card">
-                <h2>โหมดผู้ดูแลระบบ (Admin Tools)</h2>
-                <p class="text-muted">เครื่องมือพิเศษสำหรับตรวจสอบและประมวลผลข้อมูลขั้นสูง</p>
+                <h2>⚙️ ตั้งค่าระบบ (System Settings)</h2>
+                <p class="text-muted">จัดการฐานข้อมูลและการตั้งค่าทั่วไปของแอปพลิเคชัน</p>
 
-                <!-- Tool 1: Check Digit -->
-                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
-                    <h3 style="color:var(--primary-color);">1. ระบบเช็คเลข & สถานะ (Track & Check Digit)</h3>
-                    <div style="display: flex; gap: 10px; align-items: center; max-width: 600px;">
-                        <input type="text" id="admin-track-input" placeholder="กรอกเลขพัสดุ... เช่น EQ123456785TH" style="flex:1; text-transform:uppercase;" oninput="if(typeof adminHandleTrackInput === 'function') adminHandleTrackInput(this);">
-                        <button class="btn btn-primary" onclick="const num = document.getElementById('admin-track-input').value.trim(); if(num) window.open('https://track.thailandpost.co.th/?trackNumber=' + num + '&lang=th', '_blank');">🔍 เช็คสถานะ</button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <!-- DB Management -->
+                    <div style="padding: 15px; border: 1px solid #eee; border-radius: 8px;">
+                        <h3 style="margin-top:0;">📦 การจัดการฐานข้อมูล</h3>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <button class="btn btn-neutral" onclick="backupDB()" style="width:100%;">Backup Database (JSON)</button>
+                            <button class="btn btn-neutral" onclick="restoreDB()" style="width:100%;">Restore Database (JSON)</button>
+                            <button class="btn btn-danger" onclick="clearAllData()" style="width:100%; margin-top:10px;">ล้างข้อมูลทั้งหมดในเครื่อง</button>
+                        </div>
+                    </div>
+
+                    <!-- Application Settings -->
+                    <div style="padding: 15px; border: 1px solid #eee; border-radius: 8px;">
+                        <h3 style="margin-top:0;">🔧 ตั้งค่าแอปพลิเคชัน</h3>
+                        <div class="form-group">
+                            <label>เวอร์ชันโปรแกรม:</label>
+                            <div style="font-family: monospace; background: #f5f5f5; padding: 5px 10px; border-radius: 4px;">v4.4.0-PRO</div>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <button class="btn btn-primary" onclick="window.open('https://track.thailandpost.co.th/', '_blank')" style="width:100%;">🌐 เว็บไซต์ไปรษณีย์ไทย</button>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Tool 2: Image OCR Receipt -->
-                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
-                    <h3 style="color:var(--primary-color);">2. ดึงข้อมูลจากใบเสร็จ (Receipt OCR & Missing Check)</h3>
-                    <p style="font-size:0.9rem; color:#666;">ประมวลผลรูปใบเสร็จที่มีเลขพัสดุและราคา ระบบจะไล่อ่านข้อมูล ถอดรหัสราคา และหาช่วงเลขที่ขาดหายให้อัตโนมัติ</p>
-                    
-                    <div style="margin-bottom:10px;">
-                        <label style="font-size:0.85rem; display:flex; gap:5px; align-items:center; cursor:pointer;">
-                            <input type="checkbox" id="admin-ocr-eng-only" checked>
-                            📝 โหมดอ่านตาราง/ตัวเลข <small>(แนะนำสำหรับใบสรุปที่มีตัวเลขเป็นหลัก)</small>
-                        </label>
-                    </div>
-
-                    <div class="upload-area" onclick="document.getElementById('admin-ocr-upload').click()">
-                        <span class="upload-icon">📄</span>
-                        <p>คลิกเพื่อเลือกภาพใบเสร็จ (Receipt Image)</p>
-                        <input type="file" id="admin-ocr-upload" accept="image/*" multiple style="display:none" onchange="if(typeof adminHandleImageOcr === 'function') adminHandleImageOcr(this.files);">
-                    </div>
-                    <div id="admin-ocr-status" style="margin-top:10px; font-weight:bold; color:#0056b3;"></div>
-                    <div id="admin-ocr-result" class="hidden" style="margin-top:10px; padding:15px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px; font-family:monospace; max-height:400px; overflow-y:auto; white-space:pre-wrap;"></div>
-                </div>
-
-                <!-- Tool 3: Cross Reference DB -->
-                <div style="margin-bottom: 10px;">
-                    <h3 style="color:var(--primary-color);">3. ระบบตรวจสอบสังกัดบริษัท (Cross-Reference DB)</h3>
-                    <p style="font-size:0.9rem; color:#666;">วางข้อมูลชุดเลขพัสดุ (หรือรูปภาพ) แล้วกดตรวจสอบ เพื่อค้นหาว่าเลขแต่ละตัวเป็นของบริษัทไหนในระบบออฟไลน์</p>
-                    
-                    <textarea id="admin-crossref-input" rows="6" placeholder="วางเลขพัสดุที่นี่... (หนึ่งรายการต่อบรรทัด หรือวางรวมๆ กันมาก็ได้เดี๋ยว AI แยกให้)" style="margin-bottom:10px;"></textarea>
-                    
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <button class="btn btn-primary" onclick="if(typeof adminCrossReference === 'function') adminCrossReference();">ค้นหาสังกัดบริษัท</button>
-                        <input type="file" id="admin-crossref-file" accept="image/*" style="display:none" onchange="if(typeof adminCrossRefImage === 'function') adminCrossRefImage(this.files);">
-                        <button class="btn btn-neutral" onclick="document.getElementById('admin-crossref-file').click()">📸 อัปโหลดรูปเพื่อสแกนเลข</button>
-                        <button class="btn btn-success" onclick="if(typeof copyCrossRefAll === 'function') copyCrossRefAll();" style="background-color: #28a745; border-color: #28a745; color: white;">📋 คัดลอกเลขทั้งหมด</button>
-                    </div>
-
-                    <div id="admin-crossref-status" style="font-weight:bold; color:#0056b3;"></div>
-                    <div id="admin-crossref-result" class="hidden" style="margin-top:10px; overflow-x:auto;">
-                        <!-- Results Table -->
-                    </div>
-                </div>
-
             </div>
         </section>
     </main>
