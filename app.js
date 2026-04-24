@@ -1905,15 +1905,12 @@ function saveImportedBatch(isAuto = false) {
             const newBatchId = typeof result === 'object' ? result.id : null;
 
             if (result && result.error === 'DUPLICATE') {
-                window.showToast(`ข้อมูลชุดนี้มีอยู่แล้วในระบบ (Batch: ${result.id})`, 'info');
+                window.showToast(`⚠️ ข้อมูลชุดนี้มีอยู่แล้วในระบบ (ไม่ต้องบันทึกซ้ำ)`, 'info');
             } else {
-                window.showToast(`บันทึกเรียบร้อย! เพิ่ม ${addedCount} รายการ`);
-                
-                // v4.3.0: Legacy stats are no longer needed as Dashboard pulls from Batches directly.
-                console.info("[v4.3.0] Transaction recorded to core database.");
+                window.showToast(`✅ บันทึกเรียบร้อย! เพิ่ม ${addedCount} รายการ`, 'success');
             }
 
-            // v2.0-stable: Handle Navigation based on role
+            // v4.4.0: Handle Navigation based on role
             const isUserMode = document.body.classList.contains('user-mode');
 
             if (isUserMode) {
@@ -1924,7 +1921,6 @@ function saveImportedBatch(isAuto = false) {
                     previewSec.classList.remove('hidden');
                     previewSec.style.display = 'block';
                 }
-                window.showToast(`บันทึกเรียบร้อย! ข้อมูลถูกเก็บไว้ในประวัติแล้ว`, 'success');
             } else {
                 // Admin Flow: Reset and Switch
                 const uploadBtn = document.getElementById('excel-upload');
