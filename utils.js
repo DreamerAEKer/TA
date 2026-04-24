@@ -691,24 +691,29 @@ window.Block1Manager = Block1Manager;
 
 // Simple Toast Notification System
 window.showToast = function(message, type = 'success') {
+    // Check for existing toasts to calculate offset (stacking)
+    const existingToasts = document.querySelectorAll('.toast-notification');
+    const offset = existingToasts.length * 60; 
+
     const toast = document.createElement('div');
     toast.className = `toast-notification toast-${type}`;
     toast.style.cssText = `
         position: fixed;
-        bottom: 30px;
+        bottom: ${30 + offset}px;
         left: 50%;
         transform: translateX(-50%);
         padding: 12px 24px;
         background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#f39c12'};
         color: white;
         border-radius: 50px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
         z-index: 10000;
         font-weight: bold;
         display: flex;
         align-items: center;
         gap: 10px;
-        animation: toastFadeIn 0.3s ease;
+        animation: toastFadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transition: all 0.4s ease;
     `;
     
     const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️';
@@ -719,9 +724,8 @@ window.showToast = function(message, type = 'success') {
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateX(-50%) translateY(20px)';
-        toast.style.transition = 'all 0.5s ease';
         setTimeout(() => toast.remove(), 500);
-    }, 3000);
+    }, 4000); // Increased to 4s for better readability when stacked
 };
 
 // Button Loading State Helper
