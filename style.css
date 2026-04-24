@@ -258,10 +258,20 @@ select {
     color: white;
 }
 
-/* --- Role-Based Isolation (THE CORE FIX) --- */
+/* --- Role-Based Isolation (Infrastructure) --- */
 body.user-mode .tabs,
 body.user-mode header.navbar,
-body.user-mode .staff-hidden {
+body.user-mode .staff-hidden,
+body.user-mode .admin-only {
+    display: none !important;
+}
+
+body.admin-mode .staff-only {
+    display: none !important;
+}
+
+/* Specific Admin/User mode refinements */
+body.admin-mode #user-mode-header {
     display: none !important;
 }
 

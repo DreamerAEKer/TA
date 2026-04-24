@@ -2,6 +2,12 @@
  * Tracking Analysis Tool - App Logic
  */
 
+// Global App State & Mode Detection
+const AppMode = {
+    isAdmin: new URLSearchParams(window.location.search).has('admin'),
+    get isUser() { return !this.isAdmin; }
+};
+
 // Tab Switching
 function switchTab(tabId) {
     // Hide all contents
@@ -38,11 +44,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     checkAuth();
     
-    // Auto-init Exception Report if visible
-    if (document.getElementById('exception-table-container')) {
+    // Auto-init Exception Report if visible (Admin Only)
+    if (AppMode.isAdmin && document.getElementById('exception-table-container')) {
         console.log("DOMContentLoaded: Initializing Exception Report Features...");
-        loadExceptionMeta(); 
-        await renderExceptionTable();
+        if (typeof loadExceptionMeta === 'function') loadExceptionMeta(); 
+        if (typeof renderExceptionTable === 'function') renderExceptionTable();
     }
 
     // --- Old tools consolidated into Smart Workspace ---
@@ -1057,10 +1063,7 @@ function handleFileUpload(event) {
     if (!files || files.length === 0) return;
 
     // --- Role-Based Limit Check ---
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdmin = urlParams.has('admin');
-
-    if (!isAdmin) {
+    if (AppMode.isUser) {
         // Normal User Limit: 2 Files Max (Cumulative)
         if ((importedFileCount + files.length) > 2) {
             alert(`⚠️ จำกัดการอัปโหลดสูงสุด 2 ไฟล์สำหรับบัญชีทั่วไป\n(คุณอัปโหลดไปแล้ว ${importedFileCount} ไฟล์, พยายามเพิ่มอีก ${files.length} ไฟล์)\n\nกรุณาล้างข้อมูลเก่าก่อนหากต้องการเริ่มใหม่`);
@@ -1151,8 +1154,7 @@ function handleExcelImport(file) {
 // Updated to handle Multiple Images
 async function handleImageImport(files) {
     // Check if Admin
-    const urlParams = new URLSearchParams(window.location.search);
-    if (!urlParams.has('admin')) {
+    if (AppMode.isUser) {
         alert('ฟีเจอร์ "นำเข้ารูปภาพ" สงวนสิทธิ์สำหรับ Admin เท่านั้น\n(พนักงานทั่วไปกรุณาใช้ไฟล์ Excel)');
         // Clear input safely
         const input = document.getElementById('import-upload');
@@ -2699,9 +2701,8 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 
 function checkAuth() {
     try {
-        console.log('Running checkAuth (Strict Mode)...');
-        const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.has('admin');
+        console.log(`Running checkAuth (Mode: ${AppMode.isAdmin ? 'Admin' : 'Staff'})...`);
+        const isAdmin = AppMode.isAdmin;
 
         const header = document.getElementById('main-header');
         const tabNav = document.getElementById('main-tabs');
@@ -2785,12 +2786,14 @@ function checkAuth() {
 // ==========================================
 
 function adminHandleTrackInput(el) {
+    if (AppMode.isUser) return;
     el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 13);
 }
 
 // v1.73: Removed duplicate definition of adminOpenThpTrack
 
 async function adminHandleImageOcr(files) {
+    if (AppMode.isUser) return;
     if (!files || files.length === 0) return;
     const statusEl = document.getElementById('admin-ocr-status');
     const resultBox = document.getElementById('admin-ocr-result');
@@ -2872,6 +2875,7 @@ async function adminHandleImageOcr(files) {
 }
 
 function adminCrossReference() {
+    if (AppMode.isUser) return;
     const inputStr = document.getElementById('admin-crossref-input').value.trim();
     if (!inputStr) {
         alert('กรุณาวางเลขพัสดุ');
@@ -2889,6 +2893,7 @@ function adminCrossReference() {
 }
 
 async function adminCrossRefImage(files) {
+    if (AppMode.isUser) return;
     if (!files || files.length === 0) return;
     const statusEl = document.getElementById('admin-crossref-status');
     statusEl.innerText = `Scanning Image for Cross Reference...`;
