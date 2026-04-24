@@ -2813,8 +2813,15 @@ async function adminHandleImageOcr(files) {
     let combinedText = "";
     try {
         for (let i = 0; i < files.length; i++) {
-            statusEl.innerText = `OCR Scanning Image ${i + 1}/${files.length}...`;
-            const worker = await Tesseract.createWorker(lang);
+            const worker = await Tesseract.createWorker(lang, 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        statusEl.innerText = `🔍 กำลังอ่านรูปที่ ${i + 1}/${files.length}: ${Math.round(m.progress * 100)}%`;
+                    } else {
+                        statusEl.innerText = `⏳ กำลังโหลดข้อมูลระบบ: ${Math.round(m.progress * 100)}%`;
+                    }
+                }
+            });
             const { data: { text } } = await worker.recognize(files[i]);
             await worker.terminate();
             combinedText += "\n" + text;
