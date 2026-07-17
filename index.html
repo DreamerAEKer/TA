@@ -23,49 +23,90 @@
         <div class="tab-container" style="display: flex; gap: 10px; margin-bottom: 0; padding-top: 20px;">
             <button class="tab-btn active" onclick="switchTab('import')" style="padding: 10px 20px; border:none; background:none; font-size:1.1rem; cursor:pointer; border-bottom: 3px solid #2196f3; color: #2196f3; font-weight: bold;" id="btn-import"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล</button>
             <button class="tab-btn" onclick="switchTab('check')" style="padding: 10px 20px; border:none; background:none; font-size:1.1rem; cursor:pointer; color: #666; font-weight: bold;" id="btn-check"><i class="fas fa-search"></i> ค้นหาพัสดุ</button>
+            <button class="tab-btn" onclick="switchTab('history')" style="padding: 10px 20px; border:none; background:none; font-size:1.1rem; cursor:pointer; color: #666; font-weight: bold;" id="btn-history"><i class="fas fa-history"></i> ประวัติวันนี้</button>
         </div>
     </div>
 
     <main class="container" style="margin-top: 20px;">
         <section id="tab-import" class="tab-content active">
-            <div class="card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 12px;">
+            <div class="card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 12px; margin-bottom: 20px;">
                 <h2 style="color: #1e3c72; font-size: 1.5rem; margin-bottom: 20px;"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล (Import Excel)</h2>
                 
-                <div class="upload-area" id="drop-zone" onclick="document.getElementById('import-file').click()">
-                    <div class="upload-icon-display">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                    </div>
-                    <h3 style="margin-top: 15px;">แตะเพื่ออัปโหลดไฟล์ Excel</h3>
-                    <p class="text-muted" style="font-size: 0.9rem;">ไฟล์จะถูกส่งไปเก็บบน Firebase ทันที</p>
-                    <input type="file" id="import-file" accept=".xlsx, .xls" class="hidden">
-                    <p id="upload-status" style="margin-top:10px; color:var(--primary-color); font-weight: 600;"></p>
-                </div>
-
-                <div id="import-preview" class="hidden mt-4">
-                    <h3>กรอกข้อมูลประกอบการนำเข้า</h3>
-                    <div class="mt-4">
-                        <div class="form-group">
-                            <label>ชื่อลูกค้า / กลุ่มข้อมูล (Batch Name)</label>
-                            <input type="text" id="import-batch-name" placeholder="เช่น รายการส่งวันที่ 23/01/2026">
+                <div id="import-config" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color:#333;">ชื่อลูกค้า / กลุ่มข้อมูล (Batch Name)</label>
+                            <input type="text" id="import-batch-name" placeholder="เช่น รายการส่งวันที่ 23/01/2026" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
                         </div>
-                        <div class="form-group">
-                            <label>ประเภท (Type)</label>
-                            <select id="import-batch-type" style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:4px;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color:#333;">ประเภท (Type)</label>
+                            <select id="import-batch-type" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;" onchange="togglePackageSelector()">
                                 <option value="Cash" selected>เงินสด (Cash)</option>
-                                <option value="Credit">เชื่อ (Credit)</option>
-                                <option value="CustomerA">ลูกค้า A</option>
-                                <option value="Agency">หน่วยงาน</option>
+                                <option value="CustomerA">ลูกค้า A (Package)</option>
                             </select>
                         </div>
-                        <div style="display:flex; gap:10px; margin-top:15px;">
-                            <button id="import-save-btn" class="btn btn-primary" onclick="uploadToFirebase()" style="background: linear-gradient(135deg, #0288d1, #0277bd); border:none; color: white;">
-                                <i class="fas fa-cloud-upload-alt"></i> ยืนยันการอัปโหลด (Upload to Cloud)
-                            </button>
-                            <button class="btn btn-danger" onclick="clearImportData()" style="background:#ff4444;">
-                                <i class="fas fa-times"></i> ยกเลิก (Cancel)
-                            </button>
+                        <div style="flex: 1; min-width: 150px; display: none;" id="import-package-selector">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color:#333;">แพ็กเกจ (Package)</label>
+                            <select id="import-package-rate" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                                <option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option>
+                                <option value="A4">A4</option><option value="A5">A5</option><option value="A6" selected>A6</option>
+                                <option value="A7">A7</option><option value="A8">A8</option><option value="A9">A9</option>
+                                <option value="A10">A10</option><option value="A11">A11</option><option value="A12">A12</option>
+                            </select>
                         </div>
                     </div>
+                </div>
+
+                <div class="upload-area" id="drop-zone" onclick="document.getElementById('import-file').click()" style="border: 2px dashed #90caf9; background: #f3f8ff; padding: 30px; text-align: center; border-radius: 12px; cursor: pointer; transition: 0.3s;">
+                    <div class="upload-icon-display" style="font-size: 3rem; color: #42a5f5; margin-bottom: 10px;">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h3 style="margin-top: 5px; color: #1565c0;">แตะเพื่ออัปโหลดไฟล์ Excel</h3>
+                    <p class="text-muted" style="font-size: 0.9rem;">ระบบจะวิเคราะห์ข้อมูลและอัปโหลดขึ้น Cloud อัตโนมัติ</p>
+                    <input type="file" id="import-file" accept=".xlsx, .xls" class="hidden">
+                    <p id="upload-status" style="margin-top:10px; color:#d32f2f; font-weight: 600;"></p>
+                </div>
+            </div>
+
+            <div id="import-preview" class="hidden">
+                <div class="card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 12px;">
+                    <h3 style="color: #0d47a1; border-bottom: 2px solid #e3f2fd; padding-bottom: 8px; margin-bottom: 20px;"><i class="fas fa-table"></i> ผลการวิเคราะห์ (Analysis Result)</h3>
+                    
+                    <div id="analysis-summary" style="margin-bottom: 20px;">
+                        <!-- Summary boxes will be injected here -->
+                    </div>
+
+                    <div style="overflow-x: auto; max-height: 400px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;" id="analysis-table">
+                            <thead style="position: sticky; top: 0; background: #01579b; color: white; z-index: 10;">
+                                <tr>
+                                    <th style="padding: 10px; text-align: center; border: 1px solid #004ba0;">ลำดับ</th>
+                                    <th style="padding: 10px; text-align: left; border: 1px solid #004ba0;">หมายเลขพัสดุ</th>
+                                    <th style="padding: 10px; text-align: center; border: 1px solid #004ba0;">น้ำหนัก (g)</th>
+                                    <th style="padding: 10px; text-align: center; border: 1px solid #004ba0;">ราคาไฟล์ (฿)</th>
+                                    <th style="padding: 10px; text-align: center; border: 1px solid #004ba0;">ราคาคำนวณ (฿)</th>
+                                    <th style="padding: 10px; text-align: center; border: 1px solid #004ba0;">สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analysis-tbody">
+                                <!-- Rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <button class="btn btn-danger" onclick="clearImportData()" style="width: 100%; padding: 12px; font-size: 1.1rem; background:#ff4444; border:none; color:white;">
+                        <i class="fas fa-times"></i> ปิดหน้านี้ / ล้างข้อมูล
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- HISTORY TAB (STAFF) -->
+        <section id="tab-history" class="tab-content">
+            <div class="card">
+                <h2 style="color: #1e3c72; font-size: 1.5rem; margin-bottom: 20px;"><i class="fas fa-history"></i> ประวัติการอัปโหลดวันนี้</h2>
+                <div id="staff-history-list" style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- History cards injected here -->
                 </div>
             </div>
         </section>

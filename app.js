@@ -1,77 +1,233 @@
 let currentFile = null;
 let currentTotalItems = 0;
 let currentTrackingNumbers = [];
+let currentAnalyzedData = [];
+let batchesCache = [];
 
-document.getElementById("import-file").addEventListener("change", function(e) {
+function togglePackageSelector() {
+    const type = document.getElementById('import-batch-type').value;
+    const selector = document.getElementById('import-package-selector');
+    if (type === 'CustomerA') {
+        selector.style.display = 'block';
+    } else {
+        selector.style.display = 'none';
+    }
+}
+
+function calculatePrice(packageType, weightGrams) {
+    if (!weightGrams || weightGrams <= 0) return 0;
+    
+    const match = packageType.match(/^A(\d+)$/i);
+    if (!match) return 0;
+    const pkgNum = parseInt(match[1]);
+    
+    const bases = {
+        1:17, 2:18, 3:19, 4:20, 5:21, 6:22,
+        7:23, 8:24, 9:25, 10:26, 11:28, 12:30
+    };
+    
+    const basePrice = bases[pkgNum];
+    if (!basePrice) return 0;
+    
+    const kg = Math.ceil(weightGrams / 1000);
+    if (kg <= 1) return basePrice;
+    if (kg <= 10) return basePrice + ((kg - 1) * 10);
+    if (kg <= 20) return basePrice + (9 * 10) + ((kg - 10) * 5);
+    return basePrice + (9 * 10) + (10 * 5) + ((kg - 20) * 15);
+}
+
+document.getElementById('import-file').addEventListener('change', async function(e) {
     const file = e.target.files[0];
     if (!file) return;
 
     currentFile = file;
-    document.getElementById("upload-status").innerText = `กำลังตรวจสอบไฟล์ ${file.name}...`;
+    document.getElementById('upload-status').innerText = `กำลังวิเคราะห์ไฟล์ ${file.name}...`;
     
+    const batchNameInput = document.getElementById('import-batch-name');
+    if (!batchNameInput.value) {
+        const today = new Date();
+        batchNameInput.value = `รายการส่งวันที่ ${today.getDate()}/${today.getMonth()+1}/${today.getFullYear() + 543}`;
+    }
+
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
             const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: "array"});
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
+            const workbook = XLSX.read(data, {type: 'array'});
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
             
-            currentTrackingNumbers = [];
-            const trackRegex = /[A-Z]{2}\d{9}[A-Z]{2}/ig;
-            
-            for(let i=0; i<rows.length; i++) {
-                if(!rows[i]) continue;
-                for(let j=0; j<rows[i].length; j++) {
-                    const cell = rows[i][j];
-                    if (cell && typeof cell === "string") {
-                        const matches = cell.match(trackRegex);
-                        if (matches) {
-                            matches.forEach(m => currentTrackingNumbers.push(m.toUpperCase()));
-                        }
-                    }
-                }
-            }
-            
-            // Remove duplicates just in case
-            currentTrackingNumbers = [...new Set(currentTrackingNumbers)];
-            
-            currentTotalItems = currentTrackingNumbers.length;
-            document.getElementById("upload-status").innerText = `ไฟล์ ${file.name} เตรียมพร้อม (พบ ${currentTotalItems} รายการ)`;
-            document.getElementById("import-preview").classList.remove("hidden");
+            analyzeImportData(rows, file);
         } catch(err) {
-            alert("ไม่สามารถอ่านไฟล์ Excel ได้: " + err.message);
+            alert('ไม่สามารถอ่านไฟล์ Excel ได้: ' + err.message);
             clearImportData();
         }
     };
     reader.readAsArrayBuffer(file);
 });
 
-async function uploadToFirebase() {
-    if (!currentFile) {
-        alert("กรุณาเลือกไฟล์ Excel ก่อน");
-        return;
+async function checkDuplicateInFirebase(trackingNumbers) {
+    if (!window.db || trackingNumbers.length === 0) return false;
+    try {
+        const snapshot = await window.db.collection('batches')
+            .where('trackingNumbers', 'array-contains', trackingNumbers[0])
+            .limit(1).get();
+        return !snapshot.empty;
+    } catch(e) {
+        return false;
+    }
+}
+
+async function analyzeImportData(rows, file) {
+    currentTrackingNumbers = [];
+    currentAnalyzedData = [];
+    const trackRegex = /[A-Z]{2}\d{9}[A-Z]{2}/i;
+    
+    const batchType = document.getElementById('import-batch-type').value;
+    const packageRate = document.getElementById('import-package-rate').value;
+    
+    let totalCalculatedPrice = 0;
+    let errors = 0;
+
+    for(let i=0; i<rows.length; i++) {
+        if(!rows[i]) continue;
+        let trackNum = null;
+        let weight = 0;
+        let filePrice = 0;
+        
+        for(let j=0; j<rows[i].length; j++) {
+            const cell = rows[i][j];
+            if (cell && typeof cell === 'string') {
+                const match = cell.match(trackRegex);
+                if (match && !trackNum) {
+                    trackNum = match[0].toUpperCase();
+                }
+            }
+            if (typeof cell === 'number' || (typeof cell === 'string' && !isNaN(parseFloat(cell)))) {
+                const num = parseFloat(cell);
+                if (num > 100 && num < 50000 && weight === 0) weight = num;
+                else if (num > 0 && num <= 5000 && filePrice === 0) filePrice = num;
+            }
+        }
+        
+        if (trackNum) {
+            currentTrackingNumbers.push(trackNum);
+            
+            let calcPrice = filePrice; 
+            let statusHtml = '<span style="color:#4caf50;"><i class="fas fa-check-circle"></i> ปกติ</span>';
+            let isError = false;
+
+            if (batchType === 'CustomerA') {
+                calcPrice = calculatePrice(packageRate, weight);
+                if (calcPrice !== filePrice) {
+                    statusHtml = '<span style="color:#f44336;"><i class="fas fa-exclamation-circle"></i> ราคาไม่ตรงเรท</span>';
+                    isError = true;
+                }
+            }
+
+            if (weight === 0) {
+                statusHtml = '<span style="color:#ff9800;"><i class="fas fa-exclamation-triangle"></i> ไม่พบน้ำหนัก</span>';
+                isError = true;
+            }
+            
+            if (isError) errors++;
+            totalCalculatedPrice += calcPrice;
+
+            currentAnalyzedData.push({
+                track: trackNum,
+                weight: weight,
+                filePrice: filePrice,
+                calcPrice: calcPrice,
+                statusHtml: statusHtml
+            });
+        }
     }
     
-    if (!window.db || !window.storage) {
-        alert("Firebase Config ไม่สมบูรณ์");
+    const unique = [];
+    currentAnalyzedData = currentAnalyzedData.filter(item => {
+        if(unique.includes(item.track)) return false;
+        unique.push(item.track);
+        return true;
+    });
+    currentTrackingNumbers = unique;
+    currentTotalItems = currentTrackingNumbers.length;
+
+    if (currentTotalItems === 0) {
+        alert('ไม่พบหมายเลขพัสดุในไฟล์นี้');
+        clearImportData();
         return;
     }
 
-    const batchName = document.getElementById("import-batch-name").value.trim() || `Upload_${new Date().getTime()}`;
-    const batchType = document.getElementById("import-batch-type").value;
+    document.getElementById('upload-status').innerText = 'กำลังตรวจสอบข้อมูลซ้ำ...';
+    const isDuplicate = await checkDuplicateInFirebase(currentTrackingNumbers);
+    if (isDuplicate) {
+        const confirmUpload = confirm('⚠️ ตรวจพบหมายเลขพัสดุในไฟล์นี้ เคยถูกนำเข้าสู่ระบบแล้ว\nคุณต้องการนำเข้าซ้ำหรือไม่?');
+        if (!confirmUpload) {
+            clearImportData();
+            return;
+        }
+    }
+
+    renderAnalysisTable(totalCalculatedPrice, errors);
+    uploadToFirebaseAuto(file);
+}
+
+function renderAnalysisTable(totalPrice, errors) {
+    const tbody = document.getElementById('analysis-tbody');
+    tbody.innerHTML = '';
     
-    const btn = document.getElementById("import-save-btn");
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> กำลังอัปโหลด...`;
+    currentAnalyzedData.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #eee';
+        if(item.statusHtml.includes('exclamation')) tr.style.backgroundColor = '#fff8e1';
+        
+        tr.innerHTML = `
+            <td style="padding:10px; text-align:center;">${index + 1}</td>
+            <td style="padding:10px; font-weight:bold; color:#1565c0;">${item.track}</td>
+            <td style="padding:10px; text-align:center;">${item.weight}</td>
+            <td style="padding:10px; text-align:center;">${item.filePrice}</td>
+            <td style="padding:10px; text-align:center; font-weight:bold;">${item.calcPrice}</td>
+            <td style="padding:10px; text-align:center;">${item.statusHtml}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('analysis-summary').innerHTML = `
+        <div style="display:flex; gap:15px; margin-bottom:15px;">
+            <div style="background:#e3f2fd; padding:15px; border-radius:8px; flex:1; text-align:center;">
+                <div style="font-size:0.9rem; color:#1565c0;">ยอดรวมทั้งหมด</div>
+                <div style="font-size:1.5rem; font-weight:bold; color:#0d47a1;">${currentTotalItems} <span style="font-size:1rem;">ชิ้น</span></div>
+            </div>
+            <div style="background:#e8f5e9; padding:15px; border-radius:8px; flex:1; text-align:center;">
+                <div style="font-size:0.9rem; color:#2e7d32;">ราคารวม (คำนวณ)</div>
+                <div style="font-size:1.5rem; font-weight:bold; color:#1b5e20;">฿${totalPrice.toLocaleString()}</div>
+            </div>
+            <div style="background:${errors > 0 ? '#ffebee' : '#f5f5f5'}; padding:15px; border-radius:8px; flex:1; text-align:center;">
+                <div style="font-size:0.9rem; color:${errors > 0 ? '#c62828' : '#757575' };">ข้อควรระวัง</div>
+                <div style="font-size:1.5rem; font-weight:bold; color:${errors > 0 ? '#b71c1c' : '#616161' };">${errors} <span style="font-size:1rem;">รายการ</span></div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('import-preview').classList.remove('hidden');
+}
+
+async function uploadToFirebaseAuto(file) {
+    if (!window.db || !window.storage) {
+        document.getElementById('upload-status').innerText = 'ไม่สามารถอัปโหลดได้: ขาดการเชื่อมต่อ Firebase';
+        return;
+    }
+
+    const batchName = document.getElementById('import-batch-name').value.trim();
+    const batchType = document.getElementById('import-batch-type').value;
+    document.getElementById('upload-status').innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังอัปโหลดข้อมูลขึ้น Cloud...';
 
     try {
-        const fileExt = currentFile.name.split(".").pop();
+        const fileExt = file.name.split('.').pop();
         const fileName = `excel_imports/${new Date().getTime()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
         const storageRef = window.storage.ref().child(fileName);
         
-        await storageRef.put(currentFile);
+        await storageRef.put(file);
         const downloadURL = await storageRef.getDownloadURL();
         
         const docData = {
@@ -79,22 +235,22 @@ async function uploadToFirebase() {
             type: batchType,
             timestamp: new Date().toISOString(),
             totalItems: currentTotalItems,
-            fileName: currentFile.name,
+            fileName: file.name,
             fileURL: downloadURL,
             storagePath: fileName,
-            trackingNumbers: currentTrackingNumbers
+            trackingNumbers: currentTrackingNumbers,
+            analyzedData: currentAnalyzedData
         };
         
-        await window.db.collection("batches").add(docData);
+        await window.db.collection('batches').add(docData);
         
-        alert("อัปโหลดขึ้นคลาวด์สำเร็จเรียบร้อย!");
-        clearImportData();
+        document.getElementById('upload-status').innerHTML = '<span style="color:#4caf50;"><i class="fas fa-check-circle"></i> อัปโหลดและวิเคราะห์เสร็จสมบูรณ์!</span>';
+        if (document.getElementById('tab-history').classList.contains('active')) {
+            loadStaffHistory();
+        }
     } catch(err) {
         console.error(err);
-        alert("Error: " + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fas fa-cloud-upload-alt"></i> ยืนยันการอัปโหลด (Upload to Cloud)`;
+        document.getElementById('upload-status').innerHTML = `<span style="color:#f44336;"><i class="fas fa-times-circle"></i> Error: ${err.message}</span>`;
     }
 }
 
@@ -102,32 +258,78 @@ function clearImportData() {
     currentFile = null;
     currentTotalItems = 0;
     currentTrackingNumbers = [];
-    document.getElementById("import-file").value = "";
-    document.getElementById("upload-status").innerText = "";
-    document.getElementById("import-batch-name").value = "";
-    document.getElementById("import-preview").classList.add("hidden");
+    currentAnalyzedData = [];
+    document.getElementById('import-file').value = '';
+    document.getElementById('upload-status').innerText = '';
+    document.getElementById('import-preview').classList.add('hidden');
 }
-
-let batchesCache = [];
 
 function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    
-    document.getElementById('btn-import').style.color = '#666';
-    document.getElementById('btn-import').style.borderBottom = 'none';
-    
-    document.getElementById('btn-check').style.color = '#666';
-    document.getElementById('btn-check').style.borderBottom = 'none';
+    document.querySelectorAll('.tab-btn').forEach(el => {
+        el.style.color = '#666';
+        el.style.borderBottom = 'none';
+    });
     
     document.getElementById('tab-' + tabId).classList.add('active');
     
     const activeBtn = document.getElementById('btn-' + tabId);
-    activeBtn.style.color = '#2196f3';
-    activeBtn.style.borderBottom = '3px solid #2196f3';
+    if(activeBtn) {
+        activeBtn.style.color = '#2196f3';
+        activeBtn.style.borderBottom = '3px solid #2196f3';
+    }
     
     if (tabId === 'check') {
         document.getElementById('check-input').focus();
         if (batchesCache.length === 0) loadHistorySilent();
+    } else if (tabId === 'history') {
+        loadStaffHistory();
+    }
+}
+
+async function loadStaffHistory() {
+    const list = document.getElementById('staff-history-list');
+    if(!list) return;
+    list.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดประวัติ...</div>';
+    
+    if (!window.db) return;
+    try {
+        const snapshot = await window.db.collection('batches').orderBy('timestamp', 'desc').limit(20).get();
+        list.innerHTML = '';
+        if(snapshot.empty) {
+            list.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีประวัติการนำเข้าในวันนี้</div>';
+            return;
+        }
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const dateStr = new Date(data.timestamp).toLocaleString('th-TH');
+            
+            const card = document.createElement('div');
+            card.style.background = '#fff';
+            card.style.border = '1px solid #e0e0e0';
+            card.style.borderRadius = '8px';
+            card.style.padding = '15px';
+            card.style.display = 'flex';
+            card.style.justifyContent = 'space-between';
+            card.style.alignItems = 'center';
+            card.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)';
+            card.style.marginBottom = '10px';
+            
+            card.innerHTML = `
+                <div>
+                    <div style="font-weight:bold; color:#1e3c72; font-size:1.1rem;">${data.batchName || 'ไม่มีชื่อกลุ่ม'}</div>
+                    <div style="font-size:0.9rem; color:#666; margin-top:5px;"><i class="far fa-clock"></i> ${dateStr} | ${data.type || 'N/A'}</div>
+                    <div style="font-size:0.9rem; color:#666; margin-top:2px;"><i class="fas fa-file-excel"></i> ${data.fileName || '-'}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:1.5rem; font-weight:bold; color:#2196f3;">${data.totalItems || 0} <span style="font-size:1rem;">ชิ้น</span></div>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    } catch(err) {
+        list.innerHTML = `<div style="color:red;">Failed to load history: ${err.message}</div>`;
     }
 }
 
@@ -141,9 +343,7 @@ async function loadHistorySilent() {
             data.id = doc.id;
             batchesCache.push(data);
         });
-    } catch (err) {
-        console.error('Failed to load history for checking', err);
-    }
+    } catch (err) {}
 }
 
 function checkBarcode() {
@@ -154,7 +354,7 @@ function checkBarcode() {
     resultDiv.classList.remove('hidden');
     
     if (batchesCache.length === 0) {
-        resultDiv.innerHTML = '<div style=\"padding:15px; color:#f44336;\">กำลังโหลดข้อมูลจากฐานข้อมูล... ลองใหม่อีกครั้ง</div>';
+        resultDiv.innerHTML = '<div style="padding:15px; color:#f44336;">กำลังโหลดข้อมูล... ลองใหม่อีกครั้ง</div>';
         loadHistorySilent();
         return;
     }
@@ -167,15 +367,15 @@ function checkBarcode() {
     }
     
     if (foundBatches.length > 0) {
-        let html = '<div style=\"background: #e8f5e9; border: 1px solid #4caf50; padding: 15px; border-radius: 8px;\"><h3 style=\"color: #2e7d32; margin-top:0;\"><i class=\"fas fa-check-circle\"></i> พบพัสดุ ' + input + '</h3><p>พบในกลุ่มข้อมูลต่อไปนี้:</p><ul style=\"margin-bottom: 0;\">';
+        let html = '<div style="background: #e8f5e9; border: 1px solid #4caf50; padding: 15px; border-radius: 8px;"><h3 style="color: #2e7d32; margin-top:0;"><i class="fas fa-check-circle"></i> พบพัสดุ ' + input + '</h3><ul style="margin-bottom: 0;">';
         foundBatches.forEach(b => {
             const dateStr = new Date(b.timestamp).toLocaleString('th-TH');
-            html += '<li><strong>' + b.batchName + '</strong> (' + b.type + ') - นำเข้าเมื่อ: ' + dateStr + '</li>';
+            html += `<li><strong>${b.batchName || 'ไม่มีชื่อ'}</strong> (${b.type || 'N/A'}) - ${dateStr}</li>`;
         });
         html += '</ul></div>';
         resultDiv.innerHTML = html;
     } else {
-        resultDiv.innerHTML = '<div style=\"background: #ffebee; border: 1px solid #f44336; padding: 15px; border-radius: 8px;\"><h3 style=\"color: #c62828; margin-top:0;\"><i class=\"fas fa-times-circle\"></i> ไม่พบพัสดุ ' + input + '</h3><p style=\"margin-bottom: 0;\">กรุณาตรวจสอบเลขอีกครั้ง หรือพัสดุนี้อาจยังไม่ได้ถูกนำเข้า</p></div>';
+        resultDiv.innerHTML = `<div style="background: #ffebee; border: 1px solid #f44336; padding: 15px; border-radius: 8px;"><h3 style="color: #c62828; margin-top:0;"><i class="fas fa-times-circle"></i> ไม่พบพัสดุ ${input}</h3></div>`;
     }
     
     document.getElementById('check-input').value = '';
@@ -189,16 +389,8 @@ document.getElementById('check-input').addEventListener('keypress', function(e) 
 document.getElementById('check-input').addEventListener('input', function(e) {
     let val = e.target.value.toUpperCase().replace(/\s/g, '');
     const match = val.match(/^([A-Z]{2})(\d{8})([A-Z]{2})$/);
-    if (match) {
-        const prefix = match[1];
-        const body = match[2];
-        const suffix = match[3];
-        if (typeof TrackingUtils !== 'undefined') {
-            const cd = TrackingUtils.calculateS10CheckDigit(body);
-            if (cd !== null) {
-                e.target.value = `${prefix}${body}${cd}${suffix}`;
-            }
-        }
+    if (match && typeof TrackingUtils !== 'undefined') {
+        const cd = TrackingUtils.calculateS10CheckDigit(match[2]);
+        if (cd !== null) e.target.value = `${match[1]}${match[2]}${cd}${match[3]}`;
     }
 });
-
