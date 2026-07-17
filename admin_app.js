@@ -1,4 +1,3 @@
-﻿
 let batchesCache = [];
 
 function switchTab(tabId) {
@@ -11,7 +10,7 @@ function switchTab(tabId) {
     if (tabId === "history") loadHistory();
     if (tabId === "check") {
         document.getElementById("check-input").focus();
-        if (batchesCache.length === 0) loadHistory(true); // silent load
+        if (batchesCache.length === 0) loadHistory(true);
     }
 }
 
@@ -78,7 +77,6 @@ function checkBarcode() {
     const resultDiv = document.getElementById("check-result");
     resultDiv.classList.remove("hidden");
     
-    // Search in batchesCache
     let foundBatches = [];
     for (const batch of batchesCache) {
         if (batch.trackingNumbers && batch.trackingNumbers.includes(input)) {
@@ -113,7 +111,6 @@ document.getElementById("check-input").addEventListener("keypress", function(e) 
     if (e.key === "Enter") checkBarcode();
 });
 
-// Settings & Auto Cleanup
 function saveSettings() {
     const ttl = document.getElementById("setting-ttl").value;
     localStorage.setItem("ta_firebase_ttl", ttl);
@@ -145,11 +142,9 @@ async function performCleanup() {
         for (const doc of snapshot.docs) {
             const data = doc.data();
             try {
-                // Delete file from storage
                 if (data.storagePath) {
                     await window.storage.ref().child(data.storagePath).delete();
                 }
-                // Delete document from firestore
                 await window.db.collection("batches").doc(doc.id).delete();
                 deletedCount++;
                 console.log(`Deleted expired batch: ${data.batchName}`);
@@ -167,18 +162,14 @@ async function performCleanup() {
     }
 }
 
-// Initialization
 document.addEventListener("DOMContentLoaded", () => {
-    // Restore settings
     const savedTtl = localStorage.getItem("ta_firebase_ttl");
     if (savedTtl) {
         document.getElementById("setting-ttl").value = savedTtl;
     }
     
-    // Auto load and cleanup
     setTimeout(() => {
         loadHistory();
         performCleanup();
     }, 1000);
 });
-

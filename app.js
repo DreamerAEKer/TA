@@ -1,4 +1,4 @@
-﻿let currentFile = null;
+let currentFile = null;
 let currentTotalItems = 0;
 let currentTrackingNumbers = [];
 
@@ -22,7 +22,6 @@ document.getElementById("import-file").addEventListener("change", function(e) {
             for(let i=0; i<rows.length; i++) {
                 if(rows[i] && rows[i].length > 0 && typeof rows[i][0] === "string") {
                     const cellVal = rows[i][0].trim().toUpperCase();
-                    // Basic 13-char tracking validation (e.g., EB123456789TH)
                     if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(cellVal)) {
                         currentTrackingNumbers.push(cellVal);
                     }
@@ -59,7 +58,6 @@ async function uploadToFirebase() {
     btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> กำลังอัปโหลด...`;
 
     try {
-        // 1. Upload to Storage
         const fileExt = currentFile.name.split(".").pop();
         const fileName = `excel_imports/${new Date().getTime()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
         const storageRef = window.storage.ref().child(fileName);
@@ -67,7 +65,6 @@ async function uploadToFirebase() {
         await storageRef.put(currentFile);
         const downloadURL = await storageRef.getDownloadURL();
         
-        // 2. Save metadata to Firestore
         const docData = {
             batchName: batchName,
             type: batchType,
@@ -76,7 +73,7 @@ async function uploadToFirebase() {
             fileName: currentFile.name,
             fileURL: downloadURL,
             storagePath: fileName,
-            trackingNumbers: currentTrackingNumbers // Save array for fast check
+            trackingNumbers: currentTrackingNumbers
         };
         
         await window.db.collection("batches").add(docData);
@@ -101,4 +98,3 @@ function clearImportData() {
     document.getElementById("import-batch-name").value = "";
     document.getElementById("import-preview").classList.add("hidden");
 }
-
