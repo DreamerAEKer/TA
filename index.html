@@ -19,9 +19,11 @@
             <span class="title-sub" style="font-size:1.2rem; color:#666; font-weight:600; background:#f0f0f0; padding:4px 10px; border-radius:20px;">ระบบนำเข้าข้อมูล</span>
         </div>
     </div>
-    <div class="tab-container" style="position: sticky; top: 60px; z-index: 99; display: flex; gap: 10px; margin-bottom: 20px;">
-        <button class="tab-btn active" onclick="switchTab('import')"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล</button>
-        <button class="tab-btn" onclick="switchTab('check')"><i class="fas fa-search"></i> ค้นหาพัสดุ</button>
+    <div class="container">
+        <div class="tab-container" style="display: flex; gap: 10px; margin-bottom: 0; padding-top: 20px;">
+            <button class="tab-btn active" onclick="switchTab('import')" style="padding: 10px 20px; border:none; background:none; font-size:1.1rem; cursor:pointer; border-bottom: 3px solid #2196f3; color: #2196f3; font-weight: bold;" id="btn-import"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล</button>
+            <button class="tab-btn" onclick="switchTab('check')" style="padding: 10px 20px; border:none; background:none; font-size:1.1rem; cursor:pointer; color: #666; font-weight: bold;" id="btn-check"><i class="fas fa-search"></i> ค้นหาพัสดุ</button>
+        </div>
     </div>
 
     <main class="container" style="margin-top: 20px;">
@@ -69,7 +71,7 @@
         </section>
 
         <!-- CHECK TAB -->
-        <section id="tab-check" class="tab-content" style="display: none;">
+        <section id="tab-check" class="tab-content">
             <div class="card">
                 <h2><i class="fas fa-barcode"></i> ค้นหาพัสดุ (Single Check)</h2>
                 <div class="form-group">
