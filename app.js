@@ -78,6 +78,7 @@ async function checkDuplicateInFirebase(trackingNumbers) {
     }
 }
 
+
 function getExpectedWeightFromPriceA(packageType, price) {
     const match = packageType.match(/^A(\d+)$/i);
     if (!match) return '-';
@@ -125,6 +126,7 @@ async function analyzeImportData(rows, file) {
     let errors = 0;
     
     const uniqueMap = new Map();
+    const discrepancyList = [];
 
     for(let i=0; i<rows.length; i++) {
         if(!rows[i]) continue;
@@ -155,23 +157,20 @@ async function analyzeImportData(rows, file) {
         }
         
         if (trackNum && filePrice > 0) {
-            let statusHtml = '<span style="color:#4caf50;"><i class="fas fa-check-circle"></i> ปกติ</span>';
             let isError = false;
             let displayWeight = originalWeight;
             
-            // Reverse Weight Logic (อิงราคาเป็นหลัก)
+            // Weight Check (before reallocation)
             if (batchType === 'CustomerA') {
                 const expectedWeight = getExpectedWeightFromPriceA(packageRate, filePrice);
                 if (expectedWeight !== '-') {
                     displayWeight = expectedWeight;
-                    
-                    // Extract just numbers for comparison
                     const origNum = parseFloat(originalWeight);
                     const expectNum = parseFloat(expectedWeight);
                     
                     if (!isNaN(origNum) && origNum !== expectNum) {
-                        statusHtml = '<span style="color:#ff9800;"><i class="fas fa-exclamation-triangle"></i> น้ำหนักไม่สัมพันธ์กับราคา (แก้เป็น ' + expectedWeight + ')</span>';
                         isError = true;
+                        discrepancyList.push({ orig: originalWeight, exp: expectedWeight, price: filePrice });
                     }
                 }
             }
@@ -181,11 +180,8 @@ async function analyzeImportData(rows, file) {
 
             uniqueMap.set(trackNum, {
                 track: trackNum,
-                weight: displayWeight,
                 originalWeight: originalWeight,
                 filePrice: filePrice,
-                calcPrice: filePrice, // We use filePrice as main
-                statusHtml: statusHtml,
                 isError: isError
             });
         }
@@ -201,18 +197,19 @@ async function analyzeImportData(rows, file) {
         return;
     }
 
-    // GAP DETECTION LOGIC
     const parse = (str) => {
         const m = str.match(/([A-Z]{2})(\d{8})(\d)([A-Z]{2})/);
         return m ? { full: str, prefix: m[1], body: parseInt(m[2]), check: m[3], suffix: m[4] } : null;
     };
     
-    const sortedForGaps = [...currentAnalyzedData].sort((a, b) => a.track.localeCompare(b.track));
-    const missingItems = [];
+    // 1. Sort All IDs Ascending
+    const sortedItems = [...currentAnalyzedData].sort((a, b) => a.track.localeCompare(b.track));
     
-    let prevGap = parse(sortedForGaps[0].track);
-    for (let i = 1; i < sortedForGaps.length; i++) {
-        const currGap = parse(sortedForGaps[i].track);
+    // 2. GAP DETECTION LOGIC (Using naturally sorted trackings)
+    const missingItems = [];
+    let prevGap = parse(sortedItems[0].track);
+    for (let i = 1; i < sortedItems.length; i++) {
+        const currGap = parse(sortedItems[i].track);
         if (!currGap || !prevGap) continue;
         if (currGap.prefix === prevGap.prefix && currGap.suffix === prevGap.suffix) {
             const diff = currGap.body - prevGap.body;
@@ -226,58 +223,69 @@ async function analyzeImportData(rows, file) {
         prevGap = currGap;
     }
 
-    // VIRTUAL MAPPING LOGIC (Group by price)
-    currentAnalyzedData.sort((a, b) => {
-        if (a.filePrice !== b.filePrice) return a.filePrice - b.filePrice;
-        return a.track.localeCompare(b.track);
+    // 3. VIRTUAL ZIPPING LOGIC
+    // Group counts by Price
+    const priceCounts = {};
+    currentAnalyzedData.forEach(item => {
+        if (!priceCounts[item.filePrice]) priceCounts[item.filePrice] = 0;
+        priceCounts[item.filePrice]++;
     });
-
+    
+    // Sort Price groups (Lowest first)
+    const sortedPrices = Object.keys(priceCounts).map(Number).sort((a, b) => a - b);
+    
     const optimizedRanges = [];
-    let start = parse(currentAnalyzedData[0].track);
-    let prev = start;
-    let currentList = [currentAnalyzedData[0]];
-
-    for (let i = 1; i < currentAnalyzedData.length; i++) {
-        const currItem = currentAnalyzedData[i];
-        const curr = parse(currItem.track);
-        if (!curr) continue;
+    let currentIdx = 0;
+    
+    sortedPrices.forEach(price => {
+        const count = priceCounts[price];
+        const assignedItems = sortedItems.slice(currentIdx, currentIdx + count);
+        currentIdx += count;
         
-        const prevItem = currentList[currentList.length - 1];
+        if (assignedItems.length === 0) return;
+        
+        // Break into contiguous sequences
+        let start = parse(assignedItems[0].track);
+        let prev = start;
+        let currentList = [assignedItems[0]];
+        
+        for (let i = 1; i < assignedItems.length; i++) {
+            const currItem = assignedItems[i];
+            const curr = parse(currItem.track);
+            if (!curr) continue;
+            
+            const isContinuous = (
+                curr.prefix === prev.prefix &&
+                curr.suffix === prev.suffix &&
+                curr.body === prev.body + 1
+            );
 
-        const isContinuous = (
-            curr.prefix === prev.prefix &&
-            curr.suffix === prev.suffix &&
-            curr.body === prev.body + 1 &&
-            currItem.filePrice === prevItem.filePrice
-        );
-
-        if (isContinuous) {
-            currentList.push(currItem);
-            prev = curr;
-        } else {
+            if (isContinuous) {
+                currentList.push(currItem);
+                prev = curr;
+            } else {
+                optimizedRanges.push({
+                    start: start.full,
+                    end: prev.full,
+                    count: currentList.length,
+                    price: price,
+                    errors: currentList.filter(x => x.isError).length
+                });
+                start = curr;
+                prev = curr;
+                currentList = [currItem];
+            }
+        }
+        if (currentList.length > 0) {
             optimizedRanges.push({
                 start: start.full,
                 end: prev.full,
                 count: currentList.length,
-                price: currentList[0].filePrice,
-                statusHtml: currentList.find(x => x.isError) ? '<span style="color:#ff9800">มีแจ้งเตือนน้ำหนัก</span>' : '<span style="color:#4caf50">ปกติ</span>',
+                price: price,
                 errors: currentList.filter(x => x.isError).length
             });
-            start = curr;
-            prev = curr;
-            currentList = [currItem];
         }
-    }
-    if (currentList.length > 0) {
-        optimizedRanges.push({
-            start: start.full,
-            end: prev.full,
-            count: currentList.length,
-            price: currentList[0].filePrice,
-            statusHtml: currentList.find(x => x.isError) ? '<span style="color:#ff9800">มีแจ้งเตือนน้ำหนัก</span>' : '<span style="color:#4caf50">ปกติ</span>',
-            errors: currentList.filter(x => x.isError).length
-        });
-    }
+    });
 
     document.getElementById('upload-status').innerText = 'กำลังตรวจสอบข้อมูลซ้ำ...';
     const isDuplicate = await checkDuplicateInFirebase(currentTrackingNumbers);
@@ -289,28 +297,28 @@ async function analyzeImportData(rows, file) {
         }
     }
 
-    renderAnalysisTable(totalCalculatedPrice, errors, optimizedRanges, missingItems);
+    renderAnalysisTable(totalCalculatedPrice, errors, optimizedRanges, missingItems, discrepancyList);
     uploadToFirebaseAuto(file);
 }
 
-function renderAnalysisTable(totalPrice, errors, optimizedRanges, missingItems) {
+function renderAnalysisTable(totalPrice, errors, optimizedRanges, missingItems, discrepancyList) {
     const tbody = document.getElementById('analysis-tbody');
     tbody.innerHTML = '';
     
     optimizedRanges.forEach((range, index) => {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid #eee';
-        if(range.errors > 0) tr.style.backgroundColor = '#fff8e1';
         
         const trackDisplay = range.count > 1 ? `${range.start} - ${range.end}` : range.start;
+        const totalLinePrice = range.price * range.count;
         
         tr.innerHTML = `
             <td style="padding:10px; text-align:center;">${index + 1}</td>
             <td style="padding:10px; font-weight:bold; color:#1565c0;">${trackDisplay}</td>
             <td style="padding:10px; text-align:center;">${range.count} ชิ้น</td>
             <td style="padding:10px; text-align:center;">${range.price}</td>
-            <td style="padding:10px; text-align:center; font-weight:bold;">${(range.price * range.count).toLocaleString()}</td>
-            <td style="padding:10px; text-align:center;">${range.statusHtml}</td>
+            <td style="padding:10px; text-align:center; font-weight:bold;">${totalLinePrice.toLocaleString()}</td>
+            <td style="padding:10px; text-align:center; font-size:0.9rem; color:#888;">จับคู่ใหม่</td>
         `;
         tbody.appendChild(tr);
     });
@@ -322,6 +330,18 @@ function renderAnalysisTable(totalPrice, errors, optimizedRanges, missingItems) 
         <div style="background:#ffebee; padding:15px; border-radius:8px; border: 1px solid #f44336; margin-top:15px;">
             <h4 style="color:#c62828; margin:0 0 10px 0;"><i class="fas fa-exclamation-circle"></i> แจ้งเตือน: พบช่องโหว่ (เลขที่หายไป)</h4>
             <p style="margin:0; color:#b71c1c;">ระบบพบว่าข้อมูลไม่ต่อเนื่อง <strong>หายไปรวม ${totalMissing} รายการ</strong> (เช่น แถวๆ เลข ${missingItems[0].example})</p>
+        </div>`;
+    }
+
+    let diffHtml = '';
+    if (discrepancyList && discrepancyList.length > 0) {
+        diffHtml = `
+        <div style="background:#fff8e1; padding:15px; border-radius:8px; border: 1px solid #ff9800; margin-top:15px;">
+            <h4 style="color:#ef6c00; margin:0 0 10px 0;"><i class="fas fa-exclamation-triangle"></i> แจ้งเตือนน้ำหนักไม่สัมพันธ์กับราคา</h4>
+            <p style="margin:0; color:#e65100; font-size:0.9rem;">
+                พบข้อมูลระบุในไฟล์ <strong>ไม่สัมพันธ์กับราคาตามตารางค่าบริการ</strong> จำนวน <strong>${discrepancyList.length} รายการ</strong><br>
+                <small>เช่น ในไฟล์ระบุ ${discrepancyList[0].orig} แต่ราคา ${discrepancyList[0].price} บาท (ระบบอิงราคา ${discrepancyList[0].price} เป็นหลัก)</small>
+            </p>
         </div>`;
     }
 
@@ -341,13 +361,15 @@ function renderAnalysisTable(totalPrice, errors, optimizedRanges, missingItems) 
             </div>
         </div>
         ${gapHtml}
+        ${diffHtml}
         <div style="font-size:0.8rem; color:red; text-align:center; margin-top:10px; margin-bottom:5px;">
-            *รายการถูกจัดเรียงใหม่แบบมัดรวมชุด (Virtual Mapping) เรียงตามราคาน้อยไปมาก
+            *รายการถูกจัดเรียงใหม่แบบมัดรวมชุด (Virtual Zipping) เรียงตามราคาจากน้อยไปมาก
         </div>
     `;
 
     document.getElementById('import-preview').classList.remove('hidden');
 }
+
 
 
 
