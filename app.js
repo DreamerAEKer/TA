@@ -1,184 +1,104 @@
-﻿
-let batchesCache = [];
+﻿let currentFile = null;
+let currentTotalItems = 0;
+let currentTrackingNumbers = [];
 
-function switchTab(tabId) {
-    document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
-    document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
-    
-    document.getElementById("tab-" + tabId).classList.add("active");
-    event.currentTarget.classList.add("active");
-    
-    if (tabId === "history") loadHistory();
-    if (tabId === "check") {
-        document.getElementById("check-input").focus();
-        if (batchesCache.length === 0) loadHistory(true); // silent load
-    }
-}
+document.getElementById("import-file").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
 
-async function loadHistory(silent = false) {
-    if (!window.db) {
-        if(!silent) alert("Firebase not initialized!");
+    currentFile = file;
+    document.getElementById("upload-status").innerText = `กำลังตรวจสอบไฟล์ ${file.name}...`;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: "array"});
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+            
+            currentTrackingNumbers = [];
+            for(let i=0; i<rows.length; i++) {
+                if(rows[i] && rows[i].length > 0 && typeof rows[i][0] === "string") {
+                    const cellVal = rows[i][0].trim().toUpperCase();
+                    // Basic 13-char tracking validation (e.g., EB123456789TH)
+                    if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(cellVal)) {
+                        currentTrackingNumbers.push(cellVal);
+                    }
+                }
+            }
+            
+            currentTotalItems = currentTrackingNumbers.length;
+            document.getElementById("upload-status").innerText = `ไฟล์ ${file.name} เตรียมพร้อม (พบ ${currentTotalItems} รายการ)`;
+            document.getElementById("import-preview").classList.remove("hidden");
+        } catch(err) {
+            alert("ไม่สามารถอ่านไฟล์ Excel ได้: " + err.message);
+            clearImportData();
+        }
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+async function uploadToFirebase() {
+    if (!currentFile) {
+        alert("กรุณาเลือกไฟล์ Excel ก่อน");
         return;
     }
     
-    if (!silent) {
-        document.getElementById("history-loading").style.display = "block";
-        document.getElementById("history-list").innerHTML = "";
+    if (!window.db || !window.storage) {
+        alert("Firebase Config ไม่สมบูรณ์");
+        return;
     }
+
+    const batchName = document.getElementById("import-batch-name").value.trim() || `Upload_${new Date().getTime()}`;
+    const batchType = document.getElementById("import-batch-type").value;
+    
+    const btn = document.getElementById("import-save-btn");
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> กำลังอัปโหลด...`;
 
     try {
-        const snapshot = await window.db.collection("batches").orderBy("timestamp", "desc").get();
-        batchesCache = [];
+        // 1. Upload to Storage
+        const fileExt = currentFile.name.split(".").pop();
+        const fileName = `excel_imports/${new Date().getTime()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const storageRef = window.storage.ref().child(fileName);
         
-        let html = "";
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            data.id = doc.id;
-            batchesCache.push(data);
-            
-            const dateStr = new Date(data.timestamp).toLocaleString("th-TH");
-            html += `
-                <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 10px; background: #fff;">
-                    <div style="display: flex; justify-content: space-between;">
-                        <div>
-                            <h3 style="margin: 0; color: #1565c0;">${data.batchName} <span style="font-size: 0.8rem; background: #e3f2fd; padding: 2px 8px; border-radius: 12px;">${data.type}</span></h3>
-                            <p style="margin: 5px 0; color: #666; font-size: 0.9rem;">
-                                <i class="far fa-clock"></i> ${dateStr} | 
-                                <i class="fas fa-box"></i> ${data.totalItems} รายการ
-                            </p>
-                        </div>
-                        <div style="display: flex; gap: 10px;">
-                            ${data.fileURL ? `<a href="${data.fileURL}" target="_blank" class="btn btn-primary" style="text-decoration: none;"><i class="fas fa-download"></i> โหลดไฟล์</a>` : ""}
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
+        await storageRef.put(currentFile);
+        const downloadURL = await storageRef.getDownloadURL();
         
-        if (batchesCache.length === 0) {
-            html = `<div style="text-align: center; color: #999; padding: 20px;">ยังไม่มีประวัติการนำเข้า</div>`;
-        }
+        // 2. Save metadata to Firestore
+        const docData = {
+            batchName: batchName,
+            type: batchType,
+            timestamp: new Date().toISOString(),
+            totalItems: currentTotalItems,
+            fileName: currentFile.name,
+            fileURL: downloadURL,
+            storagePath: fileName,
+            trackingNumbers: currentTrackingNumbers // Save array for fast check
+        };
         
-        document.getElementById("history-list").innerHTML = html;
-        if(!silent) document.getElementById("history-loading").style.display = "none";
+        await window.db.collection("batches").add(docData);
         
-    } catch (err) {
-        console.error(err);
-        if(!silent) {
-            document.getElementById("history-loading").style.display = "none";
-            document.getElementById("history-list").innerHTML = `<div style="color: red;">Error: ${err.message}</div>`;
-        }
-    }
-}
-
-function checkBarcode() {
-    const input = document.getElementById("check-input").value.trim().toUpperCase();
-    if (!input) return;
-    
-    const resultDiv = document.getElementById("check-result");
-    resultDiv.classList.remove("hidden");
-    
-    // Search in batchesCache
-    let foundBatches = [];
-    for (const batch of batchesCache) {
-        if (batch.trackingNumbers && batch.trackingNumbers.includes(input)) {
-            foundBatches.push(batch);
-        }
-    }
-    
-    if (foundBatches.length > 0) {
-        let html = `<div style="background: #e8f5e9; border: 1px solid #4caf50; padding: 15px; border-radius: 8px;">
-            <h3 style="color: #2e7d32; margin-top:0;"><i class="fas fa-check-circle"></i> พบพัสดุ ${input}</h3>
-            <p>พบในกลุ่มข้อมูลต่อไปนี้:</p>
-            <ul style="margin-bottom: 0;">
-        `;
-        foundBatches.forEach(b => {
-            const dateStr = new Date(b.timestamp).toLocaleString("th-TH");
-            html += `<li><strong>${b.batchName}</strong> (${b.type}) - นำเข้าเมื่อ: ${dateStr}</li>`;
-        });
-        html += `</ul></div>`;
-        resultDiv.innerHTML = html;
-    } else {
-        resultDiv.innerHTML = `<div style="background: #ffebee; border: 1px solid #f44336; padding: 15px; border-radius: 8px;">
-            <h3 style="color: #c62828; margin-top:0;"><i class="fas fa-times-circle"></i> ไม่พบพัสดุ ${input}</h3>
-            <p style="margin-bottom: 0;">กรุณาตรวจสอบเลขอีกครั้ง หรือพัสดุนี้อาจยังไม่ได้ถูกนำเข้า</p>
-        </div>`;
-    }
-    
-    document.getElementById("check-input").value = "";
-    document.getElementById("check-input").focus();
-}
-
-document.getElementById("check-input").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") checkBarcode();
-});
-
-// Settings & Auto Cleanup
-function saveSettings() {
-    const ttl = document.getElementById("setting-ttl").value;
-    localStorage.setItem("ta_firebase_ttl", ttl);
-    alert(`บันทึกการตั้งค่าแล้ว: เก็บไฟล์ย้อนหลัง ${ttl} วัน`);
-}
-
-async function forceCleanup() {
-    if(!confirm("ระบบจะตรวจสอบและลบไฟล์ที่หมดอายุตามที่ตั้งค่าไว้ทันที ยืนยันหรือไม่?")) return;
-    await performCleanup();
-}
-
-async function performCleanup() {
-    if (!window.db || !window.storage) return;
-    
-    const ttlDays = parseInt(localStorage.getItem("ta_firebase_ttl") || "30");
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - ttlDays);
-    
-    console.log(`Checking for files older than ${ttlDays} days (${cutoffDate.toISOString()})`);
-    
-    try {
-        const snapshot = await window.db.collection("batches").where("timestamp", "<", cutoffDate.toISOString()).get();
-        if (snapshot.empty) {
-            console.log("No expired batches found.");
-            return;
-        }
-        
-        let deletedCount = 0;
-        for (const doc of snapshot.docs) {
-            const data = doc.data();
-            try {
-                // Delete file from storage
-                if (data.storagePath) {
-                    await window.storage.ref().child(data.storagePath).delete();
-                }
-                // Delete document from firestore
-                await window.db.collection("batches").doc(doc.id).delete();
-                deletedCount++;
-                console.log(`Deleted expired batch: ${data.batchName}`);
-            } catch (err) {
-                console.error(`Failed to delete batch ${doc.id}`, err);
-            }
-        }
-        
-        if (deletedCount > 0) {
-            alert(`ลบไฟล์เก่าที่หมดอายุแล้วจำนวน ${deletedCount} รายการ เพื่อคืนพื้นที่ว่างเรียบร้อยแล้ว`);
-            loadHistory();
-        }
+        alert("อัปโหลดขึ้นคลาวด์สำเร็จเรียบร้อย!");
+        clearImportData();
     } catch(err) {
-        console.error("Cleanup error", err);
+        console.error(err);
+        alert("Error: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fas fa-cloud-upload-alt"></i> ยืนยันการอัปโหลด (Upload to Cloud)`;
     }
 }
 
-// Initialization
-document.addEventListener("DOMContentLoaded", () => {
-    // Restore settings
-    const savedTtl = localStorage.getItem("ta_firebase_ttl");
-    if (savedTtl) {
-        document.getElementById("setting-ttl").value = savedTtl;
-    }
-    
-    // Auto load and cleanup
-    setTimeout(() => {
-        loadHistory();
-        performCleanup();
-    }, 1000);
-});
+function clearImportData() {
+    currentFile = null;
+    currentTotalItems = 0;
+    currentTrackingNumbers = [];
+    document.getElementById("import-file").value = "";
+    document.getElementById("upload-status").innerText = "";
+    document.getElementById("import-batch-name").value = "";
+    document.getElementById("import-preview").classList.add("hidden");
+}
 

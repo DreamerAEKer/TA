@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking Analyst (Admin) - Firebase</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+    <header id="main-header">
+        <div class="logo">
+            <span class="logo-main">TRACK</span><span class="logo-accent">ANALYST</span>
+            <span class="title-sub" style="color: #64b5f6;">CLOUD ADMIN</span>
+        </div>
+    </header>
+
+    <div class="tab-container" style="position: sticky; top: 60px; z-index: 99;">
+        <button class="tab-btn active" onclick="switchTab('history')"><i class="fas fa-history"></i> ประวัติข้อมูล</button>
+        <button class="tab-btn" onclick="switchTab('check')"><i class="fas fa-search"></i> ตรวจสอบสถานะ</button>
+        <button class="tab-btn" onclick="switchTab('settings')"><i class="fas fa-cog"></i> ตั้งค่า</button>
+    </div>
+
+    <main class="container">
+        <!-- HISTORY TAB -->
+        <section id="tab-history" class="tab-content active">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2><i class="fas fa-database"></i> ประวัติการนำเข้าจากลูกน้อง</h2>
+                    <button class="btn btn-neutral" onclick="loadHistory()"><i class="fas fa-sync"></i> รีเฟรช</button>
+                </div>
+                <div id="history-loading" style="text-align: center; padding: 20px;">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i> กำลังโหลดข้อมูลจาก Firebase...
+                </div>
+                <div id="history-list" style="margin-top: 15px;"></div>
+            </div>
+        </section>
+
+        <!-- CHECK TAB -->
+        <section id="tab-check" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-barcode"></i> ค้นหาพัสดุ (Single Check)</h2>
+                <div class="form-group">
+                    <input type="text" id="check-input" placeholder="ยิงบาร์โค้ด หรือ พิมพ์เลขพัสดุ..." 
+                           style="width: 100%; padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #2196f3; text-transform: uppercase;">
+                </div>
+                <button class="btn btn-primary" onclick="checkBarcode()" style="width: 100%; padding: 15px; font-size: 1.1rem;">
+                    <i class="fas fa-search"></i> ค้นหา
+                </button>
+                
+                <div id="check-result" class="hidden" style="margin-top: 20px;"></div>
+            </div>
+        </section>
+
+        <!-- SETTINGS TAB -->
+        <section id="tab-settings" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-cogs"></i> ตั้งค่าระบบ</h2>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>ระยะเวลาจัดเก็บไฟล์ Excel (Auto Cleanup TTL):</label>
+                    <select id="setting-ttl" onchange="saveSettings()" style="width: 100%; padding: 10px; border-radius: 4px;">
+                        <option value="7">7 วัน</option>
+                        <option value="15">15 วัน</option>
+                        <option value="30" selected>30 วัน</option>
+                        <option value="90">90 วัน</option>
+                        <option value="365">1 ปี (365 วัน)</option>
+                    </select>
+                    <p class="text-muted" style="margin-top: 5px; font-size: 0.85rem;">
+                        เมื่อคุณเปิดแอป ระบบจะทำการลบไฟล์ Excel ที่อายุเกินกำหนดออกจาก Firebase Storage อัตโนมัติเพื่อคืนพื้นที่ว่าง
+                    </p>
+                </div>
+                <button class="btn btn-danger" onclick="forceCleanup()" style="margin-top: 10px;">
+                    <i class="fas fa-broom"></i> บังคับลบไฟล์เก่าทันที
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <script src="firebase_config.js"></script>
+    <script src="utils.js"></script>
+    <script src="admin_app.js"></script>
+</body>
+</html>
