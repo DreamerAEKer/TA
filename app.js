@@ -1409,6 +1409,15 @@ rawRanges.push({
     renderImportResult(currentImportedBatches, missingItems, discrepanciesList);
 }
 
+// Utility for formatting reconstructed missing IDs
+function formatID(prefix, startBody, suffix) {
+    const bodyStr = startBody.toString().padStart(8, '0');
+    const cd = (typeof TrackingUtils !== 'undefined' && TrackingUtils.calculateS10CheckDigit) 
+        ? TrackingUtils.calculateS10CheckDigit(bodyStr) 
+        : 'X';
+    return `${prefix}${bodyStr}${cd}${suffix}`;
+}
+
 function renderImportResult(ranges, missingItems = [], discrepancies = []) {
     const preview = document.getElementById('import-preview');
     if (preview) preview.classList.remove('hidden');
