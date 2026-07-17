@@ -1,769 +1,88 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracking Analyst v4.3.0-PRO (Tiered Receipt View)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=4.0.0-PRO">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        /* Force tabs to wrap and buttons to stay on one line */
-        .tabs { 
-            display: flex; 
-            flex-wrap: wrap !important; 
-            overflow-x: visible !important;
-        }
-        .tab-btn { 
-            white-space: nowrap !important;
-            flex: 0 0 auto !important;
-        }
-        @media (max-width: 768px) {
-            .tabs { flex-direction: row !important; }
-            .tab-btn { width: auto !important; border-left: none !important; border-bottom: 3px solid transparent !important; }
-            .tab-btn.active { border-bottom-color: var(--primary-color) !important; }
-        }
-        .btn-group button.active {
-            background: white !important;
-            color: #333 !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-            font-weight: bold;
-        }
-        .btn-flag-green {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s;
-        }
-        .btn-flag-green:hover { transform: scale(1.2); }
-        .btn-flag-green svg path { fill: #2e7d32; stroke: #1b5e20; stroke-width: 1.5; }
-    </style>
-    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
-    <script src='https://unpkg.com/tesseract.js@v5.0.0/dist/tesseract.min.js'></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <!-- Firebase SDKs -->
+    <title>Tracking Analyst (Admin) - Firebase</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
     <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
-    <script src="firebase_config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-storage-compat.js"></script>
 </head>
-
 <body>
-
-    <header class="navbar" id="main-header">
-        <div class="container">
-            <div class="brand">
-                <div class="brand-logo">TRACK</div>
-            </div>
-
+    <header id="main-header">
+        <div class="logo">
+            <span class="logo-main">TRACK</span><span class="logo-accent">ANALYST</span>
+            <span class="title-sub" style="color: #64b5f6;">CLOUD ADMIN</span>
         </div>
     </header>
 
-    <!-- Subordinate Header (Hidden by default) -->
-    <div id="user-mode-header" class="hidden">
-        <span class="logo-main">TRACK</span>
-        <span class="title-sub">ระบบนำเข้าข้อมูลพัสดุ (Import Data Entry)</span>
+    <div class="tab-container" style="position: sticky; top: 60px; z-index: 99;">
+        <button class="tab-btn active" onclick="switchTab('history')"><i class="fas fa-history"></i> ประวัติข้อมูล</button>
+        <button class="tab-btn" onclick="switchTab('check')"><i class="fas fa-search"></i> ตรวจสอบสถานะ</button>
+        <button class="tab-btn" onclick="switchTab('settings')"><i class="fas fa-cog"></i> ตั้งค่า</button>
     </div>
 
     <main class="container">
-
-        <!-- Tab Navigation -->
-        <div class="tabs" id="main-tabs">
-            <button class="tab-btn active" id="btn-tab-smart" onclick="switchTab('smart')">🔥 การค้นหาหลัก (Main Search)</button>
-            <!-- Unified Smart Workspace contains Check, Range, and Gap tools -->
-            <button class="tab-btn" id="btn-tab-customer" onclick="switchTab('customer')">📁 ฐานข้อมูลลูกค้า</button>
-            <button class="tab-btn" id="btn-tab-import" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
-            <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin')">⚙️ ตั้งค่าระบบ (Settings)</button>
-            <button class="tab-btn" id="btn-tab-stats" onclick="showPremiumDashboard()">📊 สถิติปริมาณงาน</button>
-        </div>
-
-        <!-- SECTION 0: Unified Smart Workspace (New) -->
-        <section id="tab-smart" class="tab-content active admin-only">
-            <div class="unified-workspace">
-                <!-- Left Side: Controls -->
-                <div class="unified-main">
-                    <!-- Tool 1: Main Track & Trace (Unified) -->
-                    <div class="workspace-card">
-                        <div class="workspace-header">
-                            <i class="icon">🔍</i>
-                            <h3 class="workspace-title">ตรวจสอบสถานะ (Track & Trace)</h3>
-                        </div>
-                        <div class="input-group" style="margin-bottom: 10px;">
-                            <input type="text" id="smart-main-input" placeholder="กรอกเลขพัสดุ (เช่น XX123456789TH)" maxlength="13" style="text-transform:uppercase;">
-                            <button class="btn btn-search" onclick="unifiedMainSearch()" style="width:110px; font-size:1.05rem;">🔍 ค้นหา</button>
-                        </div>
-                        <div id="smart-main-input-warning" style="display:none; margin-top:5px; color:#d32f2f; font-size:0.75rem; font-weight:bold; padding:4px 10px; background:#fff5f5; border-radius:4px; border-left:3px solid #d32f2f;"></div>
-                        <!-- Image Upload for OCR inside Track & Trace -->
-                        <div style="margin-bottom: 12px;">
-                            <input type="file" id="track-ocr-upload" accept="image/*, .xlsx, .xls" multiple style="display:none" onchange="handleTrackFileUpload(this.files)">
-                            <button class="btn btn-neutral" onclick="document.getElementById('track-ocr-upload').click()" style="font-size:0.85rem; padding:6px 12px; border:1px solid #ccc; display:flex; align-items:center; gap:6px;">
-                                📸 เพิ่มรูปภาพ หรือไฟล์ Excel
-                            </button>
-                            <span id="track-ocr-status" style="font-size:0.8rem; color:var(--primary-color); margin-top:5px; display:block;"></span>
-                        </div>
-
-                        <!-- Checkbox for Range Enable -->
-                        <div style="margin-bottom: 10px;">
-                            <label style="font-size:0.9rem; display:flex; align-items:center; gap:8px; cursor:pointer;" title="ค้นหาแบบจำนวนมากย้อนหลังหรือถัดไป">
-                                <input type="checkbox" id="smart-main-range-toggle" onchange="toggleMainRangeInputs()">
-                                เปิดโหมดค้นหาแบบชุด/ช่วงเลขรัน (Batch/Range)
-                            </label>
-                        </div>
-
-                        <!-- Range Inputs (Hidden by default) -->
-                        <div id="smart-main-range-options" class="grid-form hidden" style="background:#f9f9f9; padding:10px; border-radius:6px; border:1px solid #ddd; margin-bottom: 10px;">
-                            <div style="display: flex; gap: 6px; margin-bottom:0;">
-                                <div style="flex:1; min-width:0;">
-                                    <label style="font-size:0.82rem; font-weight:bold; color:#333; white-space:nowrap; display:block; overflow:hidden; text-overflow:ellipsis;">จำนวน</label>
-                                    <input type="number" id="smart-range-qty" value="0" min="0" placeholder="0" style="text-align:center; width:100%; box-sizing:border-box;">
-                                </div>
-                                <div style="flex:1; min-width:0;">
-                                    <label style="font-size:0.82rem; color:#28a745; white-space:nowrap; display:block; overflow:hidden; text-overflow:ellipsis;">◀ ก่อน</label>
-                                    <input type="number" id="smart-range-prev" value="0" min="0" placeholder="0" style="text-align:center; width:100%; box-sizing:border-box; border-color:#c8e6c9;">
-                                </div>
-                                <div style="flex:1; min-width:0;">
-                                    <label style="font-size:0.82rem; color:#d32f2f; white-space:nowrap; display:block; overflow:hidden; text-overflow:ellipsis;">ถัดไป ▶</label>
-                                    <input type="number" id="smart-range-next" value="0" min="0" placeholder="0" style="text-align:center; width:100%; box-sizing:border-box; border-color:#ffcdd2;">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mt-4" id="smart-main-range-btn-container" class="hidden" style="display:none;">
-                            <button class="btn btn-primary" onclick="unifiedMainSearch()" style="width: 100%; background-color:#2e7d32; border-color:#2e7d32; color:white;">🚀 เริ่มสร้างรายการชุดเลข</button>
-                        </div>
-                    </div>
-
-                    <!-- Tool 4: Exception Log (Simplified Report Builder) -->
-                    <div class="workspace-card" id="exception-section">
-                        <div class="workspace-header">
-                            <i class="icon">📝</i>
-                            <h3 class="workspace-title">สร้างรายงานสิ่งของตกหล่น (Report Draft)</h3>
-                        </div>
-                        
-                        <!-- 1. Report Settings (Collapsible Meta) -->
-                        <details id="exception-meta-details" style="background:#fff; border:1px solid #003366; border-radius:8px; margin-bottom:15px; overflow:hidden;">
-                            <summary class="rpt-header-navy" style="cursor:pointer; list-style:none;">
-                                <span>⚙️ ตั้งค่ารายงาน (Report Settings)</span>
-                                <span id="meta-summary-hint" style="font-size:0.75rem; font-weight:normal; color:#fff; opacity:0.8;">ผู้รายงาน: <span id="meta-summary-reporter" style="color:#fff;">-</span></span>
-                                <span class="chevron">▼</span>
-                            </summary>
-                            <div style="padding:15px; border-top:1px solid #d0e1f9; background:white;">
-                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-                                    <div>
-                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:4px;">🏢 ที่ทำการ / สาขา</label>
-                                        <input type="text" id="rpt-branch" placeholder="เช่น ปณ.ลาดพร้าว 19" oninput="saveExceptionMeta()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:4px;">📅 วันที่รายงาน</label>
-                                        <input type="date" id="rpt-date" oninput="saveExceptionMeta()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:4px;">👤 ชื่อผู้รายงาน</label>
-                                        <input type="text" id="rpt-reporter" placeholder="ชื่อ-นามสกุล / รหัสวิเศษ" oninput="saveExceptionMeta()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:4px;">🔖 หัวข้อรายงาน</label>
-                                        <input type="text" id="rpt-subject" placeholder="รายงานชิ้นงานตกหล่นประจำวัน" oninput="saveExceptionMeta()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box;">
-                                    </div>
-                                </div>
-                                <div style="margin-bottom:0;">
-                                    <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:4px;">📌 หมายเหตุ</label>
-                                    <textarea id="rpt-note" rows="2" placeholder="ระบุเพิ่มเติม เช่น ข้อมูล ณ เวลา..." oninput="saveExceptionMeta()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; box-sizing:border-box; resize:vertical;"></textarea>
-                                </div>
-                            </div>
-                        </details>
-
-                        <!-- 2. Entry Form (Compact) -->
-                        <div style="background:#fff; border:2px solid #0288d1; border-radius:10px; padding:15px; margin-bottom:20px; box-shadow:0 1px 1px rgba(0,0,0,0.05);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                                <strong id="exception-form-title" style="color:#0288d1; font-size:1.05rem;">📥 เพิ่มรายการใหม่ลงในรายงาน</strong>
-                                <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                                    <input type="checkbox" id="exception-range-toggle" onchange="toggleExceptionRangeMode(); renderStoredUnifiedNumbers(currentUnifiedTitle || '', currentUnifiedResults || [])">
-                                    ช่วงเลขต่อเนื่อง
-                                </label>
-                            </div>
-
-                            <div id="exception-single-mode" style="margin-bottom:12px;">
-                                <textarea id="exception-track-input" oninput="renderStoredUnifiedNumbers(currentUnifiedTitle || '', currentUnifiedResults || [])" placeholder="วางเลขพัสดุ 13 หลักที่นี่... (หนึ่งรายการต่อบรรทัด)" style="text-transform:uppercase; width:100%; height:120px; padding:12px; border:1px solid #ccc; border-radius:6px; font-size:1.1rem; box-sizing:border-box; font-family:monospace; text-align:left; resize:vertical;"></textarea>
-                            </div>
-
-                            <div id="exception-range-mode" style="display:none; margin-bottom:12px;">
-                                <div style="display:flex; gap:8px; align-items:center;">
-                                    <input type="text" id="exception-start-input" oninput="renderStoredUnifiedNumbers(currentUnifiedTitle || '', currentUnifiedResults || [])" placeholder="เลขเริ่มต้น" maxlength="13" style="text-transform:uppercase; flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; text-align:center; font-family:monospace;">
-                                    <span style="color:#999;">ถึง</span>
-                                    <input type="text" id="exception-end-input" oninput="renderStoredUnifiedNumbers(currentUnifiedTitle || '', currentUnifiedResults || [])" placeholder="เลขสุดท้าย" maxlength="13" style="text-transform:uppercase; flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; text-align:center; font-family:monospace;">
-                                </div>
-                                <div id="exception-range-preview" style="margin-top:5px; font-size:0.8rem; color:#0288d1; text-align:center;"></div>
-                            </div>
-
-                            <div id="exception-extra-container" style="margin-bottom:12px;">
-                                <div id="exception-extra-items"></div>
-                                <button type="button" class="btn btn-neutral" onclick="addExceptionExtraItem()" style="font-size:0.8rem; padding:4px 10px; border:1px dashed #999; background:#fafafa; width:100%;">
-                                    ➕ เพิ่มเลขอื่นๆ ในบริษัทเดียวกัน
-                                </button>
-                            </div>
-
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-                                <div>
-                                    <label style="font-size:0.75rem; color:#666;">📁 หมวดงาน</label>
-                                    <select id="exception-category" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px; font-size:0.9rem;">
-                                        <option value="เงินสด">เงินสด</option>
-                                        <option value="เครื่องประทับ">เครื่องประทับ</option>
-                                        <option value="รายเดือน">รายเดือน</option>
-                                        <option value="อื่นๆ">อื่นๆ</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem; color:#666;">💡 สาเหตุที่เว้นว่าง/ตกหล่น</label>
-                                    <input type="text" id="exception-reason-input" placeholder="เช่น ไม่พบบันทึก..." list="exception-reason-list" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px; font-size:0.9rem;">
-                                </div>
-                            </div>
-
-                            <div style="background:#f0f7ff; padding:10px; border-radius:6px; margin-bottom:12px; display:flex; gap:10px; align-items:center;">
-                                <div style="flex:1;">
-                                    <label style="font-size:0.7rem; color:#0277bd; display:block; margin-bottom:2px;">📅 วันที่/เวลาที่สแกนล่าสุด</label>
-                                    <div style="display:flex; gap:5px;">
-                                        <input type="date" id="exception-date-picker" style="flex:1.5; padding:6px; border:1px solid #90caf9; border-radius:4px; font-size:0.85rem;" oninput="updateBEDisplay()">
-                                        <input type="time" id="exception-time-picker" style="flex:1; padding:6px; border:1px solid #90caf9; border-radius:4px; font-size:0.85rem;" oninput="updateBEDisplay()">
-                                    </div>
-                                    <input type="hidden" id="exception-datetime">
-                                </div>
-                                <div style="flex:0 0 100px;">
-                                    <label style="font-size:0.7rem; color:#0277bd; display:block; margin-bottom:2px;">สถานะ</label>
-                                    <input type="text" id="exception-first-status" value="ใส่ของลงถุง" style="width:100%; padding:6px; border:1px solid #90caf9; border-radius:4px; font-size:0.85rem;">
-                                </div>
-                            </div>
-
-                            <div style="margin-bottom:12px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                                    <span style="font-size:0.8rem; font-weight:bold; color:#555;">🖼️ แนบรูปภาพ (ถ้ามี)</span>
-                                    <div style="display:flex; align-items:center; gap:5px;">
-                                        <input type="range" id="exception-img-scale" min="50" max="250" value="100" oninput="updateExceptionImageScale()" style="width:60px;">
-                                    </div>
-                                </div>
-                                <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:5px; align-items:flex-start;">
-                                    <div onclick="document.getElementById('exception-img-upload').click()" style="flex:0 0 60px; height:60px; border:1px dashed #0288d1; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:#e3f2fd; color:#0288d1; font-size:1.5rem; margin-top:0;">+</div>
-                                    <div id="exception-img-preview" style="display:flex; gap:8px;"></div>
-                                </div>
-                                <input type="file" id="exception-img-upload" accept="image/*" multiple style="display:none" onchange="handleExceptionImageUpload(this.files)">
-                            </div>
-
-                            <button id="exception-save-btn" class="btn btn-success" onclick="addExceptionEntry()" style="width:100%; padding:12px; font-size:1.05rem; border-radius:8px;">
-                                ➕ เพิ่มรายการลงในรายงาน (Add to Draft)
-                            </button>
-                        </div>
-
-                        <!-- 3. Current Report List & Export -->
-                        <div style="margin-top:25px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
-                                <div style="display:flex; align-items:center; gap:12px;">
-                                    <h4 style="margin:0; font-size:1.1rem; color:#333;">📦 รายการที่พร้อมแจ้งผล (Drafts)</h4>
-                                    <div class="btn-group" style="display:flex; background:#f0f0f0; padding:3px; border-radius:8px; gap:2px;">
-                                        <button id="filter-today" class="btn btn-neutral active" onclick="setExceptionFilter('today')" style="padding:4px 14px; font-size:0.75rem; border:none; border-radius:6px; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.05); white-space:nowrap; min-width:60px;">วันนี้</button>
-                                        <button id="filter-history" class="btn btn-neutral" onclick="setExceptionFilter('history')" style="padding:4px 14px; font-size:0.75rem; border:none; border-radius:6px; background:none; color:#666; white-space:nowrap; min-width:60px;">ประวัติ</button>
-                                    </div>
-                                </div>
-                                <div style="display:flex; gap:8px;">
-                                    <button class="btn btn-neutral" onclick="if(confirm('ล้างรายการแสดงผลปัจจุบันตามตัวกรองนี้?')) { clearFilteredExceptions(); }" style="font-size:0.7rem; padding:4px 8px; border:none; color:#999; background:none; text-decoration:underline;">
-                                        ล้างรายการที่แสดง
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div id="exception-table-container" style="width:100%; min-width:0;">
-                                <p style="text-align:center; color:#999; padding:20px;">ยังไม่มีข้อมูลรายการตกหล่น...</p>
-                            </div>
-
-                            <!-- Final Export Button (Visible only when needed) -->
-                            <div id="exception-export-bar" class="hidden" style="margin-top:20px; padding:20px; background:#fff9c4; border-radius:12px; border:2px dashed #fbc02d; text-align:center;">
-                                <p style="margin:0 0 15px 0; font-weight:bold; color:#856404;">✨ ตรวจสอบข้อมูลครบถ้วนแล้ว? สร้างรูปภาพเพื่อส่งเข้ากลุ่ม LINE ได้เลย!</p>
-                                <button class="btn btn-primary" onclick="exportExceptionImage()" style="background:linear-gradient(135deg,#e65100,#ef6c00); border:none; color:white; font-size:1.1rem; padding:12px 30px; border-radius:30px; width:100%; max-width:400px; box-shadow:0 10px 20px rgba(230,81,0,0.2); cursor:pointer;">
-                                    📸 สร้างรูปภาพแจ้งหัวหน้า (Create Image)
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Tool 5: Advanced Analytics (Merged from Admin Tools) -->
-                    <div class="workspace-card admin-only">
-                        <div class="workspace-header" style="background: linear-gradient(135deg, #fff3e0, #ffe0b2);">
-                            <i class="icon">🚀</i>
-                            <h3 class="workspace-title" style="color: #e65100;">เครื่องมือวิเคราะห์ขั้นสูง (Advanced Tools)</h3>
-                        </div>
-                        
-                        <div style="padding: 15px;">
-                            <!-- Sub-Tool: Receipt OCR -->
-                            <div style="margin-bottom: 25px; border-bottom: 1px solid #ffe0b2; padding-bottom: 15px;">
-                                <h4 style="color:#e65100; margin-top:0;">1. ดึงข้อมูลจากใบเสร็จ (Receipt OCR & Gaps)</h4>
-                                <div class="upload-area" onclick="document.getElementById('admin-ocr-upload-smart').click()" style="background:#fffaf0; border-color:#ffe0b2;">
-                                    <span class="upload-icon">📄</span>
-                                    <p>คลิกเพื่อเลือกภาพใบเสร็จ (Receipt Image)</p>
-                                    <input type="file" id="admin-ocr-upload-smart" accept="image/*" multiple style="display:none" onchange="if(typeof adminHandleImageOcr === 'function') adminHandleImageOcr(this.files);">
-                                </div>
-                                <div id="admin-ocr-status" style="margin-top:10px; font-weight:bold; color:#e65100;"></div>
-                            </div>
-
-                            <!-- Sub-Tool: Cross Reference -->
-                            <div>
-                                <h4 style="color:#e65100; margin-top:0;">2. ตรวจสอบสังกัดบริษัท (Cross-Reference)</h4>
-                                <textarea id="admin-crossref-input" rows="4" placeholder="วางเลขพัสดุเพื่อเช็คบริษัท..." style="margin-bottom:10px;"></textarea>
-                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                    <button class="btn btn-primary" onclick="if(typeof adminCrossReference === 'function') adminCrossReference();" style="background:#e65100; border:none;">🔍 ค้นหาสังกัด</button>
-                                    <button class="btn btn-neutral" onclick="document.getElementById('admin-crossref-file-smart').click()">📸 สแกนรูป</button>
-                                    <input type="file" id="admin-crossref-file-smart" accept="image/*" style="display:none" onchange="if(typeof adminCrossRefImage === 'function') adminCrossRefImage(this.files);">
-                                    <button class="btn btn-success" onclick="if(typeof copyCrossRefAll === 'function') copyCrossRefAll();" style="background:#2e7d32;">📋 คัดลอกเลข</button>
-                                </div>
-                                <div id="admin-crossref-status" style="margin-top:10px; font-weight:bold; color:#0d47a1;"></div>
-                                <div id="admin-crossref-result" class="hidden" style="margin-top:10px; overflow-x:auto;"></div>
-                            </div>
-                        </div>
-                    </div>
+        <!-- HISTORY TAB -->
+        <section id="tab-history" class="tab-content active">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2><i class="fas fa-database"></i> ประวัติการนำเข้าจากลูกน้อง</h2>
+                    <button class="btn btn-neutral" onclick="loadHistory()"><i class="fas fa-sync"></i> รีเฟรช</button>
                 </div>
-
-                <!-- Right Side: Results -->
-                <div class="unified-side">
-                    <div class="workspace-card" style="display: flex; flex-direction: column;">
-                        <div class="workspace-header" style="background: linear-gradient(135deg, #f0f7ff, #e3f2fd);">
-                            <i class="icon">📋</i>
-                            <h3 class="workspace-title">ข้อมูลจากชุดเลข (Results)</h3>
-                            <div id="smart-result-summary" style="margin-left: auto; font-size: 0.9rem; font-weight: bold;"></div>
-                        </div>
-                        <div id="smart-unified-results" class="unified-result-area" style="flex: 1;">
-                            <div style="padding: 40px; text-align: center; color: #999;">
-                                <p>ยังไม่มีข้อมูลผลลัพธ์<br>กรุณากรอกเลขแล้วกด "ค้นหา"</p>
-                            </div>
-                        </div>
-                        <!-- Copy All button (shown only when results exist) -->
-                        <div id="smart-copy-all-bar" class="hidden" style="padding: 10px; border-top: 1px solid #eee; background:#fff;">
-                            <button class="btn btn-success" onclick="copyAllUnifiedNumbers()" style="width:100%; font-size:1rem; padding:12px; font-weight:bold; border-radius:8px;">📋 เลือกทั้งหมด</button>
-                        </div>
-                    </div>
+                <div id="history-loading" style="text-align: center; padding: 20px;">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i> กำลังโหลดข้อมูลจาก Firebase...
                 </div>
+                <div id="history-list" style="margin-top: 15px;"></div>
             </div>
         </section>
 
-        <!-- Consolidated Sections 1-3 removed as they are part of SECTION 0 Smart Workspace -->
-
-        <!-- SECTION 4: Customer Database -->
-        <section id="tab-customer" class="tab-content admin-only">
+        <!-- CHECK TAB -->
+        <section id="tab-check" class="tab-content">
             <div class="card">
-                <h2>ฐานข้อมูลลูกค้า (Customer Database)</h2>
-                <p class="text-muted">บันทึกข้อมูลลูกค้าเพื่อแสดงผลเวลาค้นหา (บันทึกในเครื่องนี้เท่านั้น)</p>
-
-                <div class="grid-form"
-                    style="background:#f9f9f9; padding:15px; border-radius:8px; border:1px solid #eee;">
-                    <div class="form-group">
-                        <label>วันที่ขอเลขที่ (Request Date)</label>
-                        <input type="date" id="db-request-date">
-                    </div>
-                    <div class="form-group" style="position: relative;">
-                        <label>ชื่อลูกค้า / บริษัท</label>
-                        <div style="display: flex; gap: 5px;">
-                            <input type="text" id="db-name" placeholder="เช่น บจก. เอบีซี เทรดดิ้ง" list="customer-name-list" style="flex: 1;">
-                            <select id="db-name-select" onchange="selectCustomerFromDropdown(this.value)" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; max-width: 155px; background-color: #f8f9fa; cursor: pointer;">
-                                <option value="">- เลือกลูกค้าประวัติ -</option>
-                            </select>
-                        </div>
-                        <datalist id="customer-name-list"></datalist>
-                    </div>
-                    <div class="form-group">
-                        <label>ประเภท (Type)</label>
-                        <select id="db-type"
-                            style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:4px;">
-                            <option value="Credit">รายเดือน (Credit)</option>
-                            <option value="Cash">เงินสด/Drop Off (Cash)</option>
-                            <option value="CustomerA">ลูกค้า A</option>
-                            <option value="Agency">หน่วยงาน</option>
-                            <option value="Franking">เครื่องประทับ</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>เลขที่สัญญา (Contract No.)</label>
-                        <input type="text" id="db-contract" placeholder="เช่น 123/2569 (ถ้ามี)">
-                    </div>
+                <h2><i class="fas fa-barcode"></i> ค้นหาพัสดุ (Single Check)</h2>
+                <div class="form-group">
+                    <input type="text" id="check-input" placeholder="ยิงบาร์โค้ด หรือ พิมพ์เลขพัสดุ..." 
+                           style="width: 100%; padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #2196f3; text-transform: uppercase;">
                 </div>
-
-                <div class="form-group mt-4">
-                    <label>ช่วงเลขพัสดุที่ต้องการบันทึก</label>
-
-                    <!-- Smart Builder UI -->
-                    <div class="smart-input-container"
-                        style="background:#e3f2fd; padding:15px; border-radius:8px; border:1px solid #90caf9; margin-bottom:10px;">
-                        <div
-                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                            <strong style="color:#0d47a1;">✨ Smart Input (ช่วยกรอกเลข)</strong>
-                            <div>
-                                <button class="btn btn-neutral"
-                                    onclick="document.getElementById('smart-image-upload').click()"
-                                    style="padding: 5px 10px; font-size: 0.8rem; border:1px solid #ccc; display:flex; align-items:center; gap:5px;">
-                                    📸 Scan Images
-                                </button>
-                                <input type="file" id="smart-image-upload" multiple accept="image/*"
-                                    style="display:none" onchange="handleImageSelection(this.files)">
-                                <span id="smart-ocr-status"
-                                    style="font-size:0.8rem; color:var(--primary-color); margin-left:10px;"></span>
-                            </div>
-                        </div>
-
-                        <div style="background:#fff; padding:10px 15px; border-radius:6px; margin-bottom:15px; border:1px dashed #64b5f6; display:flex; gap:15px; flex-wrap:wrap;">
-                            <div style="flex:1; min-width:200px;">
-                                <label style="font-size:0.75rem; color:#1565c0; font-weight:bold; display:flex; justify-content:space-between;">
-                                    <span>🔍 หาเล่มจากเลขพัสดุ 1 ตัว</span>
-                                    <span style="color:#888; font-weight:normal; font-size:0.7rem;">(Auto-Detect Book)</span>
-                                </label>
-                                <div style="display:flex; gap:5px; margin-top:3px;">
-                                    <input type="text" id="magic-single" placeholder="วางเลขที่นี่ (เช่น EQ183240125TH)" style="font-size:0.8rem; padding:6px; flex:1; text-transform:uppercase;" maxlength="13" onchange="applyMagicSingle(this.value)">
-                                    <button type="button" class="btn btn-neutral" onclick="applyMagicSingle(document.getElementById('magic-single').value)" style="padding:0 8px; font-size:0.8rem; border:1px solid #ccc; height:32px;">ดึงข้อมูล</button>
-                                </div>
-                            </div>
-                            <div style="flex:1; min-width:200px;">
-                                <label style="font-size:0.75rem; color:#1565c0; font-weight:bold; display:flex; justify-content:space-between;">
-                                    <span>📦 คำนวณหาจากรหัสเล่มกล่อง</span>
-                                    <span style="color:#888; font-weight:normal; font-size:0.7rem;">(Generate from Book No.)</span>
-                                </label>
-                                <div style="display:flex; gap:5px; margin-top:3px;">
-                                    <input type="number" id="magic-bookno" placeholder="ระบุเล่มที่ (เช่น 76351)" style="font-size:0.8rem; padding:6px; flex:1;" onchange="applyMagicBookNo(this.value)">
-                                    <button type="button" class="btn btn-neutral" onclick="applyMagicBookNo(document.getElementById('magic-bookno').value)" style="padding:0 8px; font-size:0.8rem; border:1px solid #ccc; height:32px;">คำนวณ</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-                            <!-- Prefix -->
-                            <div style="flex:1; min-width:100px;">
-                                <label style="font-size:0.8rem;">อักษร (Prefix)</label>
-                                <div class="input-group">
-                                    <input type="text" id="smart-prefix" list="prefix-list" maxlength="2"
-                                        placeholder="XX"
-                                        style="text-transform:uppercase; text-align:center; font-weight:bold;">
-                                    <datalist id="prefix-list"></datalist>
-                                    <button class="btn btn-danger" onclick="deleteCurrentPrefix()" title="ลบหมวดนี้"
-                                        style="padding:0 5px;">×</button>
-                                </div>
-                            </div>
-
-                            <!-- Block 1 (4 Digits) -->
-                            <div style="flex:1.5; min-width:100px;">
-                                <label style="font-size:0.8rem;">เลขหมวด (4 หลัก)</label>
-                                <div class="input-group">
-                                    <input type="text" id="smart-block1" list="block1-list" maxlength="4"
-                                        placeholder="1234" oninput="calculateSmartCheckDigit()"
-                                        style="letter-spacing:1px; text-align:center; font-weight:bold;">
-                                    <datalist id="block1-list"></datalist>
-                                    <button class="btn btn-danger" onclick="deleteCurrentBlock1()" title="ลบเลขชุดนี้"
-                                        style="padding:0 5px;">×</button>
-                                </div>
-                            </div>
-
-                            <!-- Block 2 (4 Digits) -->
-                            <div style="flex:1.5; min-width:100px;">
-                                <label style="font-size:0.8rem;">เลขรัน (4 หลัก)</label>
-                                <input type="text" id="smart-block2" maxlength="4" placeholder="5678"
-                                    oninput="calculateSmartCheckDigit()" style="letter-spacing:1px; text-align:center;">
-                            </div>
-
-                            <!-- Check Digit (Auto) -->
-                            <div style="flex:0.5; min-width:60px;">
-                                <label style="font-size:0.8rem;">Check</label>
-                                <input type="text" id="smart-check-digit" readonly
-                                    style="background:#eee; text-align:center; font-weight:bold; color:green;"
-                                    value="-">
-                            </div>
-
-                            <!-- Suffix -->
-                            <div style="flex:0.5; min-width:60px;">
-                                <label style="font-size:0.8rem;">Suffix</label>
-                                <input type="text" id="smart-suffix" value="TH" style="text-align:center;"
-                                    maxlength="2">
-                            </div>
-
-                            <!-- Add Button -->
-                            <div style="flex:1; min-width:140px;">
-                                <button type="button" class="btn btn-primary" onclick="addSmartEntryAndSave()"
-                                    style="width:100%; height:42px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">💾
-                                    บันทึกข้อมูล (Save)
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Range Option (Quantity) -->
-                        <div style="margin-top:10px;">
-                            <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                                <input type="checkbox" id="smart-range-enable" onchange="toggleSmartRange()">
-                                สร้างแบบเป็นชุด (Batch Mode)
-                            </label>
-                            <div id="smart-range-box" class="hidden"
-                                style="margin-top:8px; padding:10px 12px; border-left:3px solid #ccc; background:#fafafa; border-radius:0 6px 6px 0;">
-                                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; align-items:end;">
-                                    <div>
-                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px; white-space:nowrap;">📦 กล่อง</label>
-                                        <input type="number" id="smart-box" placeholder="0" min="0"
-                                            style="width:100%; box-sizing:border-box; text-align:center;" oninput="calculateSmartQtyFromHelpers()">
-                                        <span style="font-size:0.72rem; color:#999; display:block; text-align:center; margin-top:2px;">ซอง/กล่อง</span>
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.78rem; color:#555; display:block; margin-bottom:3px; white-space:nowrap;">📚 เล่ม</label>
-                                        <input type="number" id="smart-book" placeholder="0" min="0"
-                                            style="width:100%; box-sizing:border-box; text-align:center;" oninput="calculateSmartQtyFromHelpers()">
-                                        <span style="font-size:0.72rem; color:#999; display:block; text-align:center; margin-top:2px;">เล่ม (×240)</span>
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.78rem; font-weight:bold; color:var(--primary-color); display:block; margin-bottom:3px; white-space:nowrap;">✅ รวม</label>
-                                        <input type="number" id="smart-qty" placeholder="50" min="1"
-                                            style="width:100%; box-sizing:border-box; text-align:center; font-weight:bold; color:var(--primary-color); border-color:var(--primary-color);">
-                                        <span style="font-size:0.72rem; color:#999; display:block; text-align:center; margin-top:2px;">รายการ</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-
-                    <!-- Hidden Edit Section -->
-                    <div id="db-edit-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 20px; background: #fffdf2;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <h4 style="margin: 0; color: #cc7a00;">✏️ หมวดแก้ไขข้อมูล (Edit/Manual Mode)</h4>
-                            <button class="btn btn-neutral" onclick="cancelDbEdit()" style="padding:4px 8px; font-size:0.8rem;">❌ ปิดหมวดแก้ไข</button>
-                        </div>
-                        <p style="font-size:0.85rem; color:#666;">วางข้อมูลเลขพัสดุ (หรือแก้ไขข้อมูลลูกค้ารายนี้) แล้วกดบันทึก</p>
-                        <textarea id="db-tracking-list" rows="6" placeholder="รายการจะถูกเติมลงที่นี่..."></textarea>
-                        
-                        <div class="mt-4" style="display:flex; gap:10px; align-items:center;">
-                            <button class="btn btn-primary" onclick="saveCustomerData()">บันทึกข้อมูลที่แก้ไข (Save Edit)</button>
-                            <button class="btn btn-danger" onclick="clearDbEditData()">ล้างข้อความทิ้ง</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Backup Controls -->
-                <div class="mt-4" style="display:flex; justify-content:flex-end; gap:10px; align-items:center;">
-                    <button class="btn btn-neutral" onclick="backupData()" style="border:1px solid #ccc;">⬇ Backup DB</button>
-                    <button class="btn btn-neutral" onclick="document.getElementById('restore-upload').click()"
-                        style="border:1px solid #ccc;">⬆ Restore DB</button>
-                    <input type="file" id="restore-upload" accept=".json" style="display:none;"
-                        onchange="restoreData(event)">
-                </div>
-
-                <!-- Snapshot UI -->
-                <div id="snapshot-section" class="mt-4 hidden"
-                    style="background:#fff3cd; padding:10px; border-radius:4px; border:1px solid #ffeeba;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;"
-                        onclick="toggleSnapshotList()">
-                        <strong style="color:#856404;">↩️ จุดย้อนกลับข้อมูล (Auto-Backup / Restore Points)</strong>
-                        <span>▼</span>
-                    </div>
-                    <ul id="snapshot-list" class="hidden" style="margin:10px 0 0 20px; color:#856404;"></ul>
-                </div>
-
-                <div class="mt-4">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3>รายการที่บันทึกไว้ (<span id="db-count">0</span> รายการ)</h3>
-                        <div>
-                            <button class="btn btn-neutral" onclick="toggleCompanyView()" id="btn-toggle-company" style="font-size:0.8rem; border:1px solid #ccc; margin-right:5px;">🏢 ดูสรุปตามบริษัท</button>
-                            <button class="btn btn-neutral" onclick="toggleTrashView()" id="btn-toggle-trash" style="font-size:0.8rem; border:1px solid #ccc;">🗑️ ถังขยะ (<span id="trash-count">0</span>)</button>
-                        </div>
-                    </div>
-                    <div id="db-list-container" style="max-height: 300px; overflow-y: auto; margin-top:10px;">
-                        <table id="db-table">
-                            <thead>
-                                <tr>
-                                    <th style="cursor:pointer;" onclick="sortDB('id')" data-sort="id">ช่วงเลข / จำนวน
-                                        (Range/Count) ↕</th>
-                                    <th style="cursor:pointer;" onclick="sortDB('name')" data-sort="name">ลูกค้า
-                                        (Customer) ↕</th>
-                                    <th style="cursor:pointer;" onclick="sortDB('type')" data-sort="type">ประเภท (Type)
-                                        ↕</th>
-                                    <th style="cursor:pointer;" onclick="sortDB('timestamp')" data-sort="timestamp">
-                                        วันที่ (Date) ↕</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-
-                    <!-- Company View Container -->
-                    <div id="db-company-container" class="hidden" style="max-height: 300px; overflow-y: auto; margin-top:10px;">
-                        <table id="company-table">
-                            <thead>
-                                <tr>
-                                    <th style="cursor:pointer;" onclick="sortCompanyDB('name')" data-sortcomp="name">ลูกค้า (Customer) ↕</th>
-                                    <th style="cursor:pointer;" onclick="sortCompanyDB('totalCount')" data-sortcomp="totalCount">จำนวนรวม (Total Items) ↕</th>
-                                    <th style="cursor:pointer;" onclick="sortCompanyDB('batches')" data-sortcomp="batches">รายการอ้างอิง (Batches) ↕</th>
-                                    <th style="cursor:pointer;" onclick="sortCompanyDB('type')" data-sortcomp="type">ประเภท (Type) ↕</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-
-                    <!-- Trash View Container -->
-                    <div id="db-trash-container" class="hidden" style="max-height: 300px; overflow-y: auto; margin-top:10px; background:#fff3f3; padding:10px; border-radius:4px; border:1px solid #ffccd5;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                            <strong style="color:#d32f2f;">รายการในถังขยะ (Recycle Bin - กู้คืนได้)</strong>
-                            <button class="btn btn-danger" onclick="emptyTrash()" style="font-size:0.8rem; padding:4px 8px;">ล้างถังขยะทั้งหมด</button>
-                        </div>
-                        <table id="trash-table" style="background:white; width:100%;">
-                            <thead>
-                                <tr>
-                                    <th>ชุดข้อมูล (Batch)</th>
-                                    <th>ลูกค้า (Customer)</th>
-                                    <th>วันที่ลบ (Deleted)</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 5: Import Excel -->
-        <section id="tab-import" class="tab-content">
-            <div class="card">
-                <h2>นำเข้าข้อมูล & สำรองพัสดุ (Import & Backup)</h2>
-                <p class="text-muted">อัปโหลดไฟล์ (.xlsx, .xls) เพื่อวิเคราะห์ช่วงเลขและบันทึกข้อมูลเข้าประวัติอัตโนมัติ</p>
-
-                <div class="btn-group-premium">
-                    <button class="btn-premium" onclick="showPremiumDashboard()" style="border-color: #bbdefb; background: #e3f2fd; color: #0d47a1; width: 100%;">
-                        <span>📊</span> แดชบอร์ด & วิเคราะห์
-                    </button>
-                    <div style="display: flex; gap: 10px; width: 100%; margin-top: 10px;">
-                        <button class="btn-premium staff-only" onclick="exportDataForBoss()" style="border-color: #c8e6c9; background: #e8f5e9; color: #2e7d32; flex: 1; padding: 10px;">
-                            <span>📤</span> ส่งออกข้อมูล
-                        </button>
-                        <button class="btn-premium" onclick="confirmAndBackup()" style="color: #666; flex: 1; padding: 10px;">
-                            <span>💾</span> สำรองไฟล์ DB
-                        </button>
-                    </div>
-                    <button class="btn-premium admin-only" onclick="importDataFromStaff()" style="border-color: #ffe0b2; background: #fff3e0; color: #e65100; width: 100%; margin-top: 10px;">
-                        <span>📥</span> รับข้อมูลจากลูกน้อง (File Merge)
-                    </button>
-                    <button class="btn-premium admin-only" onclick="mergeFromFirebase()" style="border-color: #bbdefb; background: #e3f2fd; color: #1565c0; width: 100%; margin-top: 10px;">
-                        <span>☁️</span> ดึงข้อมูลจาก Cloud (Firebase)
-                    </button>
-                </div>
-
-
-                <div class="upload-area" onclick="document.getElementById('import-upload').click()">
-                    <div class="upload-icon" id="upload-icon-display">📊</div>
-                    <h3 id="upload-title-display">แตะเพื่อเลือกไฟล์ Excel</h3>
-                    <p class="text-muted" id="upload-desc-display">รองรับเฉพาะไฟล์ .xlsx, .xls (สำหรับส่งข้อมูลสาขา)</p>
-                    <p id="upload-status" style="margin-top:10px; color:var(--primary-color); font-weight: 600;"></p>
-                </div>
+                <button class="btn btn-primary" onclick="checkBarcode()" style="width: 100%; padding: 15px; font-size: 1.1rem;">
+                    <i class="fas fa-search"></i> ค้นหา
+                </button>
                 
-                <!-- Fuel Surcharge Toggle (v2.0-stable) -->
-                <div class="staff-hidden" style="margin-top: 15px; padding: 12px; background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" id="import-surcharge-toggle" style="width:22px; height:22px; cursor:pointer;" onchange="localStorage.setItem('thp_import_surcharge', this.checked)">
-                    <label for="import-surcharge-toggle" style="font-weight: bold; color: #856404; cursor:pointer; font-size: 0.95rem; line-height: 1.2;">
-                        ➕ เพิ่มค่าบริการเชื้อเพลิง (3 บาท/ชิ้น) 
-                        <span style="font-size: 0.75rem; font-weight: normal; display: block; color: #666; margin-top:2px;">*ตามประกาศ ปณท. เริ่ม 16 เม.ย. 2569</span>
-                    </label>
-                </div>
-
-                <!-- Hidden Input: Accept Excel AND Images, Multiple -->
-                <input type="file" id="import-upload" accept=".xlsx, .xls, .jpg, .jpeg, .png, .heic" multiple
-                    onchange="handleFileUpload(event)" style="display:none;">
-
-                <div id="import-preview" class="hidden mt-4">
-                    <h3>ผลการวิเคราะห์ (Analysis Result)</h3>
-                    <div id="import-summary" class="result-box result-success"></div>
-
-                    <div class="mt-4">
-                        <div class="form-group">
-                            <label>ชื่อลูกค้า / กลุ่มข้อมูล (Batch Name)</label>
-                            <input type="text" id="import-batch-name" placeholder="เช่น รายการส่งวันที่ 23/01/2026">
-                        </div>
-                        <div class="form-group">
-                            <label>ประเภท (Type)</label>
-                            <select id="import-batch-type"
-                                style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:4px;">
-                                <option value="Cash" selected>เงินสด (Cash)</option>
-                                <option value="Credit">รายเดือน (Credit)</option>
-                                <option value="CustomerA">ลูกค้า A</option>
-                                <option value="Agency">หน่วยงาน</option>
-                                <option value="Franking">เครื่องประทับ</option>
-                            </select>
-                        </div>
-                        <div style="display:flex; gap:10px; margin-top:15px;">
-                            <button id="import-save-btn" class="btn btn-primary" onclick="backupData()" style="background: linear-gradient(135deg, #0d47a1, #1565c0); border:none;">💾 สำรองข้อมูลระบบ (Back Up)</button>
-                            <button class="btn btn-danger" onclick="clearImportData()" style="background:#ff4444;">🗑️
-                                ล้างรายการ (Clear)</button>
-                        </div>
-                    </div>
-
-                    <div id="import-details" class="mt-4">
-                        <!-- Table of ranges -->
-                    </div>
-                </div>
+                <div id="check-result" class="hidden" style="margin-top: 20px;"></div>
             </div>
         </section>
 
-        <!-- SECTION 6: System Settings (Renamed from Admin Tools) -->
-        <section id="tab-admin" class="tab-content admin-only">
+        <!-- SETTINGS TAB -->
+        <section id="tab-settings" class="tab-content">
             <div class="card">
-                <h2>⚙️ ตั้งค่าระบบ (System Settings)</h2>
-                <p class="text-muted">จัดการฐานข้อมูลและการตั้งค่าทั่วไปของแอปพลิเคชัน</p>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
-                    <!-- DB Management -->
-                    <div style="padding: 15px; border: 1px solid #eee; border-radius: 8px;">
-                        <h3 style="margin-top:0;">📦 การจัดการฐานข้อมูล</h3>
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <button class="btn btn-neutral" onclick="backupDB()" style="width:100%;">Backup Database (JSON)</button>
-                            <button class="btn btn-neutral" onclick="restoreDB()" style="width:100%;">Restore Database (JSON)</button>
-                            <button class="btn btn-danger" onclick="clearAllData()" style="width:100%; margin-top:10px;">ล้างข้อมูลทั้งหมดในเครื่อง</button>
-                        </div>
-                    </div>
-
-                    <!-- Application Settings -->
-                    <div style="padding: 15px; border: 1px solid #eee; border-radius: 8px;">
-                        <h3 style="margin-top:0;">🔧 ตั้งค่าแอปพลิเคชัน</h3>
-                        <div class="form-group">
-                            <label>เวอร์ชันโปรแกรม:</label>
-                            <div style="font-family: monospace; background: #f5f5f5; padding: 5px 10px; border-radius: 4px;">v4.4.0-PRO</div>
-                        </div>
-                        <div style="margin-top:10px;">
-                            <button class="btn btn-primary" onclick="window.open('https://track.thailandpost.co.th/', '_blank')" style="width:100%;">🌐 เว็บไซต์ไปรษณีย์ไทย</button>
-                        </div>
-                    </div>
+                <h2><i class="fas fa-cogs"></i> ตั้งค่าระบบ</h2>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>ระยะเวลาจัดเก็บไฟล์ Excel (Auto Cleanup TTL):</label>
+                    <select id="setting-ttl" onchange="saveSettings()" style="width: 100%; padding: 10px; border-radius: 4px;">
+                        <option value="7">7 วัน</option>
+                        <option value="15">15 วัน</option>
+                        <option value="30" selected>30 วัน</option>
+                        <option value="90">90 วัน</option>
+                        <option value="365">1 ปี (365 วัน)</option>
+                    </select>
+                    <p class="text-muted" style="margin-top: 5px; font-size: 0.85rem;">
+                        เมื่อคุณเปิดแอป ระบบจะทำการลบไฟล์ Excel ที่อายุเกินกำหนดออกจาก Firebase Storage อัตโนมัติเพื่อคืนพื้นที่ว่าง
+                    </p>
                 </div>
+                <button class="btn btn-danger" onclick="forceCleanup()" style="margin-top: 10px;">
+                    <i class="fas fa-broom"></i> บังคับลบไฟล์เก่าทันที
+                </button>
             </div>
         </section>
     </main>
 
-    <footer style="text-align:center; padding:20px; color:#ccc; font-size:0.75rem; font-family:monospace;">
-        Tracking Analyst v4.3.0-PRO (Two-Tier Receipt Mode)
-    </footer>
-
-    <!-- IMAGE EDITOR MODAL -->
-    <div id="img-editor-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:10px; box-sizing:border-box;">
-        <div style="background:#fff; padding:15px; border-radius:8px; width:100%; max-width:450px; text-align:center; max-height:95vh; overflow-y:auto; display:flex; flex-direction:column;">
-            <h4 style="margin-top:0; margin-bottom:10px; flex-shrink:0;">✂️ ปรับพื้นที่แสดงรูปภาพ</h4>
-            <div style="position:relative; width:100%; aspect-ratio:1/1; background:#eee; margin:0 auto; overflow:hidden; border:1px solid #ccc; cursor:move; flex-shrink:0;" id="img-editor-canvas-wrapper">
-                <canvas id="img-editor-canvas" width="1500" height="1500" style="width:100%; height:100%; touch-action:none;"></canvas>
-            </div>
-            <div style="margin-top:10px; display:flex; align-items:center; justify-content:center; gap:10px; flex-shrink:0;">
-                <label style="font-weight:bold; font-size:0.9rem;">🔍 ซูมเข้า-ออก:</label>
-                <input type="range" id="img-editor-zoom" min="10" max="300" value="100" style="width:60%; accent-color:#0288d1;">
-            </div>
-            <p style="font-size:0.75rem; color:#666; margin-top:5px; margin-bottom:10px; flex-shrink:0;">* กดค้างที่รูปแล้วลากเพื่อเลื่อนตำแหน่งตามต้องการ</p>
-            <div style="display:flex; gap:10px; justify-content:center; flex-shrink:0;">
-                <button class="btn btn-neutral" onclick="closeImageEditor()" style="padding:8px 20px;">✖ ยกเลิก</button>
-                <button class="btn btn-success" onclick="saveImageEditor()" style="padding:8px 20px;">✔ นำไปใช้</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script src="utils.js?v=4.3.0-stable"></script>
-    <script src="db_manager.js?v=4.3.0-stable"></script>
-    <script src="smart_input.js?v=4.3.0-stable"></script>
-    <script src="app.js?v=4.3.0-stable"></script>
+    <script src="firebase_config.js"></script>
+    <script src="utils.js"></script>
+    <script src="app.js"></script>
 </body>
-
 </html>

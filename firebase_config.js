@@ -1,9 +1,6 @@
-﻿// Firebase Configuration
-// TODO: Replace with your actual Firebase project credentials
-// 1. Go to Firebase Console (https://console.firebase.google.com/)
-// 2. Create a new project or select an existing one.
-// 3. Add a Web App to the project and copy the firebaseConfig object below.
-// 4. Enable Firestore Database in your Firebase project.
+﻿// Firebase Configuration for Standalone App
+// Replace with your actual Firebase project credentials
+// Requires: Authentication (Optional), Firestore Database, Storage
 
 const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
@@ -18,8 +15,10 @@ const firebaseConfig = {
 if (typeof firebase !== "undefined") {
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const storage = firebase.storage();
     window.db = db;
+    window.storage = storage;
 } else {
-    console.warn("Firebase SDK not loaded");
+    console.error("Firebase SDK not loaded");
 }
 
