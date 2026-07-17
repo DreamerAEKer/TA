@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>นำเข้าข้อมูล (Staff) - Tracking Analyst</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="user-mode">
+    <div id="user-mode-header">
+        <div style="display:flex; justify-content:center; align-items:center;">
+            <span class="logo-main" style="font-size:1.8rem; font-weight:800; color:#1e3c72; letter-spacing:1px; margin-right:8px;">TRACK</span>
+            <span class="title-sub" style="font-size:1.2rem; color:#666; font-weight:600; background:#f0f0f0; padding:4px 10px; border-radius:20px;">ระบบนำเข้าพัสดุ (Staff Mode)</span>
+        </div>
+    </div>
+
+    <main class="container" style="margin-top: 80px;">
+        <section id="tab-import" class="tab-content active">
+            <div class="card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 12px;">
+                <h2 style="color: #1e3c72; font-size: 1.5rem; margin-bottom: 20px;"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล (Import Excel)</h2>
+                
+                <div class="upload-area" id="drop-zone" onclick="document.getElementById('import-file').click()">
+                    <div class="upload-icon-display">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 style="margin-top: 15px;">แตะเพื่อเลือกไฟล์ Excel</h3>
+                    <p class="text-muted" style="font-size: 0.9rem;">รองรับเฉพาะไฟล์ .xlsx, .xls</p>
+                    <input type="file" id="import-file" accept=".xlsx, .xls" class="hidden">
+                    <p id="upload-status" style="margin-top:10px; color:var(--primary-color); font-weight: 600;"></p>
+                </div>
+
+                <!-- Missing File Note -->
+                <div style="margin-top: 15px; font-size: 0.85rem; color: #d32f2f; background: #ffebee; padding: 10px; border-radius: 8px; border-left: 4px solid #d32f2f;">
+                    <strong>ข้อควรระวัง:</strong> หากตรวจสอบพบรายการที่ขาดหายไประหว่างนำเข้า โปรดตรวจสอบไฟล์ Excel ต้นฉบับอีกครั้ง
+                </div>
+
+                <div id="import-preview" class="hidden mt-4">
+                    <h3>ผลการวิเคราะห์ (Analysis Result)</h3>
+                    <div id="import-summary" class="result-box result-success"></div>
+
+                    <div class="mt-4">
+                        <div class="form-group">
+                            <label>ชื่อลูกค้า / กลุ่มข้อมูล (Batch Name)</label>
+                            <input type="text" id="import-batch-name" placeholder="เช่น รายการส่งวันที่ 23/01/2026">
+                        </div>
+                        <div class="form-group">
+                            <label>ประเภท (Type)</label>
+                            <select id="import-batch-type" style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:4px;">
+                                <option value="Cash" selected>เงินสด (Cash)</option>
+                                <option value="Credit">เชื่อ (Credit)</option>
+                                <option value="CustomerA">ลูกค้า A</option>
+                                <option value="Agency">หน่วยงาน</option>
+                                <option value="Franking">ซองประทับ</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button id="import-save-btn" class="btn btn-primary" onclick="uploadToFirebase()" style="background: linear-gradient(135deg, #0288d1, #0277bd); border:none; color: white;">
+                                <i class="fas fa-cloud-upload-alt"></i> ส่งข้อมูลขึ้นคลาวด์ (Send to Cloud)
+                            </button>
+                            <button class="btn btn-danger" onclick="clearImportData()" style="background:#ff4444;">
+                                <i class="fas fa-trash-alt"></i> ล้างรายการ (Clear)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="import-details" class="mt-4">
+                        <!-- Table of ranges -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="firebase_config.js"></script>
+    <script src="utils.js"></script>
+    <script src="staff_app.js"></script>
+</body>
+</html>

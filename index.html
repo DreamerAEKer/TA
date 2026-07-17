@@ -46,6 +46,10 @@
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src='https://unpkg.com/tesseract.js@v5.0.0/dist/tesseract.min.js'></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+    <script src="firebase_config.js"></script>
 </head>
 
 <body>
@@ -637,7 +641,10 @@
                         </button>
                     </div>
                     <button class="btn-premium admin-only" onclick="importDataFromStaff()" style="border-color: #ffe0b2; background: #fff3e0; color: #e65100; width: 100%; margin-top: 10px;">
-                        <span>📥</span> รับข้อมูลจากลูกน้อง (Merge)
+                        <span>📥</span> รับข้อมูลจากลูกน้อง (File Merge)
+                    </button>
+                    <button class="btn-premium admin-only" onclick="mergeFromFirebase()" style="border-color: #bbdefb; background: #e3f2fd; color: #1565c0; width: 100%; margin-top: 10px;">
+                        <span>☁️</span> ดึงข้อมูลจาก Cloud (Firebase)
                     </button>
                 </div>
 

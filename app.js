@@ -5478,3 +5478,69 @@ async function importDataFromStaff() {
     };
     input.click();
 }
+
+async function mergeFromFirebase() {
+    if (!window.db) {
+        alert("Firebase is not initialized. Please configure firebase_config.js.");
+        return;
+    }
+    
+    try {
+        const snapshot = await window.db.collection("imported_batches").get();
+        if (snapshot.empty) {
+            alert("☁️ ไม่พบข้อมูลใหม่จากลูกน้องบน Cloud");
+            return;
+        }
+
+        let importCount = 0;
+        let batchDocs = [];
+        snapshot.forEach(doc => {
+            batchDocs.push({ id: doc.id, data: doc.data() });
+        });
+
+        if (!confirm(`พบข้อมูลจากลูกน้องจำนวน ${batchDocs.length} ชุด ต้องการผนวกเข้าฐานข้อมูลหรือไม่?`)) return;
+
+        for (const doc of batchDocs) {
+            const payload = doc.data;
+            const rangesMeta = payload.ranges.map(r => ({
+                start: r.start,
+                end: r.end,
+                count: r.count,
+                price: r.price,
+                weight: r.weight,
+                total: r.total || (r.count * r.price)
+            }));
+            
+            const batchInfo = {
+                name: payload.batchName || "Cloud Batch",
+                type: payload.type || "Cash",
+                contract: 'Imported (Cloud)',
+                timestamp: payload.timestamp ? new Date(payload.timestamp).getTime() : new Date().getTime(),
+                ranges: rangesMeta
+            };
+            
+            let allItemsToSave = [];
+            payload.ranges.forEach(r => {
+                if (r.items) {
+                    allItemsToSave = allItemsToSave.concat(r.items);
+                }
+            });
+            
+            const result = await CustomerDB.addBatch(batchInfo, allItemsToSave);
+            if (result && typeof result === 'object' && result.count) {
+                importCount += result.count;
+            } else if (typeof result === 'number') {
+                importCount += result;
+            }
+            
+            // Delete document after successful import
+            await window.db.collection("imported_batches").doc(doc.id).delete();
+        }
+        
+        alert(`ผนวกข้อมูลจากคลาวด์สำเร็จ! รับข้อมูลเพิ่มมา ${importCount} รายการ (และลบออกจากคลาวด์แล้ว)`);
+        if (typeof updateDbViews === 'function') await updateDbViews();
+    } catch (err) {
+        console.error("Merge Error:", err);
+        alert("เกิดข้อผิดพลาดในการดึงข้อมูลจาก Cloud: " + err.message);
+    }
+}
