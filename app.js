@@ -19,14 +19,23 @@ document.getElementById("import-file").addEventListener("change", function(e) {
             const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
             
             currentTrackingNumbers = [];
+            const trackRegex = /[A-Z]{2}\d{9}[A-Z]{2}/ig;
+            
             for(let i=0; i<rows.length; i++) {
-                if(rows[i] && rows[i].length > 0 && typeof rows[i][0] === "string") {
-                    const cellVal = rows[i][0].trim().toUpperCase();
-                    if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(cellVal)) {
-                        currentTrackingNumbers.push(cellVal);
+                if(!rows[i]) continue;
+                for(let j=0; j<rows[i].length; j++) {
+                    const cell = rows[i][j];
+                    if (cell && typeof cell === "string") {
+                        const matches = cell.match(trackRegex);
+                        if (matches) {
+                            matches.forEach(m => currentTrackingNumbers.push(m.toUpperCase()));
+                        }
                     }
                 }
             }
+            
+            // Remove duplicates just in case
+            currentTrackingNumbers = [...new Set(currentTrackingNumbers)];
             
             currentTotalItems = currentTrackingNumbers.length;
             document.getElementById("upload-status").innerText = `ไฟล์ ${file.name} เตรียมพร้อม (พบ ${currentTotalItems} รายการ)`;
