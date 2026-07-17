@@ -1,14 +1,15 @@
-﻿// Firebase Configuration for Standalone App
+// Firebase Configuration for Standalone App
 // Replace with your actual Firebase project credentials
 // Requires: Authentication (Optional), Firestore Database, Storage
 
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDoq31ge5vIJqGmp1Ppq_rt1fZKMWVlRsc",
+    authDomain: "tracking-analyst.firebaseapp.com",
+    projectId: "tracking-analyst",
+    storageBucket: "tracking-analyst.firebasestorage.app",
+    messagingSenderId: "591722827387",
+    appId: "1:591722827387:web:bae0979254d6ec751e5cde",
+    measurementId: "G-9QV4SPDL9G"
 };
 
 // Initialize Firebase
