@@ -111,6 +111,26 @@ document.getElementById("check-input").addEventListener("keypress", function(e) 
     if (e.key === "Enter") checkBarcode();
 });
 
+// Auto-fill Check Digit Logic
+document.getElementById("check-input").addEventListener("input", function(e) {
+    let val = e.target.value.toUpperCase().replace(/\s/g, '');
+    
+    // Check if user typed 2 letters + 8 digits + 2 letters (total 12 chars)
+    const match = val.match(/^([A-Z]{2})(\d{8})([A-Z]{2})$/);
+    if (match) {
+        const prefix = match[1];
+        const body = match[2];
+        const suffix = match[3];
+        
+        if (typeof TrackingUtils !== 'undefined') {
+            const cd = TrackingUtils.calculateS10CheckDigit(body);
+            if (cd !== null) {
+                e.target.value = `${prefix}${body}${cd}${suffix}`;
+            }
+        }
+    }
+});
+
 function saveSettings() {
     const ttl = document.getElementById("setting-ttl").value;
     localStorage.setItem("ta_firebase_ttl", ttl);

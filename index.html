@@ -19,8 +19,12 @@
             <span class="title-sub" style="font-size:1.2rem; color:#666; font-weight:600; background:#f0f0f0; padding:4px 10px; border-radius:20px;">ระบบนำเข้าข้อมูล</span>
         </div>
     </div>
+    <div class="tab-container" style="position: sticky; top: 60px; z-index: 99; display: flex; gap: 10px; margin-bottom: 20px;">
+        <button class="tab-btn active" onclick="switchTab('import')"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล</button>
+        <button class="tab-btn" onclick="switchTab('check')"><i class="fas fa-search"></i> ค้นหาพัสดุ</button>
+    </div>
 
-    <main class="container" style="margin-top: 80px;">
+    <main class="container" style="margin-top: 20px;">
         <section id="tab-import" class="tab-content active">
             <div class="card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 12px;">
                 <h2 style="color: #1e3c72; font-size: 1.5rem; margin-bottom: 20px;"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล (Import Excel)</h2>
@@ -61,6 +65,23 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- CHECK TAB -->
+        <section id="tab-check" class="tab-content" style="display: none;">
+            <div class="card">
+                <h2><i class="fas fa-barcode"></i> ค้นหาพัสดุ (Single Check)</h2>
+                <div class="form-group">
+                    <input type="text" id="check-input" placeholder="ยิงบาร์โค้ด หรือ พิมพ์เลขพัสดุ (เช่น EB12345678TH)..." 
+                           style="width: 100%; padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #2196f3; text-transform: uppercase;">
+                    <p class="text-muted" style="margin-top: 8px; font-size: 0.85rem;"><i class="fas fa-magic"></i> รองรับการเติม Check Digit อัตโนมัติ (พิมพ์ 2 ตัวอักษร + 8 ตัวเลข + 2 ตัวอักษรท้าย)</p>
+                </div>
+                <button class="btn btn-primary" onclick="checkBarcode()" style="width: 100%; padding: 15px; font-size: 1.1rem;">
+                    <i class="fas fa-search"></i> ค้นหา
+                </button>
+                
+                <div id="check-result" class="hidden" style="margin-top: 20px;"></div>
             </div>
         </section>
     </main>

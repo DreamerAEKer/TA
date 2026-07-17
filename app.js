@@ -107,3 +107,97 @@ function clearImportData() {
     document.getElementById("import-batch-name").value = "";
     document.getElementById("import-preview").classList.add("hidden");
 }
+
+let batchesCache = [];
+
+function switchTab(tabId) {
+    document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+    
+    document.getElementById("tab-" + tabId).classList.add("active");
+    if(event && event.currentTarget) event.currentTarget.classList.add("active");
+    
+    if (tabId === "check") {
+        document.getElementById("check-input").focus();
+        if (batchesCache.length === 0) loadHistorySilent();
+    }
+}
+
+async function loadHistorySilent() {
+    if (!window.db) return;
+    try {
+        const snapshot = await window.db.collection("batches").orderBy("timestamp", "desc").limit(50).get();
+        batchesCache = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            data.id = doc.id;
+            batchesCache.push(data);
+        });
+    } catch (err) {
+        console.error("Failed to load history for checking", err);
+    }
+}
+
+function checkBarcode() {
+    const input = document.getElementById("check-input").value.trim().toUpperCase();
+    if (!input) return;
+    
+    const resultDiv = document.getElementById("check-result");
+    resultDiv.classList.remove("hidden");
+    
+    if (batchesCache.length === 0) {
+        resultDiv.innerHTML = `<div style="padding:15px; color:#f44336;">กำลังโหลดข้อมูลจากฐานข้อมูล... ลองใหม่อีกครั้ง</div>`;
+        loadHistorySilent();
+        return;
+    }
+
+    let foundBatches = [];
+    for (const batch of batchesCache) {
+        if (batch.trackingNumbers && batch.trackingNumbers.includes(input)) {
+            foundBatches.push(batch);
+        }
+    }
+    
+    if (foundBatches.length > 0) {
+        let html = `<div style="background: #e8f5e9; border: 1px solid #4caf50; padding: 15px; border-radius: 8px;">
+            <h3 style="color: #2e7d32; margin-top:0;"><i class="fas fa-check-circle"></i> พบพัสดุ ${input}</h3>
+            <p>พบในกลุ่มข้อมูลต่อไปนี้:</p>
+            <ul style="margin-bottom: 0;">`;
+        foundBatches.forEach(b => {
+            const dateStr = new Date(b.timestamp).toLocaleString("th-TH");
+            html += `<li><strong>${b.batchName}</strong> (${b.type}) - นำเข้าเมื่อ: ${dateStr}</li>`;
+        });
+        html += `</ul></div>`;
+        resultDiv.innerHTML = html;
+    } else {
+        resultDiv.innerHTML = `<div style="background: #ffebee; border: 1px solid #f44336; padding: 15px; border-radius: 8px;">
+            <h3 style="color: #c62828; margin-top:0;"><i class="fas fa-times-circle"></i> ไม่พบพัสดุ ${input}</h3>
+            <p style="margin-bottom: 0;">กรุณาตรวจสอบเลขอีกครั้ง หรือพัสดุนี้อาจยังไม่ได้ถูกนำเข้า</p>
+        </div>`;
+    }
+    
+    document.getElementById("check-input").value = "";
+    document.getElementById("check-input").focus();
+}
+
+document.getElementById("check-input").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") checkBarcode();
+});
+
+// Auto-fill Check Digit Logic
+document.getElementById("check-input").addEventListener("input", function(e) {
+    let val = e.target.value.toUpperCase().replace(/\s/g, "");
+    const match = val.match(/^([A-Z]{2})(\d{8})([A-Z]{2})$/);
+    if (match) {
+        const prefix = match[1];
+        const body = match[2];
+        const suffix = match[3];
+        if (typeof TrackingUtils !== "undefined") {
+            const cd = TrackingUtils.calculateS10CheckDigit(body);
+            if (cd !== null) {
+                e.target.value = `${prefix}${body}${cd}${suffix}`;
+            }
+        }
+    }
+});
+
