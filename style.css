@@ -427,9 +427,9 @@ table th {
         /* Smooth scrolling on iOS */
     }
 
+    /* Remove global table min-width to prevent squishing layout on mobile */
     table {
-        min-width: 600px;
-        /* Ensure table doesn't squish */
+        width: 100%;
     }
 
     /* Improve Touch Targets */

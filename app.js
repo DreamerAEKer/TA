@@ -845,17 +845,13 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
 
     html += `
                     </tbody>
-                    <tfoot>
-                        <tr style="border-top:2px solid #000; border-bottom:2px solid #000;">
-                            <td colspan="4" style="padding:10px;">
-                                <div class="mobile-grand-total">
-                                    <span style="font-weight:bold;">รวมทั้งสิ้น (Grand Total)</span>
-                                    <span style="font-weight:bold; font-size:1.1rem;">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                                </div>
-                            </td>
-                        </tr>
-                    </tfoot>
                 </table>
+                <div style="border-top:2px solid #000; border-bottom:2px solid #000; padding:10px; margin-top:10px; background:#fff;">
+                    <div class="mobile-grand-total">
+                        <span style="font-weight:bold;">รวมทั้งสิ้น (Grand Total)</span>
+                        <span style="font-weight:bold; font-size:1.1rem; color:#d63384;">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                </div>
             <div style="font-size:0.8rem; color:#999; text-align:center; margin-top:5px; font-style:italic;">
                 (บนมือถือ: จำนวนและยอดเงินจะแสดงที่มุมขวาของรายการ)
             </div>
