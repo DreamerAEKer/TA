@@ -828,9 +828,9 @@ function renderImportResult(ranges, missingItems = [], discrepancies = []) {
                     <!-- Line 2: Range Only (Mobile) -->
                     <div class="line-flex">
                         <span style="color:#0056b3; font-weight:bold; overflow-wrap:break-word; max-width:100%;">
-                            ${r.start === r.end
+                            ${r.displayRange ? r.displayRange : (r.start === r.end
                 ? TrackingUtils.formatTrackingNumber(r.start)
-                : `${TrackingUtils.formatTrackingNumber(r.start)} - ${TrackingUtils.formatTrackingNumber(r.end)}`}
+                : `${TrackingUtils.formatTrackingNumber(r.start)} - ${TrackingUtils.formatTrackingNumber(r.end)}`)}
                         </span>
                     </div>
 

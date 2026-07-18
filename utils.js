@@ -194,11 +194,34 @@ function virtualOptimizeRanges(ranges) {
         const myItems = allItems.slice(currentIdx, currentIdx + group.totalCount);
         currentIdx += group.totalCount;
 
-        // Create Virtual Range(s) for these items
-        // Even in virtual mode, if there are massive gaps in the pool, we technically should show them?
-        // But user asked for "1ชุดเลขที่" (One set).
-        // Let's try to condense to Min-Max.
         if (myItems.length === 0) return null;
+
+        // Break into contiguous sub-ranges to accurately reflect gaps
+        const subRanges = [];
+        const parseBody = (str) => {
+            const m = str.match(/([A-Z]{2})(\d{8})(\d)([A-Z]{2})/);
+            return m ? { full: str, prefix: m[1], body: parseInt(m[2], 10), check: parseInt(m[3], 10), suffix: m[4] } : null;
+        };
+
+        let sStart = parseBody(myItems[0]);
+        let sPrev = sStart;
+        
+        for (let i = 1; i < myItems.length; i++) {
+            const sCurr = parseBody(myItems[i]);
+            if (!sCurr) continue;
+
+            if (sStart && sPrev && sCurr.prefix === sPrev.prefix && sCurr.suffix === sPrev.suffix && sCurr.body === sPrev.body + 1) {
+                sPrev = sCurr;
+            } else {
+                if (sStart && sPrev) subRanges.push({ start: sStart.full, end: sPrev.full });
+                sStart = sCurr;
+                sPrev = sCurr;
+            }
+        }
+        if (sStart && sPrev) subRanges.push({ start: sStart.full, end: sPrev.full });
+
+        // Join multiple ranges with comma for display
+        const displayRange = subRanges.map(sr => sr.start === sr.end ? formatTrackingNumber(sr.start) : `${formatTrackingNumber(sr.start)} - ${formatTrackingNumber(sr.end)}`).join('<br>');
 
         return {
             price: group.price,
@@ -208,8 +231,7 @@ function virtualOptimizeRanges(ranges) {
             start: myItems[0],
             end: myItems[myItems.length - 1],
             isVirtual: true,
-            // Consistency Check: Did we just assign items that shouldn't be here?
-            // (Strictly speaking we are fabricating the link, so 'correctness' relies on the pool being complete)
+            displayRange: displayRange, // Add for correct multi-range display
             check: "Optimized"
         };
     }).filter(g => g !== null);
