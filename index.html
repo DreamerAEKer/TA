@@ -1,136 +1,396 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ระบบนำเข้าข้อมูล - Firebase Tracking</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-storage-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THP Tracking Analyst v0.3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=5">
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src='https://unpkg.com/tesseract.js@v5.0.0/dist/tesseract.min.js'></script>
 </head>
-<body class="user-mode">
-    <div id="user-mode-header">
-        <div style="display:flex; justify-content:center; align-items:center;">
-            <span class="logo-main" style="font-size:1.8rem; font-weight:800; color:#1e3c72; letter-spacing:1px; margin-right:8px;">TRACK</span>
-            <span class="title-sub" style="font-size:1.2rem; color:#666; font-weight:600; background:#f0f0f0; padding:4px 10px; border-radius:20px;">ระบบนำเข้าข้อมูล</span>
-        </div>
-    </div>
-    <div class="container">
-        <div class="tab-container" style="display: flex; gap: 10px; margin-bottom: 0; padding-top: 20px;">
-            <button class="tab-btn active" onclick="switchTab('import')" style="padding: 10px 20px; border:none; background:none; font-size:1.1rem; cursor:pointer; border-bottom: 3px solid #2196f3; color: #2196f3; font-weight: bold;" id="btn-import"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล</button>
-            <button class="tab-btn" onclick="switchTab('check')" style="padding: 10px 20px; border:none; background:none; font-size:1.1rem; cursor:pointer; color: #666; font-weight: bold;" id="btn-check"><i class="fas fa-search"></i> ค้นหาพัสดุ</button>
-            <button class="tab-btn" onclick="switchTab('history')" style="padding: 10px 20px; border:none; background:none; font-size:1.1rem; cursor:pointer; color: #666; font-weight: bold;" id="btn-history"><i class="fas fa-history"></i> ประวัติวันนี้</button>
-        </div>
-    </div>
 
-    <main class="container" style="margin-top: 20px;">
-        <section id="tab-import" class="tab-content active">
-            <div class="card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 12px; margin-bottom: 20px;">
-                <h2 style="color: #1e3c72; font-size: 1.5rem; margin-bottom: 20px;"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล (Import Excel)</h2>
-                
-                <div id="import-config" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 200px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color:#333;">ชื่อลูกค้า / กลุ่มข้อมูล (Batch Name)</label>
-                            <input type="text" id="import-batch-name" placeholder="เช่น รายการส่งวันที่ 23/01/2026" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
-                        </div>
-                        <div style="flex: 1; min-width: 200px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color:#333;">ประเภท (Type)</label>
-                            <select id="import-batch-type" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;" onchange="togglePackageSelector()">
-                                <option value="Cash" selected>เงินสด (Cash)</option>
-                                <option value="CustomerA">ลูกค้า A (Package)</option>
-                            </select>
-                        </div>
-                        <div style="flex: 1; min-width: 150px; display: none;" id="import-package-selector">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color:#333;">แพ็กเกจ (Package)</label>
-                            <select id="import-package-rate" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
-                                <option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option>
-                                <option value="A4">A4</option><option value="A5">A5</option><option value="A6" selected>A6</option>
-                                <option value="A7">A7</option><option value="A8">A8</option><option value="A9">A9</option>
-                                <option value="A10">A10</option><option value="A11">A11</option><option value="A12">A12</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
+<body>
 
-                <div class="upload-area" id="drop-zone" onclick="document.getElementById('import-file').click()" style="border: 2px dashed #90caf9; background: #f3f8ff; padding: 30px; text-align: center; border-radius: 12px; cursor: pointer; transition: 0.3s;">
-                    <div class="upload-icon-display" style="font-size: 3rem; color: #42a5f5; margin-bottom: 10px;">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                    </div>
-                    <h3 style="margin-top: 5px; color: #1565c0;">แตะเพื่ออัปโหลดไฟล์ Excel</h3>
-                    <p class="text-muted" style="font-size: 0.9rem;">ระบบจะวิเคราะห์ข้อมูลและอัปโหลดขึ้น Cloud อัตโนมัติ</p>
-                    <input type="file" id="import-file" accept=".xlsx, .xls" class="hidden">
-                    <p id="upload-status" style="margin-top:10px; color:#d32f2f; font-weight: 600;"></p>
-                </div>
+    <header class="navbar">
+        <div class="container">
+            <div class="brand">
+                <div class="brand-logo">POST</div>
+                <span>Tracking Analyst (Business Customer) v0.3</span>
             </div>
 
-            <div id="import-preview" class="hidden">
-                <div class="card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 12px;">
-                    <h3 style="color: #0d47a1; border-bottom: 2px solid #e3f2fd; padding-bottom: 8px; margin-bottom: 20px;"><i class="fas fa-table"></i> ผลการวิเคราะห์ (Analysis Result)</h3>
-                    
-                    <div id="analysis-summary" style="margin-bottom: 20px;">
-                        <!-- Summary boxes will be injected here -->
+        </div>
+    </header>
+
+    <!-- Login Modal -->
+    <!-- Login Modal Removed (Replaced by URL Auth) -->
+    <!-- Login Modal Removed (Replaced by URL Auth) -->
+
+    <main class="container">
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('check')">ตรวจสอบ & แก้ไข (Check & Fix)</button>
+            <button class="tab-btn" onclick="switchTab('range')">สร้างเลขรัน (Range Gen)</button>
+            <button class="tab-btn" onclick="switchTab('gap')">เช็คของตกหล่น (Missing Items)</button>
+            <button class="tab-btn" onclick="switchTab('customer')">ฐานข้อมูลลูกค้า (Customer DB)</button>
+            <button class="tab-btn" onclick="switchTab('import')">📥 นำเข้า Excel (Import)</button>
+        </div>
+
+        <!-- SECTION 1: Check & Fix -->
+        <section id="tab-check" class="tab-content active">
+            <div class="card">
+                <h2>ตรวจสอบความถูกต้อง (Single Check)</h2>
+                <div class="form-group">
+                    <label>ระบุเลขพัสดุ (เช่น EB123456785TH)</label>
+                    <div class="input-group">
+                        <input type="text" id="input-check-single" placeholder="XX000000000TH" maxlength="13">
+                        <button class="btn btn-primary" onclick="checkSingleNumber()">ตรวจสอบ</button>
+                    </div>
+                </div>
+                <div id="result-check-single" class="result-box hidden">
+                    <!-- Dynamic Result -->
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: Range Generator -->
+        <section id="tab-range" class="tab-content">
+            <div class="card">
+                <div id="range-generator-ui">
+                    <h2>สร้างเลขรัน (Range Generator)</h2>
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label>เลขตั้งต้น (Center ID)</label>
+                            <input type="text" id="input-range-center" placeholder="XX000000000XX">
+                        </div>
+                        <div class="form-group">
+                            <label>ย้อนหลัง (Previous N)</label>
+                            <input type="number" id="input-range-prev" placeholder="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>ถัดไป (Next N)</label>
+                            <input type="number" id="input-range-next" placeholder="0" min="0">
+                        </div>
                     </div>
 
-                    <div style="overflow-x: auto; max-height: 400px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;" id="analysis-table">
-                            <thead style="position: sticky; top: 0; background: #01579b; color: white; z-index: 10;">
+                    <div class="form-group mt-4">
+                        <label>เทียบกับรายการที่มี (Reference / Scanned IDs) <small class="text-muted">(Optional:
+                                แปะรายการเพื่อเช็คสถานะ)</small></label>
+                        <textarea id="range-reference-list" rows="3"
+                            placeholder="แปะรายการเลขพัสดุที่มีที่นี่... ระบบจะแสดงสถานะ 'รับเข้าระบบ' ให้"></textarea>
+                    </div>
+
+                    <div class="mt-4">
+                        <button class="btn btn-primary" onclick="generateRange()">เริ่มสร้างรายการ</button>
+                    </div>
+                </div>
+
+                <div id="result-range-box" class="result-list hidden mt-4">
+                    <!-- Table result -->
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: Gap Analysis -->
+        <section id="tab-gap" class="tab-content">
+            <div class="card">
+                <h2>เช็ครายการตกหล่น (Gap Analysis)</h2>
+                <p class="text-muted">ตรวจสอบว่าเลขไหนหายไปจาก Sequence ที่ควรจะเป็น</p>
+
+                <div class="grid-form">
+                    <div class="form-group">
+                        <label>เลขเริ่มต้น (Start)</label>
+                        <input type="text" id="gap-start" placeholder="XX000000000XX">
+                    </div>
+                    <div class="form-group">
+                        <label>เลขสิ้นสุด (End)</label>
+                        <input type="text" id="gap-end" placeholder="XX000000000XX">
+                    </div>
+                </div>
+
+                <div class="form-group mt-4">
+                    <label>รายการที่สแกนได้จริง (วางรายการที่นี่)</label>
+                    <textarea id="gap-actual-list" rows="6" placeholder="EB123456000TH
+EB123456001TH
+..."></textarea>
+                </div>
+
+                <div class="mt-4">
+                    <button class="btn btn-danger" onclick="findGaps()">ค้นหาเลขที่หายไป</button>
+                </div>
+
+                <div id="result-gap-box" class="result-alert hidden mt-4">
+                    <!-- Gap Results -->
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: Customer Database -->
+        <section id="tab-customer" class="tab-content">
+            <div class="card">
+                <h2>ฐานข้อมูลลูกค้า (Customer Database)</h2>
+                <p class="text-muted">บันทึกข้อมูลลูกค้าเพื่อแสดงผลเวลาค้นหา (บันทึกในเครื่องนี้เท่านั้น)</p>
+
+                <div class="grid-form"
+                    style="background:#f9f9f9; padding:15px; border-radius:8px; border:1px solid #eee;">
+                    <div class="form-group">
+                        <label>ชื่อลูกค้า / บริษัท</label>
+                        <input type="text" id="db-name" placeholder="เช่น บจก. เอบีซี เทรดดิ้ง">
+                    </div>
+                    <div class="form-group">
+                        <label>ประเภท (Type)</label>
+                        <select id="db-type"
+                            style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:4px;">
+                            <option value="Credit">รายเดือน (Credit)</option>
+                            <option value="Cash">เงินสด/Drop Off (Cash)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>เลขที่สัญญา (Contract No.)</label>
+                        <input type="text" id="db-contract" placeholder="เช่น 123/2569 (ถ้ามี)">
+                    </div>
+                </div>
+
+                <div class="form-group mt-4">
+                    <label>ช่วงเลขพัสดุที่ต้องการบันทึก</label>
+
+                    <!-- Smart Builder UI -->
+                    <div class="smart-input-container"
+                        style="background:#e3f2fd; padding:15px; border-radius:8px; border:1px solid #90caf9; margin-bottom:10px;">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <strong style="color:#0d47a1;">✨ Smart Input (ช่วยกรอกเลข)</strong>
+                            <div>
+                                <button class="btn btn-neutral"
+                                    onclick="document.getElementById('smart-image-upload').click()"
+                                    style="padding: 5px 10px; font-size: 0.8rem; border:1px solid #ccc; display:flex; align-items:center; gap:5px;">
+                                    📸 Scan Images
+                                </button>
+                                <input type="file" id="smart-image-upload" multiple accept="image/*"
+                                    style="display:none" onchange="handleImageSelection(this.files)">
+                                <span id="smart-ocr-status"
+                                    style="font-size:0.8rem; color:var(--primary-color); margin-left:10px;"></span>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                            <!-- Prefix -->
+                            <div style="flex:1; min-width:100px;">
+                                <label style="font-size:0.8rem;">อักษร (Prefix)</label>
+                                <div class="input-group">
+                                    <input type="text" id="smart-prefix" list="prefix-list" maxlength="2"
+                                        placeholder="XX"
+                                        style="text-transform:uppercase; text-align:center; font-weight:bold;">
+                                    <datalist id="prefix-list"></datalist>
+                                    <button class="btn btn-danger" onclick="deleteCurrentPrefix()" title="ลบหมวดนี้"
+                                        style="padding:0 5px;">×</button>
+                                </div>
+                            </div>
+
+                            <!-- Block 1 (4 Digits) -->
+                            <div style="flex:1.5; min-width:100px;">
+                                <label style="font-size:0.8rem;">เลขหมวด (4 หลัก)</label>
+                                <div class="input-group">
+                                    <input type="text" id="smart-block1" list="block1-list" maxlength="4"
+                                        placeholder="1234" oninput="calculateSmartCheckDigit()"
+                                        style="letter-spacing:1px; text-align:center; font-weight:bold;">
+                                    <datalist id="block1-list"></datalist>
+                                    <button class="btn btn-danger" onclick="deleteCurrentBlock1()" title="ลบเลขชุดนี้"
+                                        style="padding:0 5px;">×</button>
+                                </div>
+                            </div>
+
+                            <!-- Block 2 (4 Digits) -->
+                            <div style="flex:1.5; min-width:100px;">
+                                <label style="font-size:0.8rem;">เลขรัน (4 หลัก)</label>
+                                <input type="text" id="smart-block2" maxlength="4" placeholder="5678"
+                                    oninput="calculateSmartCheckDigit()" style="letter-spacing:1px; text-align:center;">
+                            </div>
+
+                            <!-- Check Digit (Auto) -->
+                            <div style="flex:0.5; min-width:60px;">
+                                <label style="font-size:0.8rem;">Check</label>
+                                <input type="text" id="smart-check-digit" readonly
+                                    style="background:#eee; text-align:center; font-weight:bold; color:green;"
+                                    value="-">
+                            </div>
+
+                            <!-- Suffix -->
+                            <div style="flex:0.5; min-width:60px;">
+                                <label style="font-size:0.8rem;">Suffix</label>
+                                <input type="text" id="smart-suffix" value="TH" style="text-align:center;"
+                                    maxlength="2">
+                            </div>
+
+                            <!-- Add Button -->
+                            <div style="flex:1; min-width:140px;">
+                                <button type="button" class="btn btn-primary" onclick="addSmartEntry()"
+                                    style="width:100%; height:42px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">⬇
+                                    เพิ่มลงรายการ</button>
+                            </div>
+                        </div>
+
+                        <!-- Range Option (Quantity) -->
+                        <div style="margin-top:10px;">
+                            <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                <input type="checkbox" id="smart-range-enable" onchange="toggleSmartRange()">
+                                สร้างแบบเป็นชุด (Batch Mode)
+                            </label>
+                            <div id="smart-range-box" class="hidden"
+                                style="margin-top:5px; padding-left:10px; border-left:3px solid #ccc;">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <label style="font-size:0.8rem;">จำนวนที่ต้องการ (Quantity)</label>
+                                    <input type="number" id="smart-qty" placeholder="เช่น 50" min="1"
+                                        style="width:100px;">
+                                    <span style="font-size:0.8rem; color:#666;">รายการ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <textarea id="db-tracking-list" rows="3" placeholder="รายการจะถูกเติมลงที่นี่..."></textarea>
+                </div>
+
+                <div class="mt-4" style="display:flex; gap:10px; align-items:center;">
+                    <button class="btn btn-primary" onclick="saveCustomerData()">บันทึกข้อมูล (Save)</button>
+                    <button class="btn btn-danger" onclick="clearAllData()">ล้างข้อมูลทั้งหมด</button>
+                    <div style="flex-grow:1;"></div>
+                    <!-- Backup Controls -->
+                    <button class="btn btn-neutral" onclick="backupData()" style="border:1px solid #ccc;">⬇
+                        Backup</button>
+                    <button class="btn btn-neutral" onclick="document.getElementById('restore-upload').click()"
+                        style="border:1px solid #ccc;">⬆ Restore</button>
+                    <input type="file" id="restore-upload" accept=".json" style="display:none;"
+                        onchange="restoreData(event)">
+                </div>
+
+                <!-- Snapshot UI -->
+                <div id="snapshot-section" class="mt-4 hidden"
+                    style="background:#fff3cd; padding:10px; border-radius:4px; border:1px solid #ffeeba;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;"
+                        onclick="toggleSnapshotList()">
+                        <strong style="color:#856404;">↩️ จุดย้อนกลับข้อมูล (Auto-Backup / Restore Points)</strong>
+                        <span>▼</span>
+                    </div>
+                    <ul id="snapshot-list" class="hidden" style="margin:10px 0 0 20px; color:#856404;"></ul>
+                </div>
+
+                <div class="mt-4">
+                    <h3>รายการที่บันทึกไว้ (<span id="db-count">0</span> รายการ)</h3>
+                    <div id="db-list-container" style="max-height: 300px; overflow-y: auto;">
+                        <table id="db-table">
+                            <thead>
                                 <tr>
-                                    <th style="padding: 10px; text-align: center; border: 1px solid #004ba0;">ลำดับ</th>
-                                    <th style="padding: 10px; text-align: left; border: 1px solid #004ba0;">หมายเลขพัสดุ</th>
-                                    <th style="padding: 10px; text-align: center; border: 1px solid #004ba0;">น้ำหนัก (g)</th>
-                                    <th style="padding: 10px; text-align: center; border: 1px solid #004ba0;">ราคาไฟล์ (฿)</th>
-                                    <th style="padding: 10px; text-align: center; border: 1px solid #004ba0;">ราคาคำนวณ (฿)</th>
-                                    <th style="padding: 10px; text-align: center; border: 1px solid #004ba0;">สถานะ</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('id')" data-sort="id">ช่วงเลข / จำนวน
+                                        (Range/Count) ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('name')" data-sort="name">ลูกค้า
+                                        (Customer) ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('type')" data-sort="type">ประเภท (Type)
+                                        ↕</th>
+                                    <th style="cursor:pointer;" onclick="sortDB('timestamp')" data-sort="timestamp">
+                                        วันที่ (Date) ↕</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="analysis-tbody">
-                                <!-- Rows injected here -->
-                            </tbody>
+                            <tbody></tbody>
                         </table>
                     </div>
-                    
-                    <button class="btn btn-danger" onclick="clearImportData()" style="width: 100%; padding: 12px; font-size: 1.1rem; background:#ff4444; border:none; color:white;">
-                        <i class="fas fa-times"></i> ปิดหน้านี้ / ล้างข้อมูล
+                </div>
+            </div>
+        </section>
+
+        </section>
+
+        <!-- SECTION 5: Import Excel -->
+        <section id="tab-import" class="tab-content">
+            <div class="card">
+                <h2>นำเข้าไฟล์ Excel (Import Tracking)</h2>
+                <p class="text-muted">อัปโหลดไฟล์ (.xlsx, .xls) เพื่อวิเคราะห์ช่วงเลขและบันทึกข้อมูล</p>
+
+                <div style="display:flex; justify-content:flex-start; gap:10px; margin-bottom:10px; overflow-x:auto;">
+                    <!-- History Button (Main) -->
+                    <button class="btn btn-neutral" onclick="toggleImportHistory()" style="flex-shrink:0;">
+                        📜 ประวัติการนำเข้า (History)
+                    </button>
+
+                    <!-- Export Button (Smaller, Subtle) -->
+                    <button class="btn btn-neutral" onclick="confirmAndBackup()"
+                        style="flex-shrink:0; font-size:0.9rem; padding:8px 12px; border:1px solid #ccc; color:#666;">
+                        ⬇ Export
                     </button>
                 </div>
-            </div>
-        </section>
 
-        <!-- HISTORY TAB (STAFF) -->
-        <section id="tab-history" class="tab-content">
-            <div class="card">
-                <h2 style="color: #1e3c72; font-size: 1.5rem; margin-bottom: 20px;"><i class="fas fa-history"></i> ประวัติการอัปโหลดวันนี้</h2>
-                <div id="staff-history-list" style="display: flex; flex-direction: column; gap: 15px;">
-                    <!-- History cards injected here -->
+                <div id="import-history-section" class="hidden"
+                    style="margin-bottom:20px; background:#f9f9f9; padding:15px; border-radius:8px; border:1px solid #ddd;">
+                    <h3 style="margin-top:0;">ประวัติการนำเข้า (Import History)</h3>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table id="import-history-table">
+                            <thead>
+                                <tr>
+                                    <th>วันที่ (Date)</th>
+                                    <th>ชื่อชุดข้อมูล (Batch Name)</th>
+                                    <th>จำนวน (Items)</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody><!-- Populated by JS --></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="upload-area" onclick="document.getElementById('import-upload').click()">
+                    <span class="upload-icon" id="upload-icon-display">📂 / 📸</span>
+                    <h3 id="upload-title-display">แตะเพื่อเลือกไฟล์ Excel หรือ รูปภาพ</h3>
+                    <p class="text-muted" id="upload-desc-display">รองรับ .xlsx, .xls และ รูปภาพ (เลือกได้หลายรูป)</p>
+                    <p id="upload-status" style="margin-top:10px; color:var(--primary-color); height:20px;"></p>
+                </div>
+                <!-- Hidden Input: Accept Excel AND Images, Multiple -->
+                <input type="file" id="import-upload" accept=".xlsx, .xls, .jpg, .jpeg, .png, .heic" multiple
+                    onchange="handleFileUpload(event)" style="display:none;">
+
+                <div id="import-preview" class="hidden mt-4">
+                    <h3>ผลการวิเคราะห์ (Analysis Result)</h3>
+                    <div id="import-summary" class="result-box result-success"></div>
+
+                    <div class="mt-4">
+                        <div class="form-group">
+                            <label>ชื่อลูกค้า / กลุ่มข้อมูล (Batch Name)</label>
+                            <input type="text" id="import-batch-name" placeholder="เช่น รายการส่งวันที่ 23/01/2026">
+                        </div>
+                        <div class="form-group">
+                            <label>ประเภท (Type)</label>
+                            <select id="import-batch-type"
+                                style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:4px;">
+                                <option value="Cash" selected>เงินสด (Cash)</option>
+                                <option value="Credit">รายเดือน (Credit)</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button class="btn btn-primary" onclick="saveImportedBatch()">💾 บันทึกข้อมูล
+                                (Save)</button>
+                            <button class="btn btn-danger" onclick="clearImportData()" style="background:#ff4444;">🗑️
+                                ล้างรายการ (Clear)</button>
+                        </div>
+                    </div>
+
+                    <div id="import-details" class="mt-4">
+                        <!-- Table of ranges -->
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- CHECK TAB -->
-        <section id="tab-check" class="tab-content">
-            <div class="card">
-                <h2><i class="fas fa-barcode"></i> ค้นหาพัสดุ (Single Check)</h2>
-                <div class="form-group">
-                    <input type="text" id="check-input" placeholder="ยิงบาร์โค้ด หรือ พิมพ์เลขพัสดุ (เช่น EB12345678TH)..." 
-                           style="width: 100%; padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #2196f3; text-transform: uppercase;">
-                    <p class="text-muted" style="margin-top: 8px; font-size: 0.85rem;"><i class="fas fa-magic"></i> รองรับการเติม Check Digit อัตโนมัติ (พิมพ์ 2 ตัวอักษร + 8 ตัวเลข + 2 ตัวอักษรท้าย)</p>
-                </div>
-                <button class="btn btn-primary" onclick="checkBarcode()" style="width: 100%; padding: 15px; font-size: 1.1rem;">
-                    <i class="fas fa-search"></i> ค้นหา
-                </button>
-                
-                <div id="check-result" class="hidden" style="margin-top: 20px;"></div>
-            </div>
-        </section>
     </main>
 
-    <script src="firebase_config.js"></script>
-    <script src="utils.js"></script>
-    <script src="app.js"></script>
+    <div
+        style="position: fixed; bottom: 10px; right: 10px; font-size: 0.8rem; color: #999; z-index: 1000; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; pointer-events: none;">
+        v0.3</div>
+
+    <script src="utils.js?v=6"></script>
+    <script src="db_manager.js?v=5"></script>
+    <script src="smart_input.js?v=5"></script>
+    <script src="app.js?v=5"></script>
 </body>
+
 </html>

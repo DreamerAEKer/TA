@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tracking Extraction Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f0f0f0; }
+        .pass { color: green; font-weight: bold; }
+        .fail { color: red; font-weight: bold; }
+        .test-case { margin-bottom: 15px; padding: 10px; background: white; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h3 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <h1>Tracking Extraction Test Results</h1>
+    <div id="results">Running tests...</div>
+
+    <script src="utils.js"></script>
+    <script>
+        const { extractTrackingNumbers } = window.TrackingUtils;
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '';
+
+        const testCases = [
+            {
+                name: "Standard Clear",
+                input: "ET443628139TH",
+                expected: ["ET443628139TH"]
+            },
+            {
+                name: "Spaced (User Format)",
+                input: "ET 4436 2813 9 TH",
+                expected: ["ET443628139TH"]
+            },
+            {
+                name: "Partial 11-Digit (Missing Suffix)",
+                input: "ET 4436 2814 2", 
+                expected: ["ET443628142TH"]
+            },
+            {
+                name: "Mixed Bulk Text (From Image)",
+                input: `
+                    1 วินิต ท้วมลี้ 21000 ระยอง ET 4436 2813 9 TH 1 32.00
+                    3 อาภรณ์ วิไลรัตน์ 90110 หาดใหญ่ ET 4436 2815 6 TH
+                    4 จิรเดช คารพานนท์ ET 4436 2816 0 (Missing TH in OCR maybe?)
+                `,
+                expected: ["ET443628139TH", "ET443628156TH", "ET443628160TH"]
+            },
+            {
+                name: "Bad Check Digit",
+                input: "ET 4436 2813 8 TH", // Digit is 9, so 8 is wrong
+                expected: []
+            }
+        ];
+
+        let allPassed = true;
+
+        testCases.forEach(test => {
+            const result = extractTrackingNumbers(test.input);
+            const passed = JSON.stringify(result) === JSON.stringify(test.expected);
+            if (!passed) allPassed = false;
+
+            const div = document.createElement('div');
+            div.className = 'test-case';
+            div.innerHTML = `
+                <h3>${test.name} - ${passed ? '<span class="pass">PASS</span>' : '<span class="fail">FAIL</span>'}</h3>
+                <div><strong>Input:</strong> ${test.input.replace(/\n\s+/g, ' ').substring(0, 50)}...</div>
+                <div><strong>Expected:</strong> ${JSON.stringify(test.expected)}</div>
+                <div><strong>Actual:</strong> ${JSON.stringify(result)}</div>
+            `;
+            resultsDiv.appendChild(div);
+        });
+        
+        const summary = document.createElement('h2');
+        summary.textContent = allPassed ? "ALL TESTS PASSED" : "SOME TESTS FAILED";
+        summary.className = allPassed ? "pass" : "fail";
+        document.body.prepend(summary);
+
+    </script>
+</body>
+</html>
