@@ -46,8 +46,9 @@ async function loadHistory(silent = false) {
                                 <i class="fas fa-box"></i> ${data.totalItems} รายการ
                             </p>
                         </div>
-                        <div style="display: flex; gap: 10px;">
+                        <div style="display: flex; gap: 10px; align-items: center;">
                             ${data.fileURL ? `<a href="${data.fileURL}" target="_blank" class="btn btn-primary" style="text-decoration: none;"><i class="fas fa-download"></i> โหลดไฟล์</a>` : ""}
+                            <button class="btn btn-danger" onclick="deleteHistory('${data.id}')" style="padding: 10px; border-radius: 4px;" title="ลบข้อมูล"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                 </div>
@@ -67,6 +68,44 @@ async function loadHistory(silent = false) {
             document.getElementById("history-loading").style.display = "none";
             document.getElementById("history-list").innerHTML = `<div style="color: red;">Error: ${err.message}</div>`;
         }
+    }
+}
+
+// Function to manually delete a history record
+window.deleteHistory = async function(id) {
+    if (!confirm("คุณต้องการลบประวัตินี้และไฟล์ที่เกี่ยวข้องใช่หรือไม่? (ลบแล้วกู้คืนไม่ได้)")) return;
+    
+    const batch = batchesCache.find(b => b.id === id);
+    if (!batch) {
+        alert("ไม่พบข้อมูลที่ต้องการลบในระบบ");
+        return;
+    }
+
+    const btn = event.currentTarget;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+
+    try {
+        // Delete file from Storage if exists
+        if (batch.storagePath && window.storage) {
+            try {
+                await window.storage.ref().child(batch.storagePath).delete();
+            } catch(e) {
+                console.warn("Storage deletion error (maybe file not found):", e);
+            }
+        }
+        
+        // Delete document from Firestore
+        await window.db.collection("batches").doc(id).delete();
+        
+        // Reload list
+        loadHistory();
+    } catch (err) {
+        console.error("Error deleting history:", err);
+        alert("เกิดข้อผิดพลาดในการลบ: " + err.message);
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
     }
 }
 
